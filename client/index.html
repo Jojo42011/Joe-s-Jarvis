@@ -1,0 +1,2476 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JARVIS | Joe Stewart</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap');
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --maroon:#a01020;--red:#e02030;--red-hot:#ff3848;
+  --white:#f5f5f7;--text:#d8d8dc;--muted:#8a8a90;
+  --bg:#080608;--panel:rgba(16,6,8,.72);
+  --border:rgba(255,255,255,.10);
+  --glow-r:rgba(224,32,48,.55);--glow-m:rgba(160,16,32,.4);
+}
+
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace}
+
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 55% 55% at 50% 48%,rgba(160,16,32,.2),transparent),
+    radial-gradient(ellipse 35% 30% at 80% 20%,rgba(224,32,48,.10),transparent),
+    radial-gradient(ellipse 30% 40% at 15% 75%,rgba(160,16,32,.09),transparent);
+}
+
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.05) 2px,rgba(0,0,0,.05) 4px);
+  opacity:.3;
+}
+
+::selection{background:rgba(224,32,48,.3);color:var(--white)}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(224,32,48,.25);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:rgba(224,32,48,.4)}
+
+.hud{
+  position:relative;z-index:1;display:grid;height:100vh;
+  grid-template-columns:320px 1fr 360px;
+  grid-template-rows:56px 1fr 64px;
+  gap:0;
+}
+
+/* ─── TOP BAR ─── */
+.topbar{
+  grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;
+  padding:0 28px;border-bottom:1px solid rgba(224,32,48,.15);
+  background:rgba(8,6,8,.8);backdrop-filter:blur(18px);
+}
+.topbar-left{display:flex;align-items:center;gap:18px}
+.logo{
+  font-family:'Orbitron',sans-serif;font-weight:900;font-size:22px;letter-spacing:.2em;
+  color:var(--white);text-shadow:0 0 24px var(--glow-r),0 0 50px rgba(160,16,32,.18);
+}
+.logo span{color:var(--red)}
+.status-badge{
+  padding:5px 14px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+  border:1px solid var(--red);color:var(--red);background:rgba(224,32,48,.06);
+  box-shadow:0 0 12px rgba(224,32,48,.15);transition:all .35s;
+}
+.status-badge.listening{
+  color:var(--white);border-color:var(--red-hot);background:rgba(255,56,72,.25);
+  box-shadow:0 0 28px rgba(255,56,72,.45);animation:badgePulse 1.2s ease-in-out infinite alternate;
+}
+.status-badge.processing{color:#ff8c42;border-color:#ff8c42;background:rgba(255,140,66,.1);box-shadow:0 0 18px rgba(255,140,66,.2)}
+.status-badge.responding{color:var(--white);border-color:var(--white);background:rgba(255,255,255,.06);box-shadow:0 0 14px rgba(255,255,255,.1)}
+@keyframes badgePulse{to{box-shadow:0 0 40px rgba(255,56,72,.6)}}
+.topbar-right{display:flex;align-items:center;gap:20px}
+.clock{font-family:'Orbitron',sans-serif;font-size:13px;letter-spacing:.12em;color:var(--muted)}
+.user-tag{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--text);opacity:.55}
+
+/* ─── LEFT PANEL ─── */
+.left-panel{
+  display:flex;flex-direction:column;gap:0;
+  border-right:1px solid rgba(255,255,255,.07);
+  background:rgba(8,6,8,.5);backdrop-filter:blur(12px);overflow-y:auto;
+}
+.section{padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.06)}
+.section-title{
+  font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;letter-spacing:.25em;text-transform:uppercase;
+  color:var(--red);margin-bottom:14px;display:flex;align-items:center;gap:8px;
+}
+.section-title::before{content:'';display:block;width:10px;height:2px;background:var(--red);border-radius:1px;box-shadow:0 0 8px var(--glow-r)}
+
+.metric-row{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0}
+.metric-row .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.metric-row .value{font-family:'Orbitron',sans-serif;font-size:18px;font-weight:700;color:var(--white);text-shadow:0 0 6px rgba(255,255,255,.1)}
+.metric-row .value.alert{color:var(--red-hot);text-shadow:0 0 14px rgba(255,56,72,.5)}
+
+.sys-row{display:flex;justify-content:space-between;padding:5px 0;font-size:11px;color:var(--muted)}
+.sys-row .val{color:var(--text)}
+.sys-row .val.online{color:var(--white);text-shadow:0 0 6px rgba(255,255,255,.25)}
+
+.progress-bar{
+  height:3px;border-radius:2px;background:rgba(255,255,255,.06);margin-top:4px;overflow:hidden;
+}
+.progress-bar .fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--maroon),var(--red-hot));transition:width .6s;box-shadow:0 0 6px var(--glow-r)}
+
+.module-item{
+  display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:11px;
+}
+.module-item .name{color:var(--text)}
+.module-item .tag{
+  padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+}
+.tag.live{color:var(--white);border:1px solid rgba(245,245,247,.25);background:rgba(245,245,247,.06);box-shadow:0 0 6px rgba(255,255,255,.08)}
+.tag.next{color:var(--red);border:1px solid rgba(224,32,48,.3);background:rgba(224,32,48,.07)}
+.tag.queued{color:var(--muted);border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03)}
+.operator-log{
+  display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 420px);overflow-y:auto;padding-right:4px;
+}
+.log-entry{
+  border:1px solid rgba(255,255,255,.06);border-left:2px solid rgba(224,32,48,.55);border-radius:5px;
+  padding:9px 10px;background:rgba(255,255,255,.025);font-size:11px;line-height:1.35;color:var(--text);
+  transition:border-color .2s,background .2s;
+}
+.log-entry:first-child{border-left-color:var(--red-hot);background:rgba(255,56,72,.04)}
+.log-entry .log-time{display:block;margin-bottom:4px;font-size:9px;color:var(--red);letter-spacing:.12em;text-transform:uppercase}
+.log-entry .log-text{color:var(--muted)}
+
+/* ─── CENTER: HOLOGRAM ─── */
+.center-stage{
+  position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  background:radial-gradient(circle at 50% 50%,rgba(160,16,32,.06) 0%,transparent 60%);
+}
+
+.hologram-container{
+  position:relative;width:420px;height:420px;cursor:pointer;
+  filter:drop-shadow(0 0 60px rgba(224,32,48,.08));
+}
+
+.holo-ring{
+  position:absolute;inset:0;border-radius:50%;
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.holo-ring-1{
+  inset:0;
+  border:1.5px solid rgba(224,32,48,.3);
+  animation:spin 12s linear infinite;
+  box-shadow:0 0 50px rgba(224,32,48,.1),inset 0 0 50px rgba(224,32,48,.04);
+}
+.holo-ring-1::before{
+  content:'';position:absolute;top:-4px;left:50%;width:8px;height:8px;border-radius:50%;
+  background:var(--red-hot);box-shadow:0 0 16px var(--red-hot),0 0 30px rgba(255,56,72,.4);transform:translateX(-50%);
+}
+
+.holo-ring-2{
+  inset:35px;
+  border:1px dashed rgba(255,255,255,.14);
+  animation:spin 20s linear infinite reverse;
+}
+.holo-ring-2::after{
+  content:'';position:absolute;bottom:-3px;right:20%;width:5px;height:5px;border-radius:50%;
+  background:var(--white);box-shadow:0 0 10px var(--white),0 0 20px rgba(255,255,255,.3);
+}
+
+.holo-ring-3{
+  inset:70px;
+  border:2px solid rgba(160,16,32,.4);
+  animation:spin 8s linear infinite;
+  box-shadow:0 0 40px rgba(160,16,32,.14),inset 0 0 35px rgba(160,16,32,.07);
+}
+
+.holo-ring-4{
+  inset:100px;
+  border:1px solid rgba(255,255,255,.07);
+  animation:spin 15s linear infinite reverse;
+}
+
+.holo-ring-5{
+  inset:125px;
+  border:1.5px solid rgba(224,32,48,.25);
+  animation:spin 6s linear infinite;
+}
+.holo-ring-5::before{
+  content:'';position:absolute;top:50%;left:-5px;width:10px;height:10px;border-radius:50%;
+  background:var(--red-hot);box-shadow:0 0 18px var(--red-hot),0 0 36px rgba(255,56,72,.35);transform:translateY(-50%);
+}
+
+.holo-core{
+  position:absolute;inset:145px;border-radius:50%;
+  display:grid;place-items:center;
+  background:radial-gradient(circle,rgba(224,32,48,.2),rgba(160,16,32,.08),transparent 70%);
+  box-shadow:0 0 80px rgba(224,32,48,.25),0 0 160px rgba(160,16,32,.12);
+  animation:coreIdle 3s ease-in-out infinite alternate;
+}
+@keyframes coreIdle{
+  from{box-shadow:0 0 70px rgba(224,32,48,.2),0 0 140px rgba(160,16,32,.1)}
+  to{box-shadow:0 0 90px rgba(224,32,48,.3),0 0 180px rgba(160,16,32,.14)}
+}
+
+.holo-core svg{
+  width:44px;height:44px;color:var(--white);
+  filter:drop-shadow(0 0 22px rgba(255,255,255,.65));
+  transition:transform .2s;
+}
+.hologram-container:hover .holo-core svg{transform:scale(1.15)}
+.hologram-container:hover .holo-core{
+  box-shadow:0 0 100px rgba(224,32,48,.35),0 0 200px rgba(160,16,32,.18);
+}
+.hologram-container.listening .holo-core{animation:corePulse 1s ease-in-out infinite alternate}
+.hologram-container.listening .holo-ring-1{border-color:rgba(255,56,72,.45);box-shadow:0 0 60px rgba(255,56,72,.2),inset 0 0 40px rgba(255,56,72,.08)}
+.hologram-container.listening .holo-ring-3{border-color:rgba(255,56,72,.6);box-shadow:0 0 60px rgba(255,56,72,.28),inset 0 0 40px rgba(255,56,72,.12)}
+.hologram-container.listening .holo-ring-5{border-color:rgba(255,56,72,.4)}
+
+.holo-arcs{
+  position:absolute;inset:55px;border-radius:50%;overflow:hidden;pointer-events:none;
+}
+.holo-arc{
+  position:absolute;width:100%;height:100%;border-radius:50%;
+  border:2px solid transparent;
+}
+.holo-arc-1{
+  border-top-color:rgba(224,32,48,.45);border-right-color:rgba(224,32,48,.18);
+  animation:spin 4s linear infinite;
+}
+.holo-arc-2{
+  border-bottom-color:rgba(255,255,255,.18);border-left-color:rgba(255,255,255,.07);
+  animation:spin 7s linear infinite reverse;
+}
+.holo-arc-3{
+  inset:20px;border-top-color:rgba(160,16,32,.35);
+  animation:spin 3s linear infinite;
+}
+
+.holo-text{
+  position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+  font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:.3em;color:var(--muted);
+  text-transform:uppercase;white-space:nowrap;
+}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes corePulse{
+  to{background:radial-gradient(circle,rgba(255,56,72,.35),rgba(224,32,48,.14),transparent 70%);box-shadow:0 0 110px rgba(255,56,72,.4),0 0 220px rgba(224,32,48,.18)}
+}
+
+.hex-grid{
+  position:absolute;inset:0;pointer-events:none;opacity:.045;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.31h-.01L17 42.15V49h-2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ─── RIGHT PANEL ─── */
+.right-panel{
+  display:flex;flex-direction:column;
+  border-left:1px solid rgba(255,255,255,.07);
+  background:rgba(8,6,8,.5);backdrop-filter:blur(12px);
+  min-height:0;overflow:hidden;
+}
+
+.transcript-section{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;border-bottom:1px solid rgba(255,255,255,.06)}
+.messages{flex:1;min-height:0;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:12px;overscroll-behavior:contain}
+.messages::-webkit-scrollbar{width:3px}
+.messages::-webkit-scrollbar-thumb{background:var(--red);border-radius:4px}
+
+.msg{padding:11px 13px;border-radius:8px;font-size:12.5px;line-height:1.6;position:relative}
+.msg::before{
+  content:'';position:absolute;top:0;left:0;width:2px;height:100%;border-radius:2px;
+}
+.msg.user{background:rgba(255,255,255,.05)}
+.msg.user::before{background:rgba(255,255,255,.7)}
+.msg.assistant{background:rgba(160,16,32,.10);border:1px solid rgba(224,32,48,.08)}
+.msg.assistant::before{background:var(--red)}
+.msg .sender{
+  font-family:'Orbitron',sans-serif;font-size:8px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+  margin-bottom:5px;
+}
+.msg.user .sender{color:rgba(255,255,255,.85)}
+.msg.assistant .sender{color:var(--red)}
+.msg .text{color:var(--text)}
+.msg.live-transcript{
+  opacity:1;border:1px dashed rgba(255,255,255,.12);background:rgba(255,255,255,.02);
+  border-left:2px solid rgba(138,138,144,.45);
+}
+.msg.live-transcript::before{background:rgba(138,138,144,.5)}
+.msg.live-transcript .sender{color:var(--muted);font-size:8px}
+.msg.live-transcript .text{color:var(--muted);font-style:italic;line-height:1.5}
+
+.waveform-section{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.06)}
+.waveform-section canvas{width:100%;height:64px;border-radius:6px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.04)}
+
+.directives-section{padding:14px 18px}
+.directive{
+  display:flex;align-items:center;gap:8px;padding:6px 0;font-size:11px;color:var(--muted);
+}
+.directive::before{
+  content:'';display:block;width:6px;height:6px;border-radius:50%;flex-shrink:0;
+  background:var(--red);box-shadow:0 0 8px var(--red),0 0 16px rgba(224,32,48,.2);
+}
+
+/* ─── BOTTOM BAR ─── */
+.bottombar{
+  grid-column:1/-1;display:flex;align-items:center;gap:16px;
+  padding:0 28px;border-top:1px solid rgba(224,32,48,.12);
+  background:rgba(8,6,8,.78);backdrop-filter:blur(18px);
+}
+
+.cmd-input{
+  flex:1;background:transparent;border:none;outline:none;
+  font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--white);
+  padding:0;caret-color:var(--red);
+}
+.cmd-input::placeholder{color:rgba(255,255,255,.2)}
+
+.cmd-prefix{
+  font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;color:var(--red);
+  letter-spacing:.12em;flex-shrink:0;text-shadow:0 0 10px rgba(224,32,48,.3);
+}
+
+.send-btn{
+  padding:8px 20px;border:1px solid var(--red);border-radius:4px;
+  background:rgba(224,32,48,.08);color:var(--red);cursor:pointer;
+  font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;
+  transition:all .25s;
+}
+.send-btn:hover{background:rgba(224,32,48,.22);color:var(--white);box-shadow:0 0 20px rgba(224,32,48,.25);border-color:var(--red-hot)}
+
+.mic-btn{
+  width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.03);color:var(--muted);cursor:pointer;
+  display:grid;place-items:center;transition:all .25s;flex-shrink:0;
+}
+.mic-btn:hover{border-color:var(--red);color:var(--white);background:rgba(224,32,48,.1);box-shadow:0 0 12px rgba(224,32,48,.15)}
+.mic-btn.active{
+  border-color:var(--red-hot);color:var(--white);background:rgba(255,56,72,.2);
+  box-shadow:0 0 22px rgba(255,56,72,.35);animation:micPulse 1s infinite alternate;
+}
+.mic-btn svg{width:16px;height:16px}
+@keyframes micPulse{to{box-shadow:0 0 36px rgba(255,56,72,.55)}}
+
+.hint-text{font-size:10px;color:var(--muted);letter-spacing:.05em;opacity:.45;flex-shrink:0}
+
+.doc-upload-btn{
+  position:relative;width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.03);color:var(--muted);cursor:pointer;
+  display:grid;place-items:center;transition:all .25s;flex-shrink:0;
+}
+.doc-upload-btn:hover{border-color:var(--red);color:var(--white);background:rgba(224,32,48,.1)}
+.doc-upload-btn svg{width:17px;height:17px}
+.doc-count-badge{
+  position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;
+  background:var(--red-hot);color:var(--white);font-family:'Orbitron',sans-serif;font-size:8px;font-weight:800;
+  display:grid;place-items:center;line-height:1;box-shadow:0 0 10px rgba(255,56,72,.4);
+}
+.doc-upload-btn.hidden-badge .doc-count-badge{display:none}
+.memory-btn{
+  position:relative;width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.03);color:var(--muted);cursor:pointer;
+  display:grid;place-items:center;transition:all .25s;flex-shrink:0;
+}
+.memory-btn:hover{border-color:var(--red);color:var(--white);background:rgba(224,32,48,.1)}
+.memory-btn svg{width:17px;height:17px}
+.memory-panel-layer{
+  position:fixed;top:0;right:0;bottom:0;width:min(480px,100vw);z-index:35;
+  pointer-events:none;transform:translateX(100%);transition:transform .32s cubic-bezier(.22,1,.36,1);
+}
+.memory-panel-layer.open{pointer-events:auto;transform:translateX(0)}
+.memory-panel-shell{
+  height:100%;display:flex;flex-direction:column;overflow:hidden;
+  border-left:1px solid rgba(224,32,48,.28);
+  background:linear-gradient(165deg,rgba(14,5,8,.97),rgba(4,3,5,.95));
+  box-shadow:-24px 0 80px rgba(0,0,0,.55),0 0 60px rgba(160,16,32,.15);
+}
+.memory-panel-header{padding:16px 18px 10px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(160,16,32,.12)}
+.memory-panel-title{font-family:'Orbitron',sans-serif;font-size:11px;font-weight:800;letter-spacing:.22em;color:var(--white)}
+.memory-panel-sub{font-size:10px;color:var(--muted);margin-top:6px}
+.memory-panel-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.memory-panel-actions button{
+  border:1px solid rgba(224,32,48,.35);background:rgba(160,16,32,.14);color:var(--white);
+  font-family:'Orbitron',sans-serif;font-size:8px;font-weight:800;letter-spacing:.12em;
+  padding:6px 10px;border-radius:4px;cursor:pointer;
+}
+.memory-panel-actions button:hover{background:rgba(160,16,32,.28)}
+.memory-stats-bar{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 18px;
+  border-bottom:1px solid rgba(255,255,255,.06);background:rgba(0,0,0,.2);
+}
+.memory-stat{text-align:center}
+.memory-stat-val{font-family:'Orbitron',sans-serif;font-size:13px;font-weight:800;color:var(--white)}
+.memory-stat-lbl{font-size:9px;color:var(--muted);letter-spacing:.08em;margin-top:2px}
+.memory-tabs{
+  display:flex;gap:6px;padding:10px 14px;overflow-x:auto;border-bottom:1px solid rgba(255,255,255,.06);
+}
+.memory-tab{
+  border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:var(--muted);
+  font-family:'Orbitron',sans-serif;font-size:7px;font-weight:800;letter-spacing:.08em;
+  padding:6px 8px;border-radius:4px;cursor:pointer;white-space:nowrap;flex-shrink:0;
+}
+.memory-tab.active{border-color:var(--red);color:var(--white);background:rgba(224,32,48,.15)}
+.memory-tab .tab-count{opacity:.7;margin-left:4px}
+.memory-panel-body{flex:1;min-height:0;overflow-y:auto;padding:14px 16px 20px}
+.memory-card{
+  border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:12px;margin-bottom:10px;
+  background:rgba(255,255,255,.02);position:relative;
+}
+.memory-card.flagged{border-color:rgba(255,180,60,.45);background:rgba(80,50,10,.12)}
+.memory-card.stale{border-color:rgba(255,56,72,.4);background:rgba(60,10,16,.15)}
+.memory-card.high-conf::before{
+  content:'';position:absolute;top:10px;right:10px;width:7px;height:7px;border-radius:50%;
+  background:var(--white);box-shadow:0 0 10px rgba(255,255,255,.55);
+}
+.memory-conf-row{display:flex;align-items:center;gap:10px;margin:8px 0}
+.memory-conf-pct{font-size:10px;color:var(--muted);min-width:34px;text-align:right;font-family:'Orbitron',sans-serif}
+.conf-bar{height:4px;border-radius:3px;background:rgba(255,255,255,.06);overflow:hidden;flex:1}
+.conf-bar-fill{
+  height:100%;background:linear-gradient(90deg,var(--maroon),var(--red-hot));
+  border-radius:3px;transition:width .4s ease;
+  box-shadow:0 0 8px rgba(224,32,48,.35);
+}
+.conf-bar-fill.low{opacity:.35;box-shadow:none}
+.conf-bar-fill.mid{opacity:.65}
+.conf-bar-fill.high{opacity:1}
+.memory-key{font-family:ui-monospace,monospace;font-size:10px;color:var(--red);letter-spacing:.04em;margin-bottom:6px}
+.memory-value{font-size:12px;line-height:1.45;color:var(--white);margin-bottom:10px}
+.memory-meta{font-size:10px;color:var(--muted);margin-bottom:8px}
+.memory-card-actions{display:flex;gap:8px}
+.memory-card-actions button{
+  border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--muted);
+  font-size:9px;padding:4px 8px;border-radius:4px;cursor:pointer;
+}
+.memory-card-actions button:hover{border-color:var(--red);color:var(--white)}
+.memory-empty{font-size:12px;color:var(--muted);padding:24px 8px;text-align:center}
+.memory-audit-card{
+  border:1px solid rgba(224,32,48,.28);border-radius:8px;padding:12px;margin-bottom:10px;
+  background:rgba(160,16,32,.08);
+}
+.memory-audit-action{font-family:'Orbitron',sans-serif;font-size:10px;font-weight:800;color:var(--red-hot);letter-spacing:.12em;margin-bottom:6px}
+.memory-audit-reason{font-size:12px;line-height:1.45;color:var(--white);margin-bottom:8px}
+.memory-edit-area{
+  width:100%;min-height:72px;background:rgba(0,0,0,.35);border:1px solid rgba(224,32,48,.3);
+  color:var(--white);font-size:12px;padding:8px;border-radius:6px;margin-bottom:8px;resize:vertical;
+}
+.doc-toast{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:30;
+  padding:8px 14px;border-radius:6px;border:1px solid rgba(224,32,48,.35);
+  background:rgba(12,6,8,.92);color:var(--white);font-size:12px;
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+.doc-toast.visible{opacity:1}
+.panel-doc-row{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:10px;
+  margin-bottom:10px;padding:10px 12px;border:1px solid rgba(255,255,255,.08);border-radius:8px;
+  background:rgba(255,255,255,.03);
+}
+.panel-doc-meta{font-size:11px;color:var(--muted);margin-top:4px}
+.panel-doc-delete{
+  border:1px solid rgba(255,56,72,.35);background:rgba(160,16,32,.12);color:var(--red-hot);
+  font-family:'Orbitron',sans-serif;font-size:8px;font-weight:800;letter-spacing:.1em;
+  padding:5px 8px;border-radius:4px;cursor:pointer;flex-shrink:0;
+}
+.panel-doc-delete:hover{background:rgba(160,16,32,.22);color:var(--white)}
+
+/* ─── DYNAMIC PANELS ─── */
+.dynamic-panel-layer{
+  position:fixed;top:72px;right:16px;bottom:136px;width:min(430px,calc(100vw - 32px));
+  z-index:20;pointer-events:none;display:flex;justify-content:flex-end;
+}
+.dynamic-panel-layer.active{pointer-events:auto}
+.dynamic-panel-shell{
+  width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;
+  border:1px solid rgba(224,32,48,.22);border-radius:10px;
+  background:linear-gradient(145deg,rgba(18,6,10,.94),rgba(6,4,6,.82));
+  backdrop-filter:blur(20px);
+  box-shadow:-20px 0 70px rgba(0,0,0,.4),0 0 50px rgba(224,32,48,.12),inset 0 0 40px rgba(160,16,32,.04);
+  transform:translateX(26px);opacity:0;transition:transform .3s cubic-bezier(.22,1,.36,1),opacity .3s ease;
+}
+.dynamic-panel-layer.active .dynamic-panel-shell{transform:translateX(0);opacity:1}
+.dynamic-panel-layer.closing .dynamic-panel-shell{transform:translateX(26px);opacity:0}
+.rundown-priority{border-left-color:var(--red-hot)!important;background:rgba(160,16,32,.14)!important}
+.rundown-priority:hover{background:rgba(160,16,32,.2)!important}
+.panel-loading{
+  padding:28px 12px;text-align:center;font-size:11px;color:var(--muted);
+  letter-spacing:.12em;text-transform:uppercase;font-family:'Orbitron',sans-serif;
+}
+.panel-loading::after{
+  content:'';display:block;width:36px;height:3px;margin:12px auto 0;border-radius:2px;
+  background:linear-gradient(90deg,transparent,var(--red-hot),transparent);
+  animation:processingPulse 1.2s ease-in-out infinite;
+}
+.ambient-layer{
+  position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 50%,rgba(160,16,32,.06),transparent 70%),
+    linear-gradient(rgba(8,6,8,1),rgba(8,6,8,1));
+}
+.ambient-grid{
+  position:absolute;inset:-50%;opacity:.045;
+  background-image:
+    linear-gradient(rgba(224,32,48,.35) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(224,32,48,.35) 1px,transparent 1px);
+  background-size:48px 48px;
+  animation:ambientDrift 90s linear infinite;
+}
+.ambient-glow{
+  position:absolute;width:420px;height:420px;border-radius:50%;
+  background:radial-gradient(circle,rgba(160,16,32,.12),transparent 70%);
+  top:50%;left:50%;transform:translate(-50%,-50%);
+  animation:ambientPulse 8s ease-in-out infinite alternate;
+}
+.brain-pulse-ring{
+  position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0;
+  background:radial-gradient(circle at 50% 45%,rgba(224,32,48,.18),transparent 55%);
+  transition:opacity .6s ease;
+}
+.brain-pulse-ring.active{opacity:1;animation:brainRipple 1.8s ease-out forwards}
+.hud.brain-pulse .center-stage{animation:stagePulse .8s ease}
+.hud.activating .center-stage{animation:activationRipple 1.1s ease}
+.processing-indicator{
+  position:absolute;bottom:18%;left:50%;transform:translateX(-50%);
+  display:none;align-items:center;gap:10px;z-index:5;
+  padding:8px 16px;border-radius:999px;
+  border:1px solid rgba(224,32,48,.35);background:rgba(12,6,8,.82);
+  backdrop-filter:blur(8px);
+}
+.processing-indicator.visible{display:flex}
+.processing-indicator .pulse-bar{
+  width:48px;height:4px;border-radius:2px;overflow:hidden;background:rgba(255,255,255,.08);
+}
+.processing-indicator .pulse-bar span{
+  display:block;height:100%;width:40%;
+  background:linear-gradient(90deg,var(--maroon),var(--red-hot),var(--white));
+  animation:processingSlide 1s ease-in-out infinite;
+}
+.processing-indicator .pulse-label{
+  font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:.18em;color:var(--red-hot);
+}
+.execution-feed{
+  display:flex;flex-direction:column;gap:8px;max-height:240px;overflow-y:auto;padding-right:4px;margin-bottom:4px;
+}
+.execution-entry{
+  border:1px solid rgba(255,255,255,.06);border-left:2px solid rgba(224,32,48,.45);
+  border-radius:5px;padding:8px 10px;background:rgba(0,0,0,.28);
+  font-family:ui-monospace,monospace;font-size:10px;line-height:1.4;color:var(--muted);
+  opacity:0;animation:execFadeIn .35s ease forwards;
+}
+.execution-entry.success{border-left-color:rgba(245,245,247,.55)}
+.execution-entry.failed{border-left-color:var(--red-hot);background:rgba(80,8,16,.18)}
+.execution-entry .exec-action{color:var(--red-hot);letter-spacing:.06em;text-transform:uppercase;font-size:9px}
+.execution-entry .exec-summary{color:var(--text);margin:3px 0}
+.execution-entry .exec-meta{font-size:9px;color:var(--muted);opacity:.85}
+.execution-empty{font-size:11px;color:var(--muted);padding:16px 8px;text-align:center}
+@keyframes ambientDrift{to{transform:translate(48px,48px)}}
+@keyframes ambientPulse{from{opacity:.35;transform:translate(-50%,-50%) scale(.95)}to{opacity:.7;transform:translate(-50%,-50%) scale(1.05)}}
+@keyframes brainRipple{0%{opacity:.55;transform:scale(.98)}100%{opacity:0;transform:scale(1.08)}}
+@keyframes stagePulse{0%,100%{filter:none}50%{filter:drop-shadow(0 0 28px rgba(224,32,48,.25))}}
+@keyframes activationRipple{0%{transform:scale(1)}40%{transform:scale(1.015)}100%{transform:scale(1)}}
+@keyframes processingSlide{0%{transform:translateX(-120%)}100%{transform:translateX(280%)}}
+@keyframes processingPulse{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes execFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.dynamic-panel-header{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);
+  background:rgba(160,16,32,.1);
+}
+.dynamic-panel-title{
+  font-family:'Orbitron',sans-serif;font-size:10px;font-weight:800;letter-spacing:.24em;text-transform:uppercase;color:var(--white);
+  text-shadow:0 0 14px rgba(224,32,48,.4);
+}
+.dynamic-panel-close{
+  border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.03);color:var(--muted);
+  width:26px;height:26px;border-radius:4px;cursor:pointer;font-family:'Orbitron',sans-serif;font-size:12px;
+  transition:all .2s;
+}
+.dynamic-panel-close:hover{border-color:var(--red);color:var(--white);background:rgba(224,32,48,.12)}
+.dynamic-panel-body{
+  flex:1;min-height:0;overflow-y:auto;padding:14px 16px 16px;overscroll-behavior:contain;
+}
+.dynamic-panel-body::-webkit-scrollbar{width:4px}
+.dynamic-panel-body::-webkit-scrollbar-thumb{background:var(--red);border-radius:4px}
+.panel-section{margin-bottom:18px}
+.panel-section:last-child{margin-bottom:0}
+.panel-section-title{
+  display:flex;align-items:center;gap:8px;margin:0 0 10px;
+  font-family:'Orbitron',sans-serif;font-size:9px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--red);
+}
+.panel-section-title::before{content:'';width:10px;height:1px;background:var(--red)}
+.panel-card{
+  position:relative;margin-bottom:10px;padding:12px 12px 12px 15px;border:1px solid rgba(255,255,255,.07);
+  border-left:3px solid rgba(255,255,255,.2);border-radius:8px;
+  background:rgba(255,255,255,.03);box-shadow:0 0 20px rgba(0,0,0,.2);
+  opacity:0;transform:translateX(34px);animation:cardIn .32s ease forwards;
+  transition:border-color .2s,background .2s;
+}
+.panel-card:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12)}
+.panel-card.high{border-left-color:var(--red-hot);background:rgba(160,16,32,.12)}
+.panel-card.high:hover{background:rgba(160,16,32,.18)}
+.panel-card.normal{border-left-color:rgba(200,200,200,.5)}
+.panel-card.spam,.panel-card.blocked{border-left-color:rgba(60,60,60,.8);color:rgba(212,212,212,.5);background:rgba(255,255,255,.015)}
+.panel-card.forwarded{border-left-color:var(--red-hot)}
+.panel-card.message,.panel-card.handled{border-left-color:rgba(255,255,255,.45)}
+@keyframes cardIn{to{opacity:1;transform:translateX(0)}}
+.panel-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.panel-tag{
+  font-family:'Orbitron',sans-serif;font-size:8px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+  padding:3px 8px;border-radius:3px;border:1px solid rgba(255,255,255,.12);color:var(--white);background:rgba(255,255,255,.04);
+}
+.panel-tag.high,.panel-tag.forwarded{border-color:rgba(255,56,72,.45);color:var(--red-hot);background:rgba(255,56,72,.1)}
+.panel-tag.normal,.panel-tag.message,.panel-tag.handled{color:var(--text)}
+.panel-tag.spam,.panel-tag.blocked{color:var(--muted);border-color:rgba(255,255,255,.06);background:rgba(0,0,0,.25)}
+.panel-time{font-size:10px;color:var(--muted)}
+.panel-primary{font-size:13px;color:var(--white);margin-bottom:5px}
+.panel-secondary{font-size:12px;color:var(--text);line-height:1.4;margin-bottom:7px}
+.panel-action{font-size:11px;color:var(--muted);line-height:1.35}
+.weather-panel-card{
+  border-left-width:3px;padding:16px 14px 14px 16px;margin-bottom:0;
+  animation:cardIn .32s ease forwards;
+}
+.weather-location{font-size:13px;color:var(--white);margin-bottom:10px}
+.weather-metrics{
+  display:flex;flex-wrap:wrap;gap:12px 18px;margin-bottom:16px;
+  font-size:12px;color:var(--text);line-height:1.45;
+}
+.weather-metric strong{display:block;font-size:10px;font-family:'Orbitron',sans-serif;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;font-weight:800}
+.weather-crew-status{
+  font-family:'Orbitron',sans-serif;font-size:28px;font-weight:900;letter-spacing:.24em;
+  text-align:center;padding:22px 14px;border-radius:10px;margin-bottom:14px;
+  border:2px solid rgba(255,255,255,.12);background:rgba(0,0,0,.35);
+  box-shadow:0 0 40px rgba(0,0,0,.35),inset 0 0 30px rgba(255,255,255,.02);
+}
+.weather-crew-status.go{
+  color:var(--white);border-color:rgba(245,245,247,.45);
+  background:radial-gradient(circle at 50% 40%,rgba(245,245,247,.14),rgba(160,16,32,.08));
+  text-shadow:0 0 24px rgba(255,255,255,.55),0 0 48px rgba(224,32,48,.15);
+  box-shadow:0 0 36px rgba(255,255,255,.12),inset 0 0 24px rgba(255,255,255,.04);
+}
+.weather-crew-status.caution{
+  color:#f0d0d4;border-color:rgba(224,32,48,.45);
+  background:radial-gradient(circle at 50% 40%,rgba(224,32,48,.18),rgba(80,8,16,.25));
+  text-shadow:0 0 20px rgba(224,32,48,.35);
+  box-shadow:0 0 32px rgba(224,32,48,.18),inset 0 0 20px rgba(160,16,32,.12);
+}
+.weather-crew-status.no-go{
+  color:var(--red-hot);border-color:rgba(255,56,72,.55);
+  background:radial-gradient(circle at 50% 40%,rgba(255,56,72,.22),rgba(80,8,16,.35));
+  text-shadow:0 0 24px rgba(255,56,72,.55);
+  box-shadow:0 0 40px rgba(255,56,72,.25),inset 0 0 24px rgba(160,16,32,.18);
+}
+.weather-crew-label{font-size:9px;letter-spacing:.22em;color:var(--muted);display:block;margin-bottom:8px}
+.weather-crew-note{font-size:12px;color:var(--text);line-height:1.45;text-align:center}
+.weather-hero-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.weather-hero-metric{
+  border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px;
+  background:rgba(255,255,255,.03);font-size:11px;color:var(--text);
+}
+.weather-hero-metric strong{
+  display:block;font-size:9px;font-family:'Orbitron',sans-serif;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:4px;font-weight:800;
+}
+.summary-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:18px}
+.summary-card{
+  border:1px solid rgba(224,32,48,.15);border-radius:8px;padding:14px;
+  background:rgba(160,16,32,.08);
+  opacity:0;transform:translateX(34px);animation:cardIn .32s ease forwards;
+  transition:border-color .2s,background .2s;
+}
+.summary-card:hover{border-color:rgba(224,32,48,.3);background:rgba(160,16,32,.14)}
+.summary-card strong{display:block;font-family:'Orbitron',sans-serif;font-size:26px;color:var(--white);line-height:1;text-shadow:0 0 8px rgba(255,255,255,.08)}
+.summary-card span{display:block;margin-top:6px;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+.intel-alert{
+  display:none;position:fixed;top:56px;left:0;right:0;z-index:2500;
+  padding:12px 56px 12px 28px;background:rgba(120,8,16,.95);border-bottom:2px solid var(--red-hot);
+  font-size:12.5px;line-height:1.4;color:var(--white);
+  box-shadow:0 12px 32px rgba(0,0,0,.5),0 0 30px rgba(255,56,72,.12);
+  letter-spacing:.04em;font-weight:600;
+  animation:alertSlideIn .3s ease;
+}
+.intel-alert.visible{display:block}
+.intel-alert-close{
+  position:absolute;right:18px;top:50%;transform:translateY(-50%);
+  width:26px;height:26px;border:1px solid rgba(255,255,255,.22);border-radius:50%;
+  background:rgba(0,0,0,.22);color:var(--white);cursor:pointer;
+  font-size:16px;line-height:22px;font-weight:800;
+}
+.intel-alert-close:hover{border-color:var(--white);background:rgba(255,255,255,.12)}
+@keyframes alertSlideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<div class="ambient-layer" aria-hidden="true">
+  <div class="ambient-grid"></div>
+  <div class="ambient-glow"></div>
+</div>
+<div class="brain-pulse-ring" id="brainPulseRing" aria-hidden="true"></div>
+
+<main class="hud" id="hudRoot">
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo">J<span>.</span>A<span>.</span>R<span>.</span>V<span>.</span>I<span>.</span>S</div>
+      <div class="status-badge" id="status">STANDBY</div>
+    </div>
+    <div class="topbar-right">
+      <span class="user-tag">J. Stewart // Owner // Ohio, USA</span>
+      <span class="clock" id="clock">--:--:--</span>
+    </div>
+  </header>
+
+  <div class="intel-alert" id="intelAlert" role="alert" aria-live="assertive">
+    <span id="intelAlertText"></span>
+    <button class="intel-alert-close" id="intelAlertClose" type="button" aria-label="Dismiss alert">×</button>
+  </div>
+
+  <!-- LEFT PANEL -->
+  <aside class="left-panel">
+    <div class="section">
+      <div class="section-title">Operations</div>
+      <div class="metric-row"><span class="label">Priority Calls</span><span class="value" id="metricPriorityCalls">0</span></div>
+      <div class="metric-row"><span class="label">Messages</span><span class="value" id="metricMessages">0</span></div>
+      <div class="metric-row"><span class="label">Flagged Emails</span><span class="value alert" id="metricFlaggedEmails">0</span></div>
+      <div class="metric-row"><span class="label">Active Crews</span><span class="value" id="metricActiveCrews">0</span></div>
+    </div>
+    <div class="section">
+      <div class="section-title">Execution Feed</div>
+      <div class="execution-feed" id="executionFeed">
+        <div class="execution-empty">Loading operator truth layer...</div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Session Log</div>
+      <div class="operator-log" id="operatorLog">
+        <div class="log-entry">
+          <span class="log-time">BOOT</span>
+          <span class="log-text">JARVIS interface loaded. Awaiting input.</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CENTER: HOLOGRAM -->
+  <section class="center-stage">
+    <div class="hex-grid"></div>
+    <div class="hologram-container" id="hologram">
+      <div class="holo-ring holo-ring-1"></div>
+      <div class="holo-ring holo-ring-2"></div>
+      <div class="holo-arcs">
+        <div class="holo-arc holo-arc-1"></div>
+        <div class="holo-arc holo-arc-2"></div>
+        <div class="holo-arc holo-arc-3"></div>
+      </div>
+      <div class="holo-ring holo-ring-3"></div>
+      <div class="holo-ring holo-ring-4"></div>
+      <div class="holo-ring holo-ring-5"></div>
+      <div class="holo-core">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M12 15c1.66 0 3-1.34 3-3V6c0-1.66-1.34-3-3-3S9 4.34 9 6v6c0 1.66 1.34 3 3 3Z" fill="currentColor"/>
+          <path d="M17.3 12c0 2.93-2.38 5.3-5.3 5.3S6.7 14.93 6.7 12H5c0 3.53 2.61 6.43 6 6.92V22h2v-3.08c3.39-.49 6-3.39 6-6.92h-1.7Z" fill="currentColor"/>
+        </svg>
+      </div>
+      <div class="holo-text">TAP CORE TO SPEAK</div>
+      <div class="processing-indicator" id="processingIndicator" aria-hidden="true">
+        <div class="pulse-bar"><span></span></div>
+        <span class="pulse-label">PROCESSING</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- RIGHT PANEL -->
+  <aside class="right-panel">
+    <div class="transcript-section">
+      <div class="section" style="border-bottom:none;padding-bottom:0">
+        <div class="section-title">Transcript</div>
+      </div>
+      <div class="messages" id="messagesPanel">
+        <div class="msg assistant">
+          <div class="sender">JARVIS</div>
+          <div class="text">All systems nominal. Standing by, sir.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="waveform-section">
+      <div class="section-title" style="margin-bottom:10px">Neural Output</div>
+      <canvas id="waveform" width="640" height="128"></canvas>
+    </div>
+
+    <div class="directives-section">
+      <div class="section-title" style="margin-bottom:10px">Directives</div>
+      <div class="directive">Filter noise, surface priorities</div>
+      <div class="directive">Protect operator time</div>
+      <div class="directive">Dispatch crews efficiently</div>
+      <div class="directive">Maintain operational awareness</div>
+    </div>
+  </aside>
+
+  <!-- BOTTOM COMMAND BAR -->
+  <footer class="bottombar">
+    <button class="memory-btn" id="memoryBtn" type="button" title="JARVIS Memory" aria-label="JARVIS Memory">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3a7 7 0 0 0-7 7c0 2.8 1.6 5.2 4 6.4V19a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-2.6A7 7 0 0 0 19 10a7 7 0 0 0-7-7Z" stroke="currentColor" stroke-width="1.4"/><path d="M9 21h6M10 14h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </button>
+    <button class="doc-upload-btn hidden-badge" id="docUploadBtn" type="button" title="Upload document to JARVIS" aria-label="Upload document">
+      <span class="doc-count-badge" id="docCountBadge">0</span>
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z" stroke="currentColor" stroke-width="1.5"/><path d="M14 2v6h6M12 18v-6M9 15l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <input type="file" id="docFileInput" accept=".pdf,.txt,.md,.csv,.html,.htm" hidden />
+    <button class="mic-btn" id="micButton" aria-label="Speak to JARVIS">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 15c1.66 0 3-1.34 3-3V6c0-1.66-1.34-3-3-3S9 4.34 9 6v6c0 1.66 1.34 3 3 3Z" fill="currentColor"/><path d="M17.3 12c0 2.93-2.38 5.3-5.3 5.3S6.7 14.93 6.7 12H5c0 3.53 2.61 6.43 6 6.92V22h2v-3.08c3.39-.49 6-3.39 6-6.92h-1.7Z" fill="currentColor"/></svg>
+    </button>
+    <span class="cmd-prefix">JARVIS://</span>
+    <form id="commandForm" style="flex:1;display:flex">
+      <input class="cmd-input" id="commandInput" type="text" autocomplete="off" placeholder="Enter command..."/>
+    </form>
+    <button class="send-btn" id="sendBtn" type="button">TRANSMIT</button>
+    <span class="hint-text">Tap mic once — continuous conversation</span>
+  </footer>
+
+  <div class="doc-toast" id="docToast" role="status" aria-live="polite"></div>
+
+  <div class="memory-panel-layer" id="memoryPanelLayer" aria-hidden="true">
+    <section class="memory-panel-shell">
+      <div class="memory-panel-header">
+        <div class="memory-panel-title">JARVIS MEMORY <span id="memoryTotalBadge">0</span></div>
+        <div class="memory-panel-sub" id="memoryLastAudit">Last audit: —</div>
+        <div class="memory-panel-actions">
+          <button type="button" id="memoryRunAuditBtn">Run Audit</button>
+          <button type="button" id="memoryWorldIntelBtn">World Intel <span id="memoryWorldIntelBadge">0</span></button>
+          <button type="button" id="memoryAuditQueueBtn">Review Queue <span id="memoryAuditQueueBadge">0</span></button>
+          <button type="button" id="memoryCloseBtn">Close</button>
+        </div>
+      </div>
+      <div class="memory-stats-bar" id="memoryStatsBar">
+        <div class="memory-stat"><div class="memory-stat-val" id="memStatTotal">0</div><div class="memory-stat-lbl">Total</div></div>
+        <div class="memory-stat"><div class="memory-stat-val" id="memStatAvg">0</div><div class="memory-stat-lbl">Avg Conf</div></div>
+        <div class="memory-stat"><div class="memory-stat-val" id="memStatStale">0</div><div class="memory-stat-lbl">Stale</div></div>
+        <div class="memory-stat"><div class="memory-stat-val" id="memStatFlagged">0</div><div class="memory-stat-lbl">Flagged</div></div>
+      </div>
+      <div class="memory-tabs" id="memoryTabs"></div>
+      <div class="memory-panel-body" id="memoryPanelBody"></div>
+    </section>
+  </div>
+
+  <div class="dynamic-panel-layer" id="dynamicPanelLayer" aria-hidden="true">
+    <section class="dynamic-panel-shell" id="dynamicPanelShell">
+      <div class="dynamic-panel-header">
+        <div class="dynamic-panel-title" id="dynamicPanelTitle">Panel</div>
+        <button class="dynamic-panel-close" id="dynamicPanelClose" type="button" aria-label="Close panel">×</button>
+      </div>
+      <div class="dynamic-panel-body" id="dynamicPanelBody"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+const statusEl=document.getElementById('status');
+const clockEl=document.getElementById('clock');
+const micButton=document.getElementById('micButton');
+const hologram=document.getElementById('hologram');
+const form=document.getElementById('commandForm');
+const input=document.getElementById('commandInput');
+const sendBtn=document.getElementById('sendBtn');
+const messagesPanel=document.getElementById('messagesPanel');
+const operatorLog=document.getElementById('operatorLog');
+const canvas=document.getElementById('waveform');
+const ctx=canvas.getContext('2d');
+const latencyEl=document.getElementById('latency');
+const throughputEl=document.getElementById('throughput');
+const throughputBar=document.getElementById('throughputBar');
+const dynamicPanelLayer=document.getElementById('dynamicPanelLayer');
+const dynamicPanelShell=document.getElementById('dynamicPanelShell');
+const dynamicPanelTitle=document.getElementById('dynamicPanelTitle');
+const dynamicPanelBody=document.getElementById('dynamicPanelBody');
+const dynamicPanelClose=document.getElementById('dynamicPanelClose');
+const intelAlert=document.getElementById('intelAlert');
+const intelAlertText=document.getElementById('intelAlertText');
+const intelAlertClose=document.getElementById('intelAlertClose');
+const executionFeed=document.getElementById('executionFeed');
+const processingIndicator=document.getElementById('processingIndicator');
+const brainPulseRing=document.getElementById('brainPulseRing');
+const hudRoot=document.getElementById('hudRoot');
+let lastExecutionFeedSig='';
+let lastRundownSig='';
+let waveformSpeaking=false;
+
+const ACK_PHRASES=['On it sir.','Checking now.','Give me a moment.','Pulling that up.','One moment sir.','Working on it.','Right away sir.','Understood sir.'];
+const ALERT_SESSION_KEY='jarvis_alert_session_v1';
+
+function loadAlertSessionState(){
+  try{return JSON.parse(sessionStorage.getItem(ALERT_SESSION_KEY)||'{}')}
+  catch{return {}}
+}
+function saveAlertSessionState(state){
+  sessionStorage.setItem(ALERT_SESSION_KEY,JSON.stringify(state));
+}
+function getAlertTypeFromPayload(d){
+  if(!d?.alert)return 'general';
+  return String(d.alert.type||d.alertType||'general');
+}
+function dismissAlertType(type){
+  const state=loadAlertSessionState();
+  state.dismissed=state.dismissed||{};
+  state.healed=state.healed||{};
+  state.dismissed[type]=true;
+  delete state.healed[type];
+  saveAlertSessionState(state);
+}
+function shouldSuppressAlert(type){
+  const state=loadAlertSessionState();
+  const dismissed=state.dismissed||{};
+  const healed=state.healed||{};
+  if(!dismissed[type])return false;
+  if(healed[type]){
+    delete dismissed[type];
+    delete healed[type];
+    saveAlertSessionState({dismissed,healed});
+    return false;
+  }
+  return true;
+}
+function markAlertsHealed(){
+  const state=loadAlertSessionState();
+  const dismissed=state.dismissed||{};
+  const healed=state.healed||{};
+  for(const type of Object.keys(dismissed)){
+    healed[type]=true;
+  }
+  saveAlertSessionState({dismissed,healed});
+}
+
+function pickAckPhrase(){
+  return ACK_PHRASES[Math.floor(Math.random()*ACK_PHRASES.length)];
+}
+function needsAcknowledgment(message){
+  const t=message.trim();
+  if(t.length<18)return false;
+  if(/^(hi|hello|hey|thanks|thank you|yes|no|ok|okay|bye|goodbye)\b/i.test(t))return false;
+  return /\b(check|search|find|send|email|call|weather|schedule|analyze|look up|pull up|rundown|document|archive|reply|handle|what did|did you|briefing|intel|world|news|estimate|client|crew|vendor|quote)\b/i.test(t);
+}
+function showProcessingIndicator(show){
+  if(!processingIndicator)return;
+  processingIndicator.classList.toggle('visible',!!show);
+  processingIndicator.setAttribute('aria-hidden',show?'false':'true');
+}
+function triggerBrainPulse(){
+  if(brainPulseRing){
+    brainPulseRing.classList.remove('active');
+    void brainPulseRing.offsetWidth;
+    brainPulseRing.classList.add('active');
+    setTimeout(()=>brainPulseRing.classList.remove('active'),1900);
+  }
+  if(hudRoot){
+    hudRoot.classList.remove('brain-pulse');
+    void hudRoot.offsetWidth;
+    hudRoot.classList.add('brain-pulse');
+    setTimeout(()=>hudRoot.classList.remove('brain-pulse'),900);
+  }
+}
+function triggerActivationSequence(){
+  if(!hudRoot)return;
+  hudRoot.classList.remove('activating');
+  void hudRoot.offsetWidth;
+  hudRoot.classList.add('activating');
+  setTimeout(()=>hudRoot.classList.remove('activating'),1200);
+}
+function renderExecutionFeed(entries=[]){
+  if(!executionFeed)return;
+  if(!entries.length){
+    executionFeed.innerHTML='<div class="execution-empty">No backend execution entries in the last 24 hours.</div>';
+    return;
+  }
+  executionFeed.innerHTML=entries.slice(0,40).map((e,i)=>{
+    const ok=/success|ok|complete/i.test(String(e.result||''));
+    const cls=ok?'success':'failed';
+    const ts=e.timestamp?new Date(e.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
+    return `<article class="execution-entry ${cls}" style="animation-delay:${Math.min(i,12)*40}ms">
+      <div class="exec-action">${escapeHtml(e.action||e.type||'action')}</div>
+      <div class="exec-summary">${escapeHtml(e.summary||'—')}</div>
+      <div class="exec-meta">${escapeHtml(ts)} · ${escapeHtml(e.result||'unknown')}</div>
+    </article>`;
+  }).join('');
+}
+async function loadExecutionFeed(){
+  if(!executionFeed)return;
+  try{
+    const r=await fetch('/api/execution/log');
+    if(!r.ok){
+      executionFeed.innerHTML='<div class="execution-empty">Execution feed unavailable.</div>';
+      return;
+    }
+    const d=await r.json();
+    const sig=JSON.stringify((d.entries||[]).slice(0,3).map(e=>e.id));
+    if(sig!==lastExecutionFeedSig){
+      lastExecutionFeedSig=sig;
+      renderExecutionFeed(d.entries||[]);
+    }
+  }catch(e){
+    executionFeed.innerHTML='<div class="execution-empty">Execution feed unavailable.</div>';
+  }
+}
+async function playQuickTts(text){
+  return new Promise(resolve=>{
+    try{
+      const audio=new Audio(`/api/voice?text=${encodeURIComponent(text)}&t=${Date.now()}`);
+      audio.onended=()=>resolve();
+      audio.onerror=()=>resolve();
+      void audio.play().catch(()=>resolve());
+    }catch(_){resolve()}
+  });
+}
+const docUploadBtn=document.getElementById('docUploadBtn');
+const docFileInput=document.getElementById('docFileInput');
+const docCountBadge=document.getElementById('docCountBadge');
+const docToast=document.getElementById('docToast');
+const memoryBtn=document.getElementById('memoryBtn');
+const memoryPanelLayer=document.getElementById('memoryPanelLayer');
+const memoryPanelBody=document.getElementById('memoryPanelBody');
+const memoryTabs=document.getElementById('memoryTabs');
+const memoryCloseBtn=document.getElementById('memoryCloseBtn');
+const memoryRunAuditBtn=document.getElementById('memoryRunAuditBtn');
+const memoryWorldIntelBtn=document.getElementById('memoryWorldIntelBtn');
+const memoryWorldIntelBadge=document.getElementById('memoryWorldIntelBadge');
+const memoryAuditQueueBtn=document.getElementById('memoryAuditQueueBtn');
+const memoryAuditQueueBadge=document.getElementById('memoryAuditQueueBadge');
+const memoryTotalBadge=document.getElementById('memoryTotalBadge');
+const memoryLastAudit=document.getElementById('memoryLastAudit');
+const memStatTotal=document.getElementById('memStatTotal');
+const memStatAvg=document.getElementById('memStatAvg');
+const memStatStale=document.getElementById('memStatStale');
+const memStatFlagged=document.getElementById('memStatFlagged');
+
+const MEMORY_CATEGORIES=[
+  'business_context','client_relations','operator_preferences','world_intel',
+  'crew_labor','vendor_supplier','drone_faa','industry','document_facts'
+];
+const MEMORY_CATEGORY_LABELS={
+  business_context:'Business',
+  client_relations:'Clients',
+  operator_preferences:'Preferences',
+  world_intel:'World Intel',
+  crew_labor:'Crew',
+  vendor_supplier:'Vendors',
+  drone_faa:'Drone/FAA',
+  industry:'Industry',
+  document_facts:'Documents'
+};
+let memoryPayload={categories:{},totalCount:0,lastAudit:null};
+let memoryStats=null;
+let memoryAuditQueue=[];
+let memoryWorldIntel=[];
+let memoryActiveCategory='business_context';
+
+const metricEls={
+  priorityCalls:document.getElementById('metricPriorityCalls'),
+  messages:document.getElementById('metricMessages'),
+  flaggedEmails:document.getElementById('metricFlaggedEmails'),
+  activeCrews:document.getElementById('metricActiveCrews')
+};
+
+let sessionId=localStorage.getItem('jarvis_session_id')||crypto.randomUUID();
+localStorage.setItem('jarvis_session_id',sessionId);
+
+function setTextIfPresent(el,value){
+  if(el)el.textContent=value;
+}
+
+let deepgramSocket=null;
+let micStream=null;
+let listenTimeout=null;
+let deepgramFinalTranscript='';
+let deepgramInterimEl=null;
+let latestDeepgramFinal='';
+let speechSilenceTimer=null;
+let utteranceSegments=[];
+let utteranceInterim='';
+let isUtteranceCommitting=false;
+let deepgramVadSpeaking=false;
+let vadAnalyser=null;
+let vadFrameId=null;
+let localVadWasSpeech=false;
+/** Silence after last speech activity before sending to JARVIS */
+const UTTERANCE_COMMIT_MS=1500;
+/** Extra buffer after Deepgram UtteranceEnd (DG already waited utterance_end_ms) */
+const UTTERANCE_END_BUFFER_MS=600;
+const LOCAL_VAD_RMS_THRESHOLD=0.014;
+const STT_DEBUG=false;
+let audioContext=null;
+let audioSource=null;
+let audioProcessor=null;
+let sttReady=false;
+
+function setStatus(s){
+  statusEl.textContent=s;
+  statusEl.className='status-badge';
+  if(s==='LISTENING'){statusEl.classList.add('listening');hologram.classList.add('listening');micButton.classList.add('active')}
+  else if(s==='PROCESSING'){statusEl.classList.add('processing');hologram.classList.remove('listening');micButton.classList.remove('active')}
+  else if(s==='RESPONDING'){statusEl.classList.add('responding');hologram.classList.remove('listening');micButton.classList.remove('active')}
+  else{hologram.classList.remove('listening');micButton.classList.remove('active')}
+}
+
+function updateClock(){
+  const d=new Date();
+  clockEl.textContent=d.toLocaleString([],{month:'short',day:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+function addMessage(role,text){
+  const el=document.createElement('div');
+  el.className='msg '+role;
+  const senderEl=document.createElement('div');
+  senderEl.className='sender';
+  senderEl.textContent=role==='user'?'JOE':'JARVIS';
+  const textEl=document.createElement('div');
+  textEl.className='text';
+  textEl.textContent=text;
+  el.appendChild(senderEl);
+  el.appendChild(textEl);
+  messagesPanel.appendChild(el);
+  messagesPanel.scrollTop=messagesPanel.scrollHeight;
+}
+
+function addLog(message){
+  if(!operatorLog)return;
+  const entry=document.createElement('div');
+  entry.className='log-entry';
+  const time=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  entry.innerHTML=`<span class="log-time">${escapeHtml(time)}</span><span class="log-text">${escapeHtml(message)}</span>`;
+  operatorLog.prepend(entry);
+  while(operatorLog.children.length>40){
+    operatorLog.lastElementChild.remove();
+  }
+}
+
+let activeAudio=null;
+let speechToken=0;
+let conversationMode=false;
+let isListening=false;
+let listenRestartTimer=null;
+
+function scheduleListeningRestart(){
+  if(!conversationMode)return;
+  if(statusEl.textContent==='PROCESSING'||statusEl.textContent==='RESPONDING')return;
+
+  clearTimeout(listenRestartTimer);
+  listenRestartTimer=setTimeout(()=>{
+    if(conversationMode&&statusEl.textContent!=='PROCESSING'&&statusEl.textContent!=='RESPONDING'){
+      startListening(false);
+    }
+  },650);
+}
+
+async function speak(text){
+  const token=++speechToken;
+  setStatus('RESPONDING');
+  waveformSpeaking=true;
+
+  if(activeAudio){
+    activeAudio.pause();
+    activeAudio.removeAttribute('src');
+    activeAudio.load();
+    activeAudio=null;
+  }
+
+  try{
+    const audio=new Audio(`/api/voice?text=${encodeURIComponent(text)}&t=${Date.now()}`);
+    audio.preload='auto';
+    activeAudio=audio;
+    audio.onended=()=>{
+      if(token!==speechToken)return;
+      activeAudio=null;
+      waveformSpeaking=false;
+      setStatus('STANDBY');
+      scheduleListeningRestart();
+    };
+    audio.onerror=()=>{
+      if(token!==speechToken)return;
+      activeAudio=null;
+      waveformSpeaking=false;
+      fallbackSpeak(text);
+    };
+    await audio.play();
+  }catch(e){
+    console.error(e);
+    waveformSpeaking=false;
+    fallbackSpeak(text);
+  }
+}
+
+function fallbackSpeak(text){
+  if(!('speechSynthesis' in window)){setStatus('STANDBY');waveformSpeaking=false;scheduleListeningRestart();return}
+  window.speechSynthesis.cancel();
+  waveformSpeaking=true;
+  const u=new SpeechSynthesisUtterance(text);
+  u.rate=0.96;u.pitch=0.88;u.volume=1;
+  u.onend=()=>{waveformSpeaking=false;setStatus('STANDBY');scheduleListeningRestart()};
+  window.speechSynthesis.speak(u);
+}
+
+function closeDynamicPanel(){
+  if(!dynamicPanelLayer.classList.contains('active'))return;
+  dynamicPanelLayer.classList.add('closing');
+  setTimeout(()=>{
+    dynamicPanelLayer.classList.remove('active','closing');
+    dynamicPanelLayer.setAttribute('aria-hidden','true');
+  },260);
+}
+
+function showPanelLoading(title='Loading'){
+  dynamicPanelTitle.textContent=title;
+  dynamicPanelBody.innerHTML='<div class="panel-loading">Fetching live data</div>';
+  dynamicPanelLayer.classList.remove('closing');
+  dynamicPanelLayer.classList.add('active');
+  dynamicPanelLayer.setAttribute('aria-hidden','false');
+}
+
+function openDynamicPanel(panel,data=[]){
+  if(!panel)return;
+  if(panel==='documents'){
+    dynamicPanelTitle.textContent='Document Library';
+    dynamicPanelBody.innerHTML=renderDocumentsPanel(data);
+    dynamicPanelLayer.classList.add('active');
+    dynamicPanelLayer.setAttribute('aria-hidden','false');
+    return;
+  }
+  if(panel==='weather'){
+    dynamicPanelTitle.textContent='Field Conditions';
+    dynamicPanelBody.innerHTML=renderWeatherPanel(data);
+    dynamicPanelLayer.classList.add('active');
+    dynamicPanelLayer.setAttribute('aria-hidden','false');
+    return;
+  }
+  dynamicPanelTitle.textContent=panel==='rundown'?'Operational Rundown':`${panel} panel`;
+  dynamicPanelBody.innerHTML=panel==='rundown'?renderRundownPanel(data):renderPanelSection(panel,data);
+  dynamicPanelLayer.classList.add('active');
+  dynamicPanelLayer.setAttribute('aria-hidden','false');
+}
+
+function renderDocumentsPanel(data=[]){
+  const docs=Array.isArray(data)&&data.length?data:(Array.isArray(data?.documents)?data.documents:[]);
+  if(!docs.length){
+    return '<div class="panel-section"><p class="panel-secondary">No documents ingested yet. Use the upload button to add contracts, estimates, and job files.</p></div>';
+  }
+  const rows=docs.map(doc=>{
+    const title=escapeHtml(doc.title||'Untitled');
+    const type=escapeHtml(String(doc.type||'text').toUpperCase());
+    const uploaded=escapeHtml(doc.uploadedAt||doc.uploaded_at||'—');
+    const chunks=escapeHtml(String(doc.chunkCount??doc.chunk_count??0));
+    const id=escapeHtml(doc.id||'');
+    return `<div class="panel-doc-row" data-doc-id="${id}">
+      <div>
+        <div class="panel-primary">${title}</div>
+        <div class="panel-doc-meta">${type} · ${chunks} chunks · ${uploaded}</div>
+      </div>
+      <button class="panel-doc-delete" type="button" data-delete-doc="${id}">DELETE</button>
+    </div>`;
+  }).join('');
+  return `<div class="panel-section"><div class="panel-section-title">Knowledge base</div>${rows}</div>`;
+}
+
+function renderWeatherPanel(data=[]){
+  const w=Array.isArray(data)&&data[0]&&typeof data[0]==='object'?data[0]:{};
+  const impact=String(w.crew_impact||'CAUTION').toUpperCase();
+  const impactClass=impact==='GO'?'go':impact.includes('NO')?'no-go':'caution';
+  const location=escapeHtml(w.location||'Holmes County, OH');
+  const temp=escapeHtml(w.temperature||'—');
+  const conditions=escapeHtml(w.conditions||'—');
+  const wind=escapeHtml(w.wind||'—');
+  const note=escapeHtml(w.crew_note||'Verify conditions on site before dispatch.');
+  return [
+    '<div class="panel-section">',
+    '<div class="panel-section-title">Field weather</div>',
+    '<article class="panel-card weather-panel-card">',
+    `<div class="weather-location">${location}</div>`,
+    `<div class="weather-crew-status ${impactClass}">`,
+    '<span class="weather-crew-label">Crew impact</span>',
+    escapeHtml(impact),
+    '</div>',
+    '<div class="weather-hero-grid">',
+    `<div class="weather-hero-metric"><strong>Temperature</strong>${temp}</div>`,
+    `<div class="weather-hero-metric"><strong>Conditions</strong>${conditions}</div>`,
+    `<div class="weather-hero-metric"><strong>Wind</strong>${wind}</div>`,
+    '</div>',
+    `<p class="weather-crew-note">${note}</p>`,
+    '</article>',
+    '</div>'
+  ].join('');
+}
+
+function panelData(panel,data=[]){
+  if(Array.isArray(data)&&data.length)return data;
+  return [];
+}
+
+function escapeHtml(value){
+  return String(value??'').replace(/[&<>"']/g,char=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+  }[char]));
+}
+
+function renderPanelSection(panel,data=[],startDelay=0){
+  const items=panelData(panel,data);
+  const title=panel==='emails'?'Priority Emails':panel==='texts'?'Text Messages':'Call Activity';
+  return `
+    <div class="panel-section">
+      <div class="panel-section-title">${title}</div>
+      ${items.map((item,index)=>renderPanelCard(panel,item,startDelay+index)).join('')}
+    </div>
+  `;
+}
+
+function renderPanelCard(panel,item,index){
+  const tag=(item.priority||item.status||'NORMAL').toUpperCase();
+  const cardClass=tag.toLowerCase().replace(/[^a-z0-9-]/g,'-');
+  const delay=index*100;
+  const safeTag=escapeHtml(tag);
+
+  if(panel==='calls'){
+    return `
+      <article class="panel-card ${cardClass}" style="animation-delay:${delay}ms">
+        <div class="panel-card-top">
+          <span class="panel-tag ${cardClass}">${safeTag}</span>
+          <span class="panel-time">${escapeHtml(item.time)}</span>
+        </div>
+        <div class="panel-primary">${escapeHtml(item.from||'Unknown caller')}</div>
+        <div class="panel-secondary">${escapeHtml(item.reason||item.outcome||'No reason captured')}</div>
+        <div class="panel-action">Duration: ${escapeHtml(item.duration||'—')}</div>
+      </article>
+    `;
+  }
+
+  if(panel==='texts'){
+    return `
+      <article class="panel-card ${cardClass}" style="animation-delay:${delay}ms">
+        <div class="panel-card-top">
+          <span class="panel-tag ${cardClass}">${safeTag}</span>
+          <span class="panel-time">${escapeHtml(item.time)}</span>
+        </div>
+        <div class="panel-primary">${escapeHtml(item.from||'Unknown contact')}</div>
+        <div class="panel-secondary">${escapeHtml(item.preview||item.message||'No preview available')}</div>
+      </article>
+    `;
+  }
+
+  return `
+    <article class="panel-card ${cardClass}" style="animation-delay:${delay}ms">
+      <div class="panel-card-top">
+        <span class="panel-tag ${cardClass}">${safeTag}</span>
+        <span class="panel-time">${escapeHtml(item.time)}</span>
+      </div>
+      <div class="panel-primary">${escapeHtml(item.from||'Unknown sender')}</div>
+      <div class="panel-secondary">${escapeHtml(item.subject||'No subject')}</div>
+      <div class="panel-action">${escapeHtml(item.action||'No action recorded')}</div>
+    </article>
+  `;
+}
+
+function renderRundownPanel(data=[]){
+  const first=Array.isArray(data)&&data[0];
+  if(first&&first.priorityQueue&&typeof first.priorityQueue==='object'){
+    const groups=Object.entries(first.priorityQueue);
+    let delay=0;
+    const cards=groups.flatMap(([group,items])=>
+      (Array.isArray(items)?items:[]).map((item)=>{
+        const i=delay++;
+        const urg=escapeHtml(String(item.urgency||group||'ITEM'));
+        const typ=escapeHtml(String(item.type||group||''));
+        const sum=escapeHtml(String(item.summary||'Queue item'));
+        const act=escapeHtml(String(item.actionNeeded||item.action_needed||''));
+        const priorityCls=/now|high|urgent/i.test(String(item.urgency||group))?' rundown-priority':'';
+        return `
+    <article class="panel-card ${String(item.urgency||group||'').toLowerCase()}${priorityCls}" style="animation-delay:${i*80}ms">
+      <div class="panel-card-top">
+        <span class="panel-tag">${urg}</span>
+        <span class="panel-tag normal">${typ}</span>
+      </div>
+      <div class="panel-primary">${sum}</div>
+      <div class="panel-secondary">${act}</div>
+    </article>`;
+      })
+    ).join('');
+    return `
+    <div class="panel-section">
+      <div class="panel-section-title">Priority queue</div>
+      ${cards||'<p class="panel-secondary">No open items.</p>'}
+    </div>`;
+  }
+
+  if(first&&Array.isArray(first.queueItems)){
+    const items=first.queueItems;
+    const cards=items.map((item,i)=>{
+      const urg=escapeHtml(String(item.urgency||'ITEM'));
+      const typ=escapeHtml(String(item.type||''));
+      const sum=escapeHtml(String(item.summary||'Queue item'));
+      const act=escapeHtml(String(item.actionNeeded||''));
+      return `
+    <article class="panel-card ${String(item.urgency||'').toLowerCase()}" style="animation-delay:${i*80}ms">
+      <div class="panel-card-top">
+        <span class="panel-tag">${urg}</span>
+        <span class="panel-tag normal">${typ}</span>
+      </div>
+      <div class="panel-primary">${sum}</div>
+      <div class="panel-secondary">${act}</div>
+    </article>`;
+    }).join('');
+    return `
+    <div class="panel-section">
+      <div class="panel-section-title">Priority queue</div>
+      ${cards||'<p class="panel-secondary">No open items.</p>'}
+    </div>`;
+  }
+
+  const payload=Array.isArray(data)&&data[0]&&typeof data[0]==='object'?data[0]:{};
+  const emailItems=Array.isArray(payload.emails)?payload.emails:[];
+  const textItems=Array.isArray(payload.texts)?payload.texts:[];
+  const callItems=Array.isArray(payload.calls)?payload.calls:[];
+  const priorityEmails=emailItems.filter(item=>item.priority==='HIGH').length;
+  const priorityTexts=textItems.filter(item=>item.priority==='HIGH').length;
+  const handledCalls=callItems.filter(item=>item.status==='MESSAGE'||item.status==='HANDLED').length;
+  const forwardedCalls=callItems.filter(item=>item.status==='FORWARDED').length;
+
+  return `
+    <div class="summary-grid">
+      <div class="summary-card" style="animation-delay:0ms"><strong>${priorityEmails}</strong><span>Priority Emails</span></div>
+      <div class="summary-card" style="animation-delay:100ms"><strong>${priorityTexts}</strong><span>Priority Texts</span></div>
+      <div class="summary-card" style="animation-delay:200ms"><strong>${handledCalls}</strong><span>Calls Handled</span></div>
+      <div class="summary-card" style="animation-delay:300ms"><strong>${forwardedCalls}</strong><span>Forwarded Calls</span></div>
+    </div>
+    ${renderPanelSection('emails',emailItems,4)}
+    ${renderPanelSection('texts',textItems,8)}
+    ${renderPanelSection('calls',callItems,11)}
+  `;
+}
+
+function handlePanelResponse(ui,intent=''){
+  if(/close|cancel/i.test(intent)||ui?.action==='close'){
+    closeDynamicPanel();
+    return;
+  }
+
+  if(ui?.panel&&['open','update','keep_open','show',null,undefined].includes(ui.action)){
+    openDynamicPanel(ui.panel,ui.data||[]);
+  }
+}
+
+function isShutdownCommand(message){
+  const text=message.toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+  return /^(hey\s+)?jarvis\s+(shut\s+off|shutdown|shut\s+down|power\s+down|go\s+offline|stop\s+listening)$/.test(text);
+}
+
+async function clearServerSessionState(sessionToClear){
+  try{
+    await fetch('/api/chat/state/clear',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-session-id':sessionToClear
+      },
+      body:'{}'
+    });
+  }catch(e){
+    console.warn('Session clear failed',e);
+    addLog('Session clear failed locally; listener still stopped');
+  }
+}
+
+async function shutdownJarvis(){
+  const oldSessionId=sessionId;
+  conversationMode=false;
+  clearTimeout(listenRestartTimer);
+  listenRestartTimer=null;
+  speechToken++;
+
+  if(activeAudio){
+    activeAudio.pause();
+    activeAudio.removeAttribute('src');
+    activeAudio.load();
+    activeAudio=null;
+  }
+  if('speechSynthesis' in window)window.speechSynthesis.cancel();
+
+  cleanupDeepgramListening({restart:false});
+  closeDynamicPanel();
+  setStatus('STANDBY');
+
+  await clearServerSessionState(oldSessionId);
+  sessionId=crypto.randomUUID();
+  localStorage.setItem('jarvis_session_id',sessionId);
+
+  addLog('JARVIS shutdown command accepted. Conversation reset.');
+  addMessage('assistant','Offline, sir. Tap the mic when you need me.');
+}
+
+async function jarvisActivateBriefing(){
+  triggerActivationSequence();
+  try{
+    const r=await fetch('/api/chat',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-session-id':sessionId
+      },
+      body:JSON.stringify({message:'__JARVIS_ACTIVATE__',sessionId})
+    });
+    if(!r.ok)return;
+    const d=await r.json();
+    const t=d.speech||'Standing by, sir.';
+    addLog('Auto briefing on activation');
+    addMessage('assistant',t);
+    handlePanelResponse(d.ui,d.intent);
+    speak(t);
+  }catch(e){
+    console.warn('Activation briefing failed',e);
+  }
+}
+
+const JARVIS_WAKE_RE=/^\s*(hey\s+)?jarvis[\s,!.]*/i;
+function hasJarvisWake(text){
+  return JARVIS_WAKE_RE.test(text);
+}
+function stripJarvisWake(text){
+  return text.replace(JARVIS_WAKE_RE,'').trim();
+}
+
+async function sendCommand(message){
+  const cleanMessage=message.trim();
+  if(!cleanMessage)return;
+  addLog(`User command: ${cleanMessage}`);
+  addMessage('user',cleanMessage);
+  input.value='';
+
+  if(isShutdownCommand(cleanMessage)){
+    await shutdownJarvis();
+    return;
+  }
+
+  const shouldAck=needsAcknowledgment(cleanMessage);
+  if(shouldAck){
+    const ack=pickAckPhrase();
+    addMessage('assistant',ack);
+    setStatus('PROCESSING');
+    showProcessingIndicator(true);
+    const fetchPromise=fetch('/api/chat',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-session-id':sessionId
+      },
+      body:JSON.stringify({message:cleanMessage,sessionId})
+    });
+    await playQuickTts(ack);
+    await deliverChatResponse(fetchPromise);
+    return;
+  }
+
+  setStatus('PROCESSING');
+  showProcessingIndicator(true);
+  const fetchPromise=fetch('/api/chat',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-session-id':sessionId
+    },
+    body:JSON.stringify({message:cleanMessage,sessionId})
+  });
+  await deliverChatResponse(fetchPromise);
+}
+
+async function deliverChatResponse(fetchPromise){
+  const start=performance.now();
+  try{
+    const r=await fetchPromise;
+    const elapsed=Math.round(performance.now()-start);
+    setTextIfPresent(latencyEl,elapsed+'ms');
+    const pct=Math.min(100,Math.round(elapsed/50));
+    setTextIfPresent(throughputEl,pct+'%');
+    if(throughputBar)throughputBar.style.width=pct+'%';
+    if(!r.ok){
+      const errorPayload=await r.json().catch(()=>({detail:`HTTP ${r.status}`}));
+      throw new Error(errorPayload.detail||errorPayload.error||`HTTP ${r.status}`);
+    }
+    const d=await r.json();
+    showProcessingIndicator(false);
+    const t=d.speech||'No response returned, sir.';
+    const timing=d.timings?` | API ${d.timings.totalMs}ms (claude ${d.timings.claudeMs}ms)`:'';
+    addLog(`Intent: ${d.intent||'unknown'}${timing}`);
+    addMessage('assistant',t);
+    handlePanelResponse(d.ui,d.intent);
+    void loadExecutionFeed();
+    speak(t);
+  }catch(e){
+    console.error(e);
+    showProcessingIndicator(false);
+    addLog(`Backend request failed: ${e.message||e}`);
+    const fb='Connection fault, sir. Backend did not respond.';
+    addMessage('assistant',fb);
+    speak(fb);
+  }
+}
+
+form.addEventListener('submit',e=>{e.preventDefault();sendCommand(input.value)});
+sendBtn.addEventListener('click',()=>sendCommand(input.value));
+dynamicPanelClose.addEventListener('click',closeDynamicPanel);
+
+document.addEventListener('pointerdown',e=>{
+  if(!dynamicPanelLayer.classList.contains('active'))return;
+  if(dynamicPanelShell.contains(e.target))return;
+  closeDynamicPanel();
+});
+
+document.addEventListener('keydown',e=>{
+  const key=e.key.toLowerCase();
+  const isTyping=document.activeElement===input;
+  if(isTyping||e.ctrlKey||e.metaKey||e.altKey)return;
+
+  if(key==='escape')closeDynamicPanel();
+});
+
+async function getDeepgramConnection(){
+  const r=await fetch('/api/deepgram/token');
+  if(!r.ok)throw new Error('Deepgram connection request failed');
+  const payload=await r.json();
+  if(payload.mode==='proxy'&&payload.url)return payload;
+  if(payload.mode==='token'&&payload.token)return payload;
+  throw new Error('Deepgram connection details missing');
+}
+
+function cleanupDeepgramListening({restart=true}={}){
+  clearTimeout(listenTimeout);
+  listenTimeout=null;
+  stopLocalVadMonitor();
+  resetUtteranceBuffer();
+
+  if(audioProcessor){
+    try{audioProcessor.disconnect()}catch(e){console.warn('Audio processor disconnect skipped',e)}
+  }
+  audioProcessor=null;
+
+  if(audioSource){
+    try{audioSource.disconnect()}catch(e){console.warn('Audio source disconnect skipped',e)}
+  }
+  audioSource=null;
+
+  if(audioContext&&audioContext.state!=='closed'){
+    audioContext.close().catch(e=>console.warn('Audio context close skipped',e));
+  }
+  audioContext=null;
+
+  if(micStream){
+    micStream.getTracks().forEach(track=>track.stop());
+    micStream=null;
+  }
+
+  if(deepgramSocket&&deepgramSocket.readyState<=WebSocket.OPEN){
+    try{deepgramSocket.close()}catch(e){console.warn('Deepgram socket close skipped',e)}
+  }
+  deepgramSocket=null;
+  isListening=false;
+  sttReady=false;
+  clearInterimTranscript();
+
+  if(statusEl.textContent==='LISTENING')setStatus('STANDBY');
+  if(restart)scheduleListeningRestart();
+}
+
+function resetUtteranceBuffer(){
+  utteranceSegments=[];
+  utteranceInterim='';
+  latestDeepgramFinal='';
+  deepgramVadSpeaking=false;
+  localVadWasSpeech=false;
+  cancelUtteranceCommit();
+}
+
+function cancelUtteranceCommit(){
+  clearTimeout(speechSilenceTimer);
+  speechSilenceTimer=null;
+}
+
+function onSpeechActivity(){
+  deepgramVadSpeaking=true;
+  cancelUtteranceCommit();
+}
+
+function stopLocalVadMonitor(){
+  if(vadFrameId){
+    cancelAnimationFrame(vadFrameId);
+    vadFrameId=null;
+  }
+  vadAnalyser=null;
+  localVadWasSpeech=false;
+}
+
+function startLocalVadMonitor(){
+  stopLocalVadMonitor();
+  if(!vadAnalyser||!isListening)return;
+  const buf=new Float32Array(vadAnalyser.fftSize);
+  const tick=()=>{
+    if(!isListening||!vadAnalyser)return;
+    vadAnalyser.getFloatTimeDomainData(buf);
+    let sum=0;
+    for(let i=0;i<buf.length;i++)sum+=buf[i]*buf[i];
+    const rms=Math.sqrt(sum/buf.length);
+    const speech=rms>LOCAL_VAD_RMS_THRESHOLD;
+    if(speech&&!localVadWasSpeech){
+      onSpeechActivity();
+    }
+    localVadWasSpeech=speech;
+    vadFrameId=requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+function getAccumulatedTranscript(){
+  const base=utteranceSegments.join(' ').replace(/\s+/g,' ').trim();
+  if(!utteranceInterim)return base;
+  if(!base)return utteranceInterim.trim();
+  if(utteranceInterim.startsWith(base))return utteranceInterim.trim();
+  return `${base} ${utteranceInterim}`.replace(/\s+/g,' ').trim();
+}
+
+function appendFinalSegment(transcript){
+  const t=transcript.trim();
+  if(!t)return;
+  const acc=utteranceSegments.join(' ').replace(/\s+/g,' ').trim();
+  if(acc===t)return;
+  if(acc&&t.startsWith(acc)){
+    utteranceSegments=[t];
+    return;
+  }
+  if(acc&&acc.includes(t))return;
+  utteranceSegments.push(t);
+}
+
+function scheduleUtteranceCommit(delayMs=UTTERANCE_COMMIT_MS){
+  cancelUtteranceCommit();
+  speechSilenceTimer=setTimeout(()=>{
+    if(deepgramVadSpeaking)return;
+    commitAccumulatedUtterance();
+  },delayMs);
+}
+
+function commitAccumulatedUtterance(){
+  if(isUtteranceCommitting)return;
+  if(deepgramVadSpeaking)return;
+  cancelUtteranceCommit();
+  const full=getAccumulatedTranscript();
+  if(!full||statusEl.textContent==='PROCESSING'||statusEl.textContent==='RESPONDING')return;
+  isUtteranceCommitting=true;
+  utteranceInterim='';
+  finishDeepgramTranscript(full);
+  isUtteranceCommitting=false;
+}
+
+function clearInterimTranscript(){
+  if(deepgramInterimEl){
+    deepgramInterimEl.remove();
+    deepgramInterimEl=null;
+  }
+}
+
+function showInterimTranscript(text){
+  if(!text)return;
+  if(!deepgramInterimEl){
+    deepgramInterimEl=document.createElement('div');
+    deepgramInterimEl.className='msg user live-transcript';
+    const senderEl=document.createElement('div');
+    senderEl.className='sender';
+    senderEl.textContent='LISTENING';
+    const textEl=document.createElement('div');
+    textEl.className='text';
+    deepgramInterimEl.appendChild(senderEl);
+    deepgramInterimEl.appendChild(textEl);
+    messagesPanel.appendChild(deepgramInterimEl);
+  }
+  const preview=getAccumulatedTranscript()||text;
+  deepgramInterimEl.querySelector('.text').textContent=preview;
+  messagesPanel.scrollTop=messagesPanel.scrollHeight;
+}
+
+function finishDeepgramTranscript(transcript){
+  const clean=transcript.trim();
+  if(!clean)return;
+  conversationMode=true;
+  console.log(`Transcript: ${clean}`);
+  deepgramFinalTranscript=clean;
+  clearInterimTranscript();
+  cleanupDeepgramListening({restart:false});
+
+  void (async()=>{
+    const rest=hasJarvisWake(clean)?stripJarvisWake(clean):clean;
+    if(hasJarvisWake(clean)&&!rest){
+      conversationMode=true;
+      triggerActivationSequence();
+      await jarvisActivateBriefing();
+      return;
+    }
+    await sendCommand(rest||clean);
+  })();
+}
+
+function resampleTo16Khz(input,sampleRate){
+  const targetRate=16000;
+  if(sampleRate===targetRate)return input;
+
+  const ratio=sampleRate/targetRate;
+  const outputLength=Math.floor(input.length/ratio);
+  const output=new Float32Array(outputLength);
+
+  for(let i=0;i<outputLength;i++){
+    const sourceIndex=i*ratio;
+    const index=Math.floor(sourceIndex);
+    const nextIndex=Math.min(index+1,input.length-1);
+    const weight=sourceIndex-index;
+    output[i]=input[index]*(1-weight)+input[nextIndex]*weight;
+  }
+
+  return output;
+}
+
+function floatToLinear16(input){
+  const output=new Int16Array(input.length);
+  for(let i=0;i<input.length;i++){
+    const sample=Math.max(-1,Math.min(1,input[i]));
+    output[i]=sample<0?sample*0x8000:sample*0x7fff;
+  }
+  return output.buffer;
+}
+
+function streamPcmAudio(input,sampleRate){
+  if(!sttReady||deepgramSocket?.readyState!==WebSocket.OPEN)return;
+
+  const pcm=floatToLinear16(resampleTo16Khz(input,sampleRate));
+  if(pcm.byteLength>0){
+    deepgramSocket.send(pcm);
+  }
+}
+
+async function parseDeepgramEventData(data){
+  const text=data instanceof Blob?await data.text():String(data);
+  return JSON.parse(text);
+}
+
+async function handleDeepgramMessage(event){
+  let payload;
+  try{
+    payload=await parseDeepgramEventData(event.data);
+    if(STT_DEBUG)console.log('Deepgram message received:',payload);
+  }catch(e){
+    console.warn('Deepgram message parse failed',e,event.data);
+    return;
+  }
+
+  if(payload.type==='UtteranceEnd'){
+    deepgramVadSpeaking=false;
+    scheduleUtteranceCommit(UTTERANCE_END_BUFFER_MS);
+    return;
+  }
+
+  if(payload.type==='SpeechStarted'){
+    onSpeechActivity();
+    return;
+  }
+
+  if(payload.type!=='Results')return;
+
+  const transcript=payload.channel?.alternatives?.[0]?.transcript?.trim();
+  if(!transcript)return;
+
+  if(payload.is_final){
+    appendFinalSegment(transcript);
+    utteranceInterim='';
+    latestDeepgramFinal=getAccumulatedTranscript();
+    showInterimTranscript(latestDeepgramFinal);
+    deepgramVadSpeaking=false;
+    scheduleUtteranceCommit(UTTERANCE_COMMIT_MS);
+    return;
+  }
+
+  utteranceInterim=transcript;
+  cancelUtteranceCommit();
+  showInterimTranscript(transcript);
+}
+
+async function startListening(enableConversation=true){
+  if(enableConversation)conversationMode=true;
+  if(isListening){
+    conversationMode=false;
+    cleanupDeepgramListening({restart:false});
+    return;
+  }
+  if(statusEl.textContent==='PROCESSING'||statusEl.textContent==='RESPONDING')return;
+
+  if(!navigator.mediaDevices?.getUserMedia||!window.AudioContext&&!window.webkitAudioContext||!window.WebSocket){
+    addMessage('assistant','Mic streaming is unavailable in this browser. Use text input, sir.');
+    return;
+  }
+
+  try{
+    clearTimeout(listenRestartTimer);
+    deepgramFinalTranscript='';
+    resetUtteranceBuffer();
+    clearInterimTranscript();
+    isListening=true;
+    setStatus('LISTENING');
+
+    const connection=await getDeepgramConnection();
+    const params=new URLSearchParams({
+      model:'nova-2',
+      language:'en-US',
+      smart_format:'true',
+      interim_results:'true',
+      endpointing:'1000',
+      utterance_end_ms:'3000',
+      vad_events:'true',
+      encoding:'linear16',
+      sample_rate:'16000',
+      channels:'1'
+    });
+    if(connection.mode==='proxy'){
+      const protocol=location.protocol==='https:'?'wss:':'ws:';
+      deepgramSocket=new WebSocket(`${protocol}//${location.host}${connection.url}`);
+    }else{
+      deepgramSocket=new WebSocket(`wss://api.deepgram.com/v1/listen?${params}`,['token',connection.token]);
+    }
+
+    deepgramSocket.onmessage=async event=>{
+      let payload=null;
+      try{
+        payload=await parseDeepgramEventData(event.data);
+        if(payload.type==='ProxyReady'){
+          console.log('ProxyReady received');
+          addLog('Deepgram proxy ready');
+          sttReady=true;
+          return;
+        }
+      }catch(e){
+        console.warn('Deepgram message parse failed',e,event.data);
+        return;
+      }
+      handleDeepgramMessage({data:JSON.stringify(payload)});
+    };
+    deepgramSocket.onerror=event=>{
+      console.error('Deepgram socket error',event);
+      addLog('Deepgram socket error');
+      cleanupDeepgramListening();
+      addMessage('assistant','Deepgram mic input failed. Check permissions, sir.');
+    };
+    deepgramSocket.onclose=()=>{
+      if(isListening&&!deepgramFinalTranscript){
+        cleanupDeepgramListening();
+      }
+    };
+
+    micStream=await navigator.mediaDevices.getUserMedia({
+      audio:{
+        echoCancellation:true,
+        noiseSuppression:true,
+        autoGainControl:true,
+        channelCount:1
+      }
+    });
+
+    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+    audioContext=new AudioContextClass();
+    audioSource=audioContext.createMediaStreamSource(micStream);
+    vadAnalyser=audioContext.createAnalyser();
+    vadAnalyser.fftSize=2048;
+    vadAnalyser.smoothingTimeConstant=0.35;
+    audioSource.connect(vadAnalyser);
+    audioProcessor=audioContext.createScriptProcessor(4096,1,1);
+    audioProcessor.onaudioprocess=event=>{
+      streamPcmAudio(event.inputBuffer.getChannelData(0),audioContext.sampleRate);
+    };
+    audioSource.connect(audioProcessor);
+    audioProcessor.connect(audioContext.destination);
+    startLocalVadMonitor();
+    console.log(`PCM audio streaming initialized at browser sample rate ${audioContext.sampleRate}`);
+    addLog(`STT listening at ${audioContext.sampleRate}Hz`);
+
+    deepgramSocket.onopen=()=>{
+      console.log('WebSocket opened');
+      addLog('STT websocket opened');
+      if(connection.mode==='token')sttReady=true;
+    };
+  }catch(e){
+    console.error(e);
+    cleanupDeepgramListening();
+    addMessage('assistant','Mic input failed. Check permissions, sir.');
+  }
+}
+
+micButton.addEventListener('click',()=>startListening(true));
+hologram.addEventListener('click',()=>startListening(true));
+
+async function loadRundown(){
+  try{
+    const r=await fetch('/api/rundown');
+    if(!r.ok)return;
+    const d=await r.json();
+    const sig=String(d.briefing||'')+':'+String(d.operations?.priorityQueueItems??'');
+    if(sig&&sig!==lastRundownSig){
+      lastRundownSig=sig;
+      triggerBrainPulse();
+    }
+    const o=d.operations||{};
+    if(metricEls.priorityCalls)metricEls.priorityCalls.textContent=o.priorityCalls??0;
+    if(metricEls.messages)metricEls.messages.textContent=o.messages??((d.emails?.length||0)+(d.calls?.length||0));
+    if(metricEls.flaggedEmails)metricEls.flaggedEmails.textContent=o.flaggedEmails??0;
+    if(metricEls.activeCrews)metricEls.activeCrews.textContent=o.activeCrews??0;
+  }catch(e){console.warn('Rundown unavailable',e)}
+}
+
+let lastIntelAlertSig=null;
+let lastSeenAlertType=null;
+async function clearIntelligenceAlert(){
+  const type=lastSeenAlertType||'general';
+  dismissAlertType(type);
+  if(intelAlert)intelAlert.classList.remove('visible');
+  if(intelAlertText)intelAlertText.textContent='';
+  lastIntelAlertSig=null;
+}
+
+async function pollIntelligenceAlert(){
+  try{
+    const r=await fetch('/api/intelligence/alerts');
+    if(!r.ok)return;
+    const d=await r.json();
+    const el=intelAlert;
+    const textEl=intelAlertText||intelAlert;
+    if(!el||!textEl)return;
+    if(d.hasAlert&&d.alert){
+      const alertType=getAlertTypeFromPayload(d);
+      lastSeenAlertType=alertType;
+      if(shouldSuppressAlert(alertType)){
+        el.classList.remove('visible');
+        textEl.textContent='';
+        return;
+      }
+      const summary=(d.alert.summary||d.alert.actionNeeded||'Priority alert').trim();
+      textEl.textContent=summary;
+      el.classList.add('visible');
+      const sig=alertType+':'+summary;
+      if(sig!==lastIntelAlertSig){
+        lastIntelAlertSig=sig;
+        try{
+          const line='Sir, '+summary;
+          const a=new Audio(`/api/voice?text=${encodeURIComponent(line)}&t=${Date.now()}`);
+          void a.play();
+        }catch(_){/* autoplay may block until gesture */}
+      }
+    }else{
+      markAlertsHealed();
+      el.classList.remove('visible');
+      textEl.textContent='';
+      lastIntelAlertSig=null;
+      lastSeenAlertType=null;
+    }
+  }catch(e){console.warn('Intelligence alert poll failed',e)}
+}
+
+if(intelAlertClose)intelAlertClose.addEventListener('click',()=>void clearIntelligenceAlert());
+
+function drawWaveform(){
+  const w=canvas.width,h=canvas.height,t=performance.now()/280;
+  ctx.clearRect(0,0,w,h);
+
+  const isProcessing=statusEl.textContent==='PROCESSING';
+  const isActive=waveformSpeaking||statusEl.textContent==='LISTENING'||statusEl.textContent==='RESPONDING';
+  const ampMult=isProcessing?0.55:isActive?1.5:0.35;
+  const glowMult=isProcessing?0.8:isActive?1.8:0.6;
+  const speedMult=isProcessing?1.8:1;
+
+  const grad=ctx.createLinearGradient(0,0,w,0);
+  grad.addColorStop(0,'rgba(160,16,32,.06)');grad.addColorStop(.5,'rgba(224,32,48,.03)');grad.addColorStop(1,'rgba(160,16,32,.06)');
+  ctx.fillStyle=grad;ctx.fillRect(0,0,w,h);
+
+  ctx.beginPath();ctx.strokeStyle='rgba(255,255,255,.04)';ctx.lineWidth=1;
+  ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();
+
+  for(let layer=0;layer<3;layer++){
+    ctx.beginPath();
+    const alpha=layer===0?.7:layer===1?.35:.15;
+    const speed=layer===0?1:layer===1?1.6:2.2;
+    const amp=(layer===0?.38:layer===1?.22:.12)*ampMult;
+    for(let x=0;x<w;x++){
+      const v=Math.sin(x*.012*speed*speedMult+t)*amp+Math.sin(x*.028*speed*speedMult+t*1.4)*amp*.5+Math.sin(x*.005+t*.7)*amp*.3;
+      const y=h/2+v*h;
+      x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    const g=ctx.createLinearGradient(0,0,w,0);
+    g.addColorStop(0,`rgba(160,16,32,${alpha*.3})`);
+    g.addColorStop(.25,`rgba(224,32,48,${alpha*.8})`);
+    g.addColorStop(.5,`rgba(255,255,255,${alpha})`);
+    g.addColorStop(.75,`rgba(224,32,48,${alpha*.8})`);
+    g.addColorStop(1,`rgba(160,16,32,${alpha*.3})`);
+    ctx.strokeStyle=g;ctx.lineWidth=layer===0?2.5:layer===1?1.5:.8;
+    ctx.shadowColor=`rgba(224,32,48,${.4*glowMult})`;ctx.shadowBlur=(layer===0?14:layer===1?8:4)*glowMult;
+    ctx.stroke();ctx.shadowBlur=0;
+  }
+
+  requestAnimationFrame(drawWaveform);
+}
+
+function showDocToast(message){
+  if(!docToast)return;
+  docToast.textContent=message;
+  docToast.classList.add('visible');
+  clearTimeout(showDocToast._timer);
+  showDocToast._timer=setTimeout(()=>docToast.classList.remove('visible'),3200);
+}
+
+async function refreshDocumentCount(){
+  if(!docCountBadge||!docUploadBtn)return;
+  try{
+    const r=await fetch('/api/documents');
+    if(!r.ok)return;
+    const d=await r.json();
+    const ready=(d.documents||[]).filter(doc=>doc.status==='ready').length;
+    docCountBadge.textContent=String(ready);
+    docUploadBtn.classList.toggle('hidden-badge',ready===0);
+  }catch(e){
+    console.warn('Document count refresh failed',e);
+  }
+}
+
+async function openDocumentsPanel(){
+  try{
+    const r=await fetch('/api/documents');
+    if(!r.ok)throw new Error('Failed to load documents');
+    const d=await r.json();
+    openDynamicPanel('documents',d.documents||[]);
+  }catch(e){
+    addLog(`Documents load failed: ${e.message||e}`);
+  }
+}
+
+async function uploadDocumentFile(file){
+  if(!file)return;
+  showDocToast('Uploading...');
+  const form=new FormData();
+  form.append('file',file);
+  form.append('title',file.name);
+  try{
+    const r=await fetch('/api/documents/upload',{method:'POST',body:form});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.error||d.detail||`HTTP ${r.status}`);
+    const msg='Document added to knowledge base, sir.';
+    showDocToast(msg);
+    addLog(`Document ingested: ${d.title||file.name} (${d.chunkCount||0} chunks)`);
+    addMessage('assistant',msg);
+    speak(msg);
+    await refreshDocumentCount();
+  }catch(e){
+    console.error(e);
+    const fb='Document upload failed, sir.';
+    showDocToast(fb);
+    addMessage('assistant',fb);
+    speak(fb);
+  }
+}
+
+if(docUploadBtn&&docFileInput){
+  docUploadBtn.addEventListener('click',e=>{
+    if(e.shiftKey){
+      void openDocumentsPanel();
+      return;
+    }
+    docFileInput.click();
+  });
+  docFileInput.addEventListener('change',()=>{
+    const file=docFileInput.files&&docFileInput.files[0];
+    docFileInput.value='';
+    if(file)void uploadDocumentFile(file);
+  });
+}
+
+if(dynamicPanelBody){
+  dynamicPanelBody.addEventListener('click',async e=>{
+    const btn=e.target.closest('[data-delete-doc]');
+    if(!btn)return;
+    const id=btn.getAttribute('data-delete-doc');
+    if(!id||!confirm('Remove this document from JARVIS knowledge?'))return;
+    try{
+      const r=await fetch(`/api/documents/${encodeURIComponent(id)}`,{method:'DELETE'});
+      if(!r.ok)throw new Error(`HTTP ${r.status}`);
+      addLog(`Document deleted: ${id}`);
+      await refreshDocumentCount();
+      void openDocumentsPanel();
+    }catch(err){
+      addLog(`Delete failed: ${err.message||err}`);
+    }
+  });
+}
+
+function formatMemoryAgo(iso){
+  if(!iso)return '—';
+  const ms=Date.now()-new Date(iso).getTime();
+  if(Number.isNaN(ms))return '—';
+  const days=Math.floor(ms/86400000);
+  if(days<=0)return 'today';
+  if(days===1)return '1 day ago';
+  return `${days} days ago`;
+}
+
+function renderMemoryTabs(){
+  if(!memoryTabs)return;
+  memoryTabs.innerHTML='';
+  for(const cat of MEMORY_CATEGORIES){
+    const count=(memoryPayload.categories[cat]||[]).length;
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='memory-tab'+(cat===memoryActiveCategory?' active':'');
+    btn.dataset.category=cat;
+    btn.innerHTML=`${MEMORY_CATEGORY_LABELS[cat]||cat}<span class="tab-count">${count}</span>`;
+    btn.addEventListener('click',()=>{
+      memoryActiveCategory=cat;
+      renderMemoryTabs();
+      renderMemoryList();
+    });
+    memoryTabs.appendChild(btn);
+  }
+}
+
+function renderMemoryList(){
+  if(!memoryPanelBody)return;
+  const rows=memoryPayload.categories[memoryActiveCategory]||[];
+  if(!rows.length){
+    memoryPanelBody.innerHTML='<div class="memory-empty">No memories in this category yet, sir.</div>';
+    return;
+  }
+  memoryPanelBody.innerHTML='';
+  for(const m of rows){
+    const card=document.createElement('article');
+    const stale=m.confidence<0.3;
+    const flagged=!!m.flagged;
+    const high=m.confidence>0.8;
+    card.className='memory-card'+(stale?' stale':'')+(flagged?' flagged':'')+(high?' high-conf':'');
+    const pct=Math.round(Math.max(0,Math.min(1,m.confidence))*100);
+    const fillClass=pct>=80?'high':pct>=45?'mid':'low';
+    card.innerHTML=`
+      <div class="memory-key">KEY: ${escapeHtml(m.key)}</div>
+      <div class="memory-value" data-value>${escapeHtml(m.value)}</div>
+      <div class="memory-conf-row">
+        <div class="conf-bar"><div class="conf-bar-fill ${fillClass}" style="width:${pct}%"></div></div>
+        <span class="memory-conf-pct">${pct}%</span>
+      </div>
+      <div class="memory-meta">Confidence: ${m.confidence.toFixed(2)} | Seen: ${m.occurrence_count||1}x | Last: ${formatMemoryAgo(m.last_seen)}</div>
+      <div class="memory-card-actions">
+        <button type="button" data-edit-memory="${m.id}">Edit</button>
+        <button type="button" data-delete-memory="${m.id}">Delete</button>
+      </div>`;
+    memoryPanelBody.appendChild(card);
+  }
+}
+
+function escapeHtml(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function updateMemoryStatsUi(){
+  if(memoryTotalBadge)memoryTotalBadge.textContent=String(memoryPayload.totalCount||0);
+  if(memoryAuditQueueBadge)memoryAuditQueueBadge.textContent=String(memoryAuditQueue.length||0);
+  if(memoryWorldIntelBadge)memoryWorldIntelBadge.textContent=String(memoryWorldIntel.length||0);
+  if(memoryLastAudit){
+    const t=memoryPayload.lastAudit?new Date(memoryPayload.lastAudit).toLocaleString():'—';
+    memoryLastAudit.textContent=`Last audit: ${t}`;
+  }
+  if(memoryStats){
+    setTextIfPresent(memStatTotal,String(memoryStats.totalMemories||0));
+    setTextIfPresent(memStatAvg,(memoryStats.avgConfidence||0).toFixed(2));
+    setTextIfPresent(memStatStale,String(memoryStats.staleCount||0));
+    setTextIfPresent(memStatFlagged,String(memoryStats.flaggedCount||0));
+  }
+}
+
+async function loadMemoryPanelData(){
+  const [memRes,statsRes,queueRes,worldRes]=await Promise.all([
+    fetch('/api/memory'),
+    fetch('/api/memory/stats'),
+    fetch('/api/memory/audit-queue'),
+    fetch('/api/intelligence/world')
+  ]);
+  if(!memRes.ok)throw new Error('Failed to load memories');
+  memoryPayload=await memRes.json();
+  if(statsRes.ok)memoryStats=await statsRes.json();
+  if(queueRes.ok){
+    const q=await queueRes.json().catch(()=>({items:[]}));
+    memoryAuditQueue=Array.isArray(q.items)?q.items:[];
+  }
+  if(worldRes.ok){
+    const w=await worldRes.json().catch(()=>({items:[]}));
+    memoryWorldIntel=Array.isArray(w.items)?w.items:[];
+  }
+  updateMemoryStatsUi();
+  renderMemoryTabs();
+  renderMemoryList();
+}
+
+function renderMemoryWorldIntel(){
+  if(!memoryPanelBody)return;
+  memoryTabs.querySelectorAll('.memory-tab').forEach(b=>b.classList.remove('active'));
+  if(!memoryWorldIntel.length){
+    memoryPanelBody.innerHTML='<div class="memory-empty">No recent world intel in the cache yet, sir. The 7am Ohio sweep or an on-demand search will populate this.</div>';
+    return;
+  }
+  memoryPanelBody.innerHTML='';
+  for(const item of memoryWorldIntel){
+    const card=document.createElement('article');
+    const rel=String(item.relevance||'PENDING').toUpperCase();
+    const high=rel==='HIGH';
+    const stale=!item.summary;
+    card.className='memory-card'+(high?' high-conf':'')+(stale?' stale':'');
+    card.innerHTML=`
+      <div class="memory-key">WORLD INTEL: ${escapeHtml(rel)} · ${escapeHtml(item.query||'query')}</div>
+      <div class="memory-value">${escapeHtml(item.summary||'Pending judgment / summary')}</div>
+      <div class="memory-meta">Fetched: ${formatMemoryAgo(item.fetchedAt)} | Briefed: ${item.briefed?'yes':'no'} | Cache only until promoted to durable memory</div>`;
+    memoryPanelBody.appendChild(card);
+  }
+}
+
+function renderMemoryAuditQueue(){
+  if(!memoryPanelBody)return;
+  memoryTabs.querySelectorAll('.memory-tab').forEach(b=>b.classList.remove('active'));
+  if(!memoryAuditQueue.length){
+    memoryPanelBody.innerHTML='<div class="memory-empty">No pending audit actions, sir.</div>';
+    return;
+  }
+  memoryPanelBody.innerHTML='';
+  for(const item of memoryAuditQueue){
+    const card=document.createElement('article');
+    card.className='memory-audit-card';
+    const merge=item.mergeWithKey?` → ${escapeHtml(item.mergeWithKey)}`:'';
+    card.innerHTML=`
+      <div class="memory-audit-action">${escapeHtml(item.action).toUpperCase()} ${escapeHtml(item.category)}:${escapeHtml(item.memoryKey)}${merge}</div>
+      <div class="memory-audit-reason">${escapeHtml(item.reason||'Audit candidate')}</div>
+      <div class="memory-meta">Queued: ${formatMemoryAgo(item.createdAt)}</div>
+      <div class="memory-card-actions">
+        <button type="button" data-approve-audit="${item.id}">Approve</button>
+      </div>`;
+    memoryPanelBody.appendChild(card);
+  }
+}
+
+async function approveMemoryAuditItem(id){
+  const r=await fetch('/api/memory/audit-approve',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ids:[Number(id)]})
+  });
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(d.error||`HTTP ${r.status}`);
+  showDocToast(`Audit approved: ${d.deleted||0} deleted, ${d.merged||0} merged, ${d.flagged||0} flagged`);
+  await loadMemoryPanelData();
+  renderMemoryAuditQueue();
+}
+
+async function openMemoryPanel(){
+  if(!memoryPanelLayer)return;
+  memoryPanelLayer.classList.add('open');
+  memoryPanelLayer.setAttribute('aria-hidden','false');
+  if(memoryPanelBody)memoryPanelBody.innerHTML='<div class="panel-loading">Loading memories</div>';
+  try{
+    await loadMemoryPanelData();
+  }catch(e){
+    addLog(`Memory load failed: ${e.message||e}`);
+    if(memoryPanelBody)memoryPanelBody.innerHTML='<div class="memory-empty">Memory panel unavailable.</div>';
+  }
+}
+
+function closeMemoryPanel(){
+  if(!memoryPanelLayer)return;
+  memoryPanelLayer.classList.remove('open');
+  memoryPanelLayer.setAttribute('aria-hidden','true');
+}
+
+async function runMemoryAudit(){
+  if(!memoryRunAuditBtn)return;
+  memoryRunAuditBtn.disabled=true;
+  memoryRunAuditBtn.textContent='Auditing...';
+  try{
+    const r=await fetch('/api/memory/audit',{method:'POST'});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.error||`HTTP ${r.status}`);
+    const msg=`Audit complete: ${d.queued||0} queued for approval; nothing deleted automatically`;
+    showDocToast(msg);
+    addLog(msg);
+    await loadMemoryPanelData();
+    renderMemoryAuditQueue();
+  }catch(e){
+    addLog(`Memory audit failed: ${e.message||e}`);
+  }finally{
+    memoryRunAuditBtn.disabled=false;
+    memoryRunAuditBtn.textContent='Run Audit';
+  }
+}
+
+if(memoryBtn)memoryBtn.addEventListener('click',()=>void openMemoryPanel());
+if(memoryCloseBtn)memoryCloseBtn.addEventListener('click',closeMemoryPanel);
+if(memoryRunAuditBtn)memoryRunAuditBtn.addEventListener('click',()=>void runMemoryAudit());
+if(memoryWorldIntelBtn)memoryWorldIntelBtn.addEventListener('click',()=>renderMemoryWorldIntel());
+if(memoryAuditQueueBtn)memoryAuditQueueBtn.addEventListener('click',()=>renderMemoryAuditQueue());
+
+if(memoryPanelBody){
+  memoryPanelBody.addEventListener('click',async e=>{
+    const del=e.target.closest('[data-delete-memory]');
+    if(del){
+      const id=del.getAttribute('data-delete-memory');
+      if(!id||!confirm('Remove this memory?'))return;
+      try{
+        const r=await fetch(`/api/memory/${encodeURIComponent(id)}`,{method:'DELETE'});
+        if(!r.ok)throw new Error(`HTTP ${r.status}`);
+        await loadMemoryPanelData();
+      }catch(err){
+        addLog(`Memory delete failed: ${err.message||err}`);
+      }
+      return;
+    }
+    const approve=e.target.closest('[data-approve-audit]');
+    if(approve){
+      const id=approve.getAttribute('data-approve-audit');
+      if(!id||!confirm('Approve this memory audit action?'))return;
+      try{
+        await approveMemoryAuditItem(id);
+      }catch(err){
+        addLog(`Memory audit approve failed: ${err.message||err}`);
+      }
+      return;
+    }
+    const edit=e.target.closest('[data-edit-memory]');
+    if(edit){
+      const id=edit.getAttribute('data-edit-memory');
+      const card=edit.closest('.memory-card');
+      if(!card||!id)return;
+      const valueEl=card.querySelector('[data-value]');
+      if(!valueEl||card.querySelector('.memory-edit-area'))return;
+      const original=valueEl.textContent;
+      const area=document.createElement('textarea');
+      area.className='memory-edit-area';
+      area.value=original;
+      valueEl.replaceWith(area);
+      const actions=card.querySelector('.memory-card-actions');
+      actions.innerHTML='';
+      const saveBtn=document.createElement('button');
+      saveBtn.type='button';
+      saveBtn.textContent='Save';
+      const cancelBtn=document.createElement('button');
+      cancelBtn.type='button';
+      cancelBtn.textContent='Cancel';
+      saveBtn.addEventListener('click',async()=>{
+        try{
+          const r=await fetch(`/api/memory/${encodeURIComponent(id)}`,{
+            method:'PATCH',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({value:area.value})
+          });
+          if(!r.ok)throw new Error(`HTTP ${r.status}`);
+          await loadMemoryPanelData();
+        }catch(err){
+          addLog(`Memory edit failed: ${err.message||err}`);
+        }
+      });
+      cancelBtn.addEventListener('click',()=>void loadMemoryPanelData());
+      actions.append(saveBtn,cancelBtn);
+    }
+  });
+}
+
+setStatus('STANDBY');
+updateClock();
+loadRundown();
+loadExecutionFeed();
+pollIntelligenceAlert();
+refreshDocumentCount();
+drawWaveform();
+setInterval(updateClock,1000);
+setInterval(loadRundown,15000);
+setInterval(loadExecutionFeed,20000);
+setInterval(pollIntelligenceAlert,15000);
+setInterval(refreshDocumentCount,60000);
+</script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+{
+  "name": "joes-jarvis",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Custom JARVIS-style AI operator for Joe Stewart.",
+  "main": "server/dist/index.js",
+  "scripts": {
+    "dev": "tsx watch server/src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node server/dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [
+    "jarvis",
+    "ai-operator",
+    "voice-assistant"
+  ],
+  "author": "Aethon Intelligence",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@deepgram/sdk": "^5.1.0",
+    "@elevenlabs/elevenlabs-js": "^2.46.0",
+    "better-sqlite3": "^11.8.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "multer": "^2.1.1",
+    "pdf-parse": "^2.4.5",
+    "ws": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/multer": "^2.1.0",
+    "@types/node": "^22.10.5",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
