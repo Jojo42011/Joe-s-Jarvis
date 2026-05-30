@@ -6,10 +6,14 @@ import {
   incrementOccurrence,
   type ConversationState
 } from "../../db/queries";
-import { getWorldIntelSinceHours } from "../../brain/worldIntelStore";
+import { getWorldIntelForPrompt } from "../../brain/worldIntelStore";
 import { OPERATOR_SYSTEMS_WIRING } from "../../config/systemPrompt";
 import { rememberMemory, savePreferenceFromCorrection, MEMORY_CATEGORIES } from "../../services/memory";
 import { detectCorrectionSignal, getOhioDateTimeString } from "./utils";
+import { memoryLog, reqLog } from "../../utils/requestLog";
+import { formatExecutionLogLine, formatRelativeAge } from "../../utils/temporal";
+import { humanizeLogSummary } from "../../utils/executionSummary";
+import { getSessionUploads } from "../../services/uploadSession";
 
 export function detectPreferenceSignal(message: string): boolean {
   const t = message.toLowerCase();
@@ -51,16 +55,16 @@ export function applyMemoryFeedbackToSpeech(message: string, speech: string) {
   return out;
 }
 
+const MEMORY_EXTRACTION_SKIP_INTENTS = new Set([
+  "activation.briefing",
+  "morning_brief",
+  "unclear",
+  "execute.cancel",
+  "fetch.emails"
+]);
+
 export function shouldExtractMemories(intent: string) {
-  return [
-    "gmail.send_reply",
-    "intelligence.handled",
-    "execution.log",
-    "world.intel",
-    "document.search",
-    "general.chat",
-    "morning_brief"
-  ].includes(intent);
+  return !MEMORY_EXTRACTION_SKIP_INTENTS.has(intent);
 }
 
 export function memoryOutcomeLabel(intent: string) {
@@ -88,7 +92,10 @@ export function buildChatStateForClaude(
     groupedActions.set(key, existing);
   }
   const executionLogSummary = [...groupedActions.entries()]
-    .map(([action, value]) => `${action}: ${value.count}${value.last ? ` (last: ${value.last})` : ""}`)
+    .map(([action, value]) => {
+      const when = value.last ? formatRelativeAge(value.last) : "earlier today";
+      return `${when}: ${action} (${value.count}×)`;
+    })
     .join(" | ");
   const priorityQueueOpen = getQueue(false)
     .slice(0, 12)
@@ -99,8 +106,12 @@ export function buildChatStateForClaude(
       summary: q.summary,
       actionNeeded: q.actionNeeded
     }));
-  const worldIntelCache = getWorldIntelSinceHours(48)
-    .filter((w) => w.relevance === "HIGH" || w.relevance === "MEDIUM")
+  memoryLog(`read: execution_log today=${todayLog.length} queue=${priorityQueueOpen.length}`);
+  reqLog(
+    `execution_log: ${recentExecutionLog.length} recent | memory context in prompt | queue: ${priorityQueueOpen.length} open`
+  );
+
+  const worldIntelCache = getWorldIntelForPrompt()
     .slice(0, 8)
     .map((w) => ({
       query: w.query,
@@ -121,11 +132,18 @@ export function buildChatStateForClaude(
     operatorSystems: OPERATOR_SYSTEMS_WIRING,
     executionLogSummary: executionLogSummary || "No older execution-log entries today.",
     executionLogToday: recentExecutionLog.map((e) => ({
+      line: formatExecutionLogLine(e.summary || e.action || "Action logged", e.timestamp),
       action: e.action,
-      summary: e.summary,
+      summary: humanizeLogSummary(e.summary || ""),
       result: e.result,
-      itemId: e.itemId,
-      at: e.timestamp
+      when: formatRelativeAge(e.timestamp)
+    })),
+    pendingUploads: getSessionUploads(state.sessionId).map((u) => ({
+      uploadId: u.uploadId,
+      filename: u.filename,
+      mimeType: u.mimeType,
+      isImage: u.isImage,
+      documentId: u.documentId
     })),
     operatorContext: state.operatorContext,
     conversationNote:

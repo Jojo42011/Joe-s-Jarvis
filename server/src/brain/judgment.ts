@@ -1,7 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { evaluateInboundItems, findWorkingModel } from "../services/claude";
 import { invalidateDynamicPromptCache } from "../config/systemPrompt";
-import { logExecution, setSystemState } from "../db/queries";
+import {
+  getStaleQueueItemsForRetriage,
+  isWorldIntelReferencedInConversation,
+  logExecution,
+  setSystemState,
+  type PriorityQueueItem
+} from "../db/queries";
 import { MEMORY_CATEGORIES } from "../config/memoryCategories";
 import { rememberMemory } from "../services/memory";
 import {
@@ -14,6 +20,12 @@ import {
 } from "./worldIntelStore";
 import type { JudgmentDecision, PerceptionPayload } from "./types";
 import { claudeCircuit } from "../services/circuitBreaker";
+import { isNotificationSender, resolveReplyRecipient, hasReadableInboundEmailContent } from "../services/gmail";
+
+/** Append to any Claude prompt that produces text Joe may hear (TTS / speech field). */
+export const JARVIS_SPEECH_OUTPUT_RULES = `The speech field must always be natural spoken English only.
+Never include JSON, brackets, code, markdown, technical strings, null values, or system artifacts in speech.
+If you have nothing meaningful to say, return: One moment, sir.`;
 
 const worldIntelAnthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -132,6 +144,45 @@ async function askClaudeMemoryPromotion(
   }
 }
 
+/** Promote MEDIUM world intel referenced in conversation (max 2 per cycle). */
+export async function promoteReferencedMediumWorldIntel(
+  items: Array<{ id: number; query: string; summary: string }>
+): Promise<void> {
+  if (!items.length) return;
+
+  let writes = 0;
+  for (const item of items) {
+    if (writes >= 2) break;
+    if (!isWorldIntelReferencedInConversation(item.query)) continue;
+
+    try {
+      const slug = item.query
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .slice(0, 80);
+      await rememberMemory({
+        category: MEMORY_CATEGORIES.WORLD_INTEL,
+        key: `world_${slug || item.id}`,
+        value: item.summary.slice(0, 2000),
+        confidence: 0.65,
+        source: "world_intel"
+      });
+      logExecution({
+        type: "world_intel",
+        action: "memory.promote.medium",
+        item_id: String(item.id),
+        summary: `Medium world intel promoted (referenced): ${item.query}`,
+        result: "success"
+      });
+      writes += 1;
+      invalidateDynamicPromptCache();
+    } catch (error) {
+      console.warn("[world-intel] promoteReferencedMediumWorldIntel skipped:", item.id, error);
+    }
+  }
+}
+
 /** Promote durable HIGH world intel into jarvis_memory (max 3 per cycle). */
 export async function promoteWorldIntelToMemory(
   items: Array<{ id: number; query: string; summary: string }>
@@ -151,7 +202,8 @@ export async function promoteWorldIntelToMemory(
         category: MEMORY_CATEGORIES.WORLD_INTEL,
         key: decision.key,
         value: decision.value,
-        confidence: 0.85
+        confidence: 0.85,
+        source: "world_intel"
       });
 
       logExecution({
@@ -216,6 +268,13 @@ NEW RULES FOR execute_now (JARVIS handles autonomously, no Joe needed):
 
 - General outreach or unclear intent → draft_and_send a warm professional reply asking how we can help
 
+NOTIFICATION / CRM RELAY EMAILS (JobTread, noreply, notifications, mailer):
+
+- If From contains jobtread, noreply, no-reply, notifications, or mailer → the real sender is IN THE BODY, not the From header
+- Never reply to the notification address — extract the client's email from the body
+- If you cannot identify a real human sender email in the content → action MUST be "queue" (not execute_now), with escalation_reason explaining the relay could not be parsed
+- Do not auto-reply to JobTread API notification addresses
+
 
 
 For execute_now emails, executionPlan must be set:
@@ -266,13 +325,184 @@ Rules for ignore:
 
 
 
+const STALE_RETRIAGE_LIMIT = 5;
+const STALE_QUEUE_AGE_MINUTES = 30;
+
+function queueItemToInboundItem(
+  q: PriorityQueueItem
+): { itemId: string; itemType: "email" | "call" | "text"; content: string } | null {
+  const itemType =
+    q.type === "email" || q.type === "call" || q.type === "text" ? q.type : null;
+  if (!itemType) return null;
+
+  const itemId = q.sourceId || `queue:${q.id}`;
+  let content = JSON.stringify({
+    summary: q.summary,
+    actionNeeded: q.actionNeeded,
+    urgency: q.urgency,
+    queuedAt: q.timestamp
+  });
+
+  if (q.rawData) {
+    try {
+      const parsed = JSON.parse(q.rawData) as Record<string, unknown>;
+      if (parsed.judgment) {
+        content = JSON.stringify(parsed.judgment);
+      } else {
+        content = JSON.stringify(parsed);
+      }
+    } catch {
+      /* keep default content */
+    }
+  }
+
+  return { itemId, itemType, content };
+}
+
+const REPLY_TOOLS = new Set(["draft_and_send", "send_reply", "email.send_reply"]);
+const EMPTY_BODY_QUEUE_NOTE = "Email body empty — needs Joe's review";
+
+function queueEmailDecision(
+  decision: JudgmentDecision,
+  reason: string
+): JudgmentDecision {
+  return {
+    ...decision,
+    action: "queue",
+    notify: true,
+    notifyUrgency: "next_briefing",
+    reason,
+    summary: reason,
+    executionPlan: null,
+    urgency: "TODAY"
+  };
+}
+
+function parseEmailFromItemContent(content: string): {
+  id?: string;
+  threadId?: string;
+  from?: string;
+  subject?: string;
+  snippet?: string;
+} | null {
+  try {
+    return JSON.parse(content) as {
+      id?: string;
+      threadId?: string;
+      from?: string;
+      subject?: string;
+      snippet?: string;
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function applyNotificationEmailRouting(
+  decisions: JudgmentDecision[],
+  items: Array<{ itemId: string; itemType: string; content: string }>
+): Promise<JudgmentDecision[]> {
+  const contentById = new Map(items.map((i) => [i.itemId, i.content]));
+  const routed: JudgmentDecision[] = [];
+
+  for (const decision of decisions) {
+    if (decision.itemType !== "email" || decision.action !== "execute_now" || !decision.executionPlan) {
+      routed.push(decision);
+      continue;
+    }
+
+    const tool = decision.executionPlan.tool;
+    if (!REPLY_TOOLS.has(tool)) {
+      routed.push(decision);
+      continue;
+    }
+
+    const args = decision.executionPlan.args || {};
+    const emailMeta = parseEmailFromItemContent(contentById.get(decision.itemId) || "");
+    const fromHeader = String(args.from || emailMeta?.from || "");
+    const messageId = String(args.messageId || emailMeta?.id || decision.itemId).replace(/^gmail:/, "");
+    const snippet = String(args.snippet || emailMeta?.snippet || "");
+
+    if (!fromHeader || !isNotificationSender(fromHeader)) {
+      routed.push(decision);
+      continue;
+    }
+
+    const resolved = await resolveReplyRecipient({
+      fromHeader,
+      messageId,
+      snippet
+    });
+
+    if (!resolved.to) {
+      const reason =
+        "JobTread/notification relay email — could not extract real sender from body; queued for Joe.";
+      routed.push(queueEmailDecision(decision, reason));
+      continue;
+    }
+
+    routed.push({
+      ...decision,
+      executionPlan: {
+        ...decision.executionPlan,
+        args: {
+          ...args,
+          from: resolved.to,
+          messageId,
+          threadId: args.threadId || emailMeta?.threadId,
+          snippet,
+          originalFrom: fromHeader
+        }
+      },
+      reason: `${decision.reason} Reply routed to real sender ${resolved.to} (not notification address).`
+    });
+  }
+
+  return routed;
+}
+
+async function applyEmptyEmailBodyGuard(
+  decisions: JudgmentDecision[],
+  items: Array<{ itemId: string; itemType: string; content: string }>
+): Promise<JudgmentDecision[]> {
+  const contentById = new Map(items.map((i) => [i.itemId, i.content]));
+  const guarded: JudgmentDecision[] = [];
+
+  for (const decision of decisions) {
+    if (decision.itemType !== "email" || decision.action !== "execute_now" || !decision.executionPlan) {
+      guarded.push(decision);
+      continue;
+    }
+
+    if (!REPLY_TOOLS.has(decision.executionPlan.tool)) {
+      guarded.push(decision);
+      continue;
+    }
+
+    const args = decision.executionPlan.args || {};
+    const emailMeta = parseEmailFromItemContent(contentById.get(decision.itemId) || "");
+    const messageId = String(args.messageId || emailMeta?.id || decision.itemId).replace(/^gmail:/, "");
+    const snippet = String(args.snippet || emailMeta?.snippet || "");
+    const subject = String(args.subject || emailMeta?.subject || "");
+
+    const readable = await hasReadableInboundEmailContent({ messageId, snippet, subject });
+    if (!readable) {
+      guarded.push(queueEmailDecision(decision, EMPTY_BODY_QUEUE_NOTE));
+      continue;
+    }
+
+    guarded.push(decision);
+  }
+
+  return guarded;
+}
+
 export class Judgment {
 
   async evaluate(payload: PerceptionPayload): Promise<JudgmentDecision[]> {
 
     const items: Array<{ itemId: string; itemType: "email" | "call" | "text"; content: string }> = [];
-
-
+    const staleMeta = new Map<string, number>();
 
     for (const email of payload.newEmails) {
 
@@ -316,14 +546,26 @@ export class Judgment {
 
     }
 
+    const seenItemIds = new Set(items.map((i) => i.itemId));
 
+    for (const q of getStaleQueueItemsForRetriage(STALE_RETRIAGE_LIMIT, STALE_QUEUE_AGE_MINUTES)) {
+      const inbound = queueItemToInboundItem(q);
+      if (!inbound || seenItemIds.has(inbound.itemId)) continue;
+      items.push(inbound);
+      staleMeta.set(inbound.itemId, q.id);
+      seenItemIds.add(inbound.itemId);
+    }
 
     if (!items.length) return [];
 
+    const decisions = await evaluateInboundItems(payload, items);
 
+    const mapped = decisions.map((d) => {
+      const sourceQueueId = staleMeta.get(d.itemId);
+      return sourceQueueId ? { ...d, sourceQueueId } : d;
+    });
 
-    return evaluateInboundItems(payload, items);
-
+    return applyEmptyEmailBodyGuard(await applyNotificationEmailRouting(mapped, items), items);
   }
 
   async judgeWorldIntel(onlyIds?: number[]): Promise<void> {
@@ -337,16 +579,23 @@ export class Judgment {
     const judged = await this.runWorldIntelJudgmentClaude(pending);
     const highSummaries: string[] = [];
     const highForMemory: Array<{ id: number; query: string; summary: string }> = [];
+    const mediumForMemory: Array<{ id: number; query: string; summary: string }> = [];
 
     for (const row of judged) {
       const relevance = row.relevance;
       const summary = row.one_line_summary.slice(0, 500);
       updateWorldIntelJudgment(row.id, relevance, summary);
+      const source =
+        pending.find((p) => p.id === row.id) || getWorldIntelById(row.id);
       if (relevance === "HIGH") {
         highSummaries.push(summary);
-        const source =
-          pending.find((p) => p.id === row.id) || getWorldIntelById(row.id);
         highForMemory.push({
+          id: row.id,
+          query: source?.query || "",
+          summary
+        });
+      } else if (relevance === "MEDIUM") {
+        mediumForMemory.push({
           id: row.id,
           query: source?.query || "",
           summary
@@ -367,6 +616,7 @@ export class Judgment {
 
     try {
       await promoteWorldIntelToMemory(highForMemory);
+      await promoteReferencedMediumWorldIntel(mediumForMemory);
     } catch (error) {
       console.warn("[world-intel] promoteWorldIntelToMemory failed:", error);
     }

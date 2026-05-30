@@ -31,6 +31,105 @@ function applyMigrations(db: Database.Database) {
   if (tableExists(db, "jarvis_memory") && !columnExists(db, "jarvis_memory", "flag_reason")) {
     db.exec(`ALTER TABLE jarvis_memory ADD COLUMN flag_reason TEXT`);
   }
+  if (tableExists(db, "jarvis_memory") && !columnExists(db, "jarvis_memory", "retrieval_count")) {
+    db.exec(`ALTER TABLE jarvis_memory ADD COLUMN retrieval_count INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (tableExists(db, "jarvis_memory") && !columnExists(db, "jarvis_memory", "last_retrieved_at")) {
+    db.exec(`ALTER TABLE jarvis_memory ADD COLUMN last_retrieved_at DATETIME`);
+  }
+  if (tableExists(db, "jarvis_memory") && !columnExists(db, "jarvis_memory", "source")) {
+    db.exec(`ALTER TABLE jarvis_memory ADD COLUMN source TEXT`);
+  }
+
+  if (!tableExists(db, "entity_profiles")) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS entity_profiles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        phone TEXT,
+        email TEXT,
+        relationship_summary TEXT,
+        last_interaction DATETIME,
+        interaction_count INTEGER NOT NULL DEFAULT 0,
+        trust_level TEXT DEFAULT 'unknown',
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS entity_profiles_name ON entity_profiles(name);
+    `);
+  }
+
+  if (!tableExists(db, "episodic_memory")) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS episodic_memory (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        key_decisions TEXT,
+        people_mentioned TEXT,
+        topics TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS episodic_memory_session ON episodic_memory(session_id);
+      CREATE INDEX IF NOT EXISTS episodic_memory_created ON episodic_memory(created_at);
+    `);
+  }
+
+  if (!tableExists(db, "self_evolution_log")) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS self_evolution_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        observation TEXT NOT NULL,
+        suggested_improvement TEXT NOT NULL,
+        category TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        confidence REAL NOT NULL DEFAULT 0.7,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        resolved_at DATETIME
+      );
+    `);
+  }
+
+  if (tableExists(db, "documents") && !columnExists(db, "documents", "mime_type")) {
+    db.exec(`ALTER TABLE documents ADD COLUMN mime_type TEXT`);
+  }
+
+  if (!tableExists(db, "appointments")) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS appointments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        caller_name TEXT,
+        caller_phone TEXT,
+        service_requested TEXT,
+        preferred_date TEXT,
+        notes TEXT,
+        event_id TEXT,
+        calendar_link TEXT,
+        status TEXT DEFAULT 'scheduled',
+        source TEXT DEFAULT 'vapi',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+  }
+
+  if (!tableExists(db, "transcripts")) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS transcripts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
+        date TEXT NOT NULL,
+        duration_seconds INTEGER NOT NULL DEFAULT 0,
+        raw_transcript TEXT NOT NULL,
+        summary TEXT,
+        action_items TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS transcripts_date ON transcripts(date);
+      CREATE INDEX IF NOT EXISTS transcripts_created ON transcripts(created_at);
+    `);
+  }
 }
 
 export function applySchema(db: Database.Database) {
@@ -141,7 +240,10 @@ export function applySchema(db: Database.Database) {
       last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       flagged INTEGER NOT NULL DEFAULT 0,
-      flag_reason TEXT
+      flag_reason TEXT,
+      retrieval_count INTEGER NOT NULL DEFAULT 0,
+      last_retrieved_at DATETIME,
+      source TEXT
     );
 
     CREATE UNIQUE INDEX IF NOT EXISTS jarvis_memory_category_key
@@ -194,6 +296,7 @@ export function applySchema(db: Database.Database) {
       title TEXT NOT NULL,
       type TEXT NOT NULL,
       original_filename TEXT,
+      mime_type TEXT,
       content_raw TEXT,
       status TEXT NOT NULL DEFAULT 'processing',
       uploaded_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -228,6 +331,59 @@ export function applySchema(db: Database.Database) {
     );
 
     CREATE INDEX IF NOT EXISTS memory_audit_queue_status ON memory_audit_queue(status, created_at);
+
+    CREATE TABLE IF NOT EXISTS entity_profiles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      entity_type TEXT NOT NULL,
+      phone TEXT,
+      email TEXT,
+      relationship_summary TEXT,
+      last_interaction DATETIME,
+      interaction_count INTEGER NOT NULL DEFAULT 0,
+      trust_level TEXT DEFAULT 'unknown',
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS entity_profiles_name ON entity_profiles(name);
+
+    CREATE TABLE IF NOT EXISTS episodic_memory (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      key_decisions TEXT,
+      people_mentioned TEXT,
+      topics TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS episodic_memory_session ON episodic_memory(session_id);
+    CREATE INDEX IF NOT EXISTS episodic_memory_created ON episodic_memory(created_at);
+
+    CREATE TABLE IF NOT EXISTS self_evolution_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      observation TEXT NOT NULL,
+      suggested_improvement TEXT NOT NULL,
+      category TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      confidence REAL NOT NULL DEFAULT 0.7,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      resolved_at DATETIME
+    );
+
+    CREATE TABLE IF NOT EXISTS appointments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      caller_name TEXT,
+      caller_phone TEXT,
+      service_requested TEXT,
+      preferred_date TEXT,
+      notes TEXT,
+      event_id TEXT,
+      calendar_link TEXT,
+      status TEXT DEFAULT 'scheduled',
+      source TEXT DEFAULT 'vapi',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   db.prepare(

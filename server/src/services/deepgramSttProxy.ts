@@ -74,7 +74,15 @@ export function attachDeepgramSttProxy(server: Server) {
     client.on("error", closeBoth);
     upstream.on("close", closeBoth);
     upstream.on("error", (error) => {
-      console.error("Deepgram STT upstream error:", error);
+      const detail = error instanceof Error ? error.message : String(error);
+      console.error("Deepgram STT upstream error:", detail);
+      closeBoth();
+    });
+
+    upstream.on("unexpected-response", (_request, response) => {
+      console.error(
+        `Deepgram STT upstream rejected handshake: HTTP ${response.statusCode}`
+      );
       closeBoth();
     });
   });

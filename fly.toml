@@ -7,6 +7,9 @@ primary_region = "ord"
   NODE_ENV = "production"
   PORT = "3000"
   DB_PATH = "/data/jarvis.sqlite"
+  # Secrets only via `fly secrets set` — never commit values here.
+  # GEMINI_API_KEY — image finish generation (Gemini gemini-2.5-flash-image)
+  # ANTHROPIC_API_KEY, BRAVE_API_KEY, DEEPGRAM_API_KEY, GMAIL_*, etc.
 
 [http_service]
   internal_port = 3000

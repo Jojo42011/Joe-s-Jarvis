@@ -1,8 +1,19 @@
 import {
+  clearGmailAuthAlertIfPresent,
+  getExecutionLogSince,
   getExecutionLogToday,
+  logExecution,
   searchExecutionLog,
   type ConversationState
 } from "../../db/queries";
+import {
+  buildExecutionSummarySpeech,
+  executionLogWindowMs,
+  humanizeLogSummary,
+  isOperatorFacingLog
+} from "../../utils/executionSummary";
+import { routeLog } from "../../utils/requestLog";
+import { CircuitOpenError, isGmailCircuitOpen } from "../../services/gmail";
 import { getRecentGmailMessages } from "../../services/gmail";
 import {
   isAskAboutPastActions,
@@ -12,10 +23,106 @@ import {
   resolveItemFromState,
   sanitizeSpeechForClient
 } from "./utils";
+import { getGeneratedImage } from "../../services/uploadSession";
 import { messageNeedsLiveDataSearch } from "./liveData";
 import { buildChatStateForClaude } from "./memoryOrchestrator";
 import type { EmailStateItem, IntentResponse } from "./types";
 import type { getActiveAlertPayload } from "../../db/queries";
+
+export function isEmailConnectionCheck(message: string): boolean {
+  const t = normalizeText(message);
+  return /\b(check email|email connection|gmail connection|test email|is gmail|gmail working|email working|gmail connected|email connected)\b/.test(
+    t
+  );
+}
+
+export function isFetchEmailsRequest(message: string): boolean {
+  const t = normalizeText(message);
+  if (isEmailConnectionCheck(message)) return false;
+  return (
+    /\b(pull up|pull|show|open|fetch|read|see|list|grab|get|display)\b.*\b(emails?|inbox|gmail)\b/.test(t) ||
+    /\b(emails?|inbox|gmail)\b.*\b(pull|show|open|fetch|read|see|list|grab|get|access|up)\b/.test(t) ||
+    /\b(check my emails|check the inbox|my emails|the inbox|email panel|show mail)\b/.test(t) ||
+    /\b(can you (see|read|access)|do you have access to).*(emails?|inbox|gmail)\b/.test(t)
+  );
+}
+
+async function runGmailFetchRoute(
+  limit: number,
+  speechForSuccess: (count: number, previewLine: string) => string
+): Promise<IntentResponse> {
+  if (isGmailCircuitOpen()) {
+    return {
+      speech:
+        "Gmail circuit is cooling down from earlier errors, sir. Wait about a minute or restart the server, then ask again.",
+      intent: "general.chat",
+      entities: {},
+      ui: { panel: null, data: [], action: null },
+      tool: { name: null, args: {} }
+    };
+  }
+
+  try {
+    const emails = await getRecentGmailMessages(limit);
+    clearGmailAuthAlertIfPresent();
+    const preview = emails[0];
+    const line = preview
+      ? `Latest: ${preview.from} — ${preview.subject}.`
+      : "Inbox is empty in the last two weeks.";
+    const speech = speechForSuccess(emails.length, line);
+    logExecution({
+      type: "email",
+      action: "gmail.fetch",
+      summary: speech.slice(0, 500),
+      result: "success"
+    });
+    return {
+      speech,
+      intent: "fetch.emails",
+      entities: {},
+      ui: { panel: "emails", action: "open", data: emails },
+      tool: { name: "gmail.fetch", args: {} }
+    };
+  } catch (error) {
+    const detail =
+      error instanceof CircuitOpenError
+        ? "Circuit is open from earlier failures."
+        : error instanceof Error
+          ? error.message
+          : "Unknown error";
+    return {
+      speech: `Gmail is not reachable right now, sir. ${detail} If this persists, re-auth at /api/auth/google and update GMAIL_REFRESH_TOKEN.`,
+      intent: "general.chat",
+      entities: {},
+      ui: { panel: null, data: [], action: null },
+      tool: { name: null, args: {} }
+    };
+  }
+}
+
+export async function tryFetchEmailsRoute(
+  message: string,
+  _state: ConversationState
+): Promise<IntentResponse | null> {
+  if (!isFetchEmailsRequest(message)) return null;
+  routeLog("hit: tryFetchEmailsRoute");
+  return runGmailFetchRoute(8, (count, line) =>
+    count > 0
+      ? `Inbox is up, sir. ${count} recent message${count === 1 ? "" : "s"} on screen. ${line}`
+      : "Inbox is connected but quiet in the last two weeks, sir."
+  );
+}
+
+export async function tryEmailConnectionRoute(
+  message: string,
+  _state: ConversationState
+): Promise<IntentResponse | null> {
+  if (!isEmailConnectionCheck(message)) return null;
+  routeLog("hit: tryEmailConnectionRoute");
+  return runGmailFetchRoute(5, (count, line) =>
+    `Gmail is connected, sir. I pulled ${count} recent message${count === 1 ? "" : "s"}. ${line}`
+  );
+}
 
 export function isOpenEndedOperatorQuery(message: string): boolean {
   const t = normalizeText(message);
@@ -153,15 +260,21 @@ export async function findEmailFromMessage(message: string, state: ConversationS
   return null;
 }
 
-export async function tryOperatorStatusRoute(message: string, state: ConversationState) {
-  if (!isAskAboutPastActions(message) && !isSendVerification(message)) {
-    return null;
-  }
+export async function tryOperatorStatusRoute(
+  message: string,
+  state: ConversationState,
+  sessionId: string
+) {
+  if (!isAskAboutPastActions(message) && !isSendVerification(message)) return null;
+  if (getGeneratedImage(sessionId)) return null;
+  routeLog("hit: tryOperatorStatusRoute");
 
   const refs = extractNameRefs(message);
   const logs = refs.length
-    ? refs.flatMap((r) => searchExecutionLog(r, 10))
-    : getExecutionLogToday(30);
+    ? refs.flatMap((r) => searchExecutionLog(r, 10)).filter(isOperatorFacingLog)
+    : getExecutionLogSince(new Date(Date.now() - executionLogWindowMs(message)), 80).filter(
+        isOperatorFacingLog
+      );
 
   const uniqueLogs = [...new Map(logs.map((l) => [l.id, l])).values()];
 
@@ -197,7 +310,7 @@ export async function tryOperatorStatusRoute(message: string, state: Conversatio
     }
 
     return {
-      speech: `Yes sir. Log confirms: ${last.summary}`,
+      speech: `Yes sir. Log confirms: ${humanizeLogSummary(last.summary)}`,
       intent: "execution.log",
       ui: { panel: "emails" as const, action: "keep_open" as const, data: state.activeItems },
       toolExecuted: true
@@ -213,13 +326,10 @@ export async function tryOperatorStatusRoute(message: string, state: Conversatio
     };
   }
 
-  const lines = uniqueLogs
-    .slice(0, 8)
-    .map((l) => (l.result === "success" ? l.summary : `${l.summary} (failed)`))
-    .join(" ");
+  const speech = sanitizeSpeechForClient(buildExecutionSummarySpeech(uniqueLogs));
 
   return {
-    speech: lines,
+    speech,
     intent: "execution.log",
     ui: { panel: null, data: [], action: null },
     toolExecuted: true
@@ -235,9 +345,11 @@ export function enforceTruthfulSpeech(
   const sendIntent = intent === "gmail.send_reply" || intent === "execute.send";
 
   if (claimsAction && !sendIntent && !toolConfirmedSend) {
-    const logs = getExecutionLogToday(5).filter((l) => l.result === "success");
+    const logs = getExecutionLogToday(5).filter(
+      (l) => l.result === "success" && isOperatorFacingLog(l)
+    );
     if (logs.length) {
-      return `Checking the log, sir. ${logs[0].summary}`;
+      return `Checking the log, sir. ${humanizeLogSummary(logs[0].summary)}`;
     }
     return "I have not confirmed that send in my execution log yet, sir. Say the word and I will send it now.";
   }

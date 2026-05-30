@@ -8,8 +8,15 @@ import {
   setState
 } from "../db/queries";
 import { buildVapiAgentConfig } from "../services/vapi";
+import { tryBookAppointmentFromVapiCall } from "../services/appointmentBooking";
 
 export const callsRouter = Router();
+
+function scheduleVapiAppointmentBooking(body: unknown) {
+  setImmediate(() => {
+    void tryBookAppointmentFromVapiCall(body);
+  });
+}
 
 /** Vapi often wraps events in `{ message: { type, ... } }`; merge for parsers. */
 function mergeVapiBody(body: unknown): Record<string, unknown> {
@@ -208,6 +215,7 @@ callsRouter.post("/calls/incoming", (req, res) => {
 
     if (type === "end-of-call-report") {
       logCall(req.body);
+      scheduleVapiAppointmentBooking(req.body);
       return res.json({ received: true });
     }
 
@@ -246,6 +254,7 @@ callsRouter.post("/calls/webhook", (req, res) => {
     const type = getVapiEventType(req.body);
     if (type === "end-of-call-report" || !type) {
       const call = logCall(req.body);
+      scheduleVapiAppointmentBooking(req.body);
       return res.json({
         received: true,
         status: "logged",

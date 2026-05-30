@@ -1,7 +1,7 @@
 # JARVIS — AI Operator for Joe Stewart / Totally Outdoors LLC
 
 **Production:** https://joes-jarvis.fly.dev/  
-**Handoff for agents:** [LAST_LEFT_OFF.md](./LAST_LEFT_OFF.md) (exact session state, what shipped May 18, do-not-touch list).
+**Handoff for agents:** [LAST_LEFT_OFF.md](./LAST_LEFT_OFF.md) — **start here** (May 18 deploy: temporal, upload ack, Nano Banana, REC/transcripts, mobile UI/TTS, briefing fixes).
 
 JARVIS is a **custom autonomous AI intelligence operator** for a multimillion-dollar landscaping business in Holmes County, Ohio—not a chatbot. It runs a background brain every five minutes, executes routine work (email, queue, logging), searches the live web before answering weather and news questions, stores durable business memory with audit and decay, ingests Joe’s documents, and only speaks when something genuinely matters.
 
@@ -47,10 +47,22 @@ JARVIS is a **custom autonomous AI intelligence operator** for a multimillion-do
 
 ### Document intelligence
 
-- Upload PDF, txt, md, csv, html (10MB cap)
+- Upload PDF, txt, md, csv, html, images, docx (10MB cap)
+- **Immediate spoken acknowledgment** on upload (single or batch); session context for “store it” / “analyze it”
 - Chunking (600 chars, 100 overlap), SQLite storage
 - Search + Claude answer with document citation
 - HUD: upload button, doc count badge, library panel (Shift+click upload)
+
+### Job-site recording + transcripts
+
+- Mobile **REC** toggle: continuous Deepgram, no Claude during capture
+- Stop → summarize → `transcripts` table; query by weekday in chat
+- 3h max, wake lock, reconnect gap markers in raw transcript
+
+### Image finish generation (Nano Banana)
+
+- Upload reference image + intent (“finish this”, “generate”, …) → preview in photo panel
+- `store it` saves to documents; requires `NANO_BANANA_API_KEY` on server
 
 ### World intelligence
 
@@ -61,9 +73,12 @@ JARVIS is a **custom autonomous AI intelligence operator** for a multimillion-do
 
 ### Voice + HUD (`client/index.html`)
 
-- Deepgram WebSocket STT proxy, 3s utterance commit, VAD, continuous conversation after TTS
-- ElevenLabs TTS via server proxy
-- Maroon/red/black operator UI, hologram, waveform, operator log, dynamic panels (emails, rundown, **weather**, documents, etc.)
+- Deepgram WebSocket STT proxy, 1.5s utterance commit, VAD, continuous conversation after TTS
+- **Mobile (≤767px):** immersive radar + bottom bar; **REC** job-site recording; mic disabled while REC active
+- **Upload:** batch + immediate spoken acknowledgment from API (session-scoped follow-ups)
+- **Generated images:** photo panel (`ui.panel: "photo"`) via Nano Banana when key configured
+- ElevenLabs TTS via server proxy; iOS unlock via Web Audio API on user gesture
+- Maroon/red/black operator UI, hologram, waveform, dynamic panels (emails, rundown, **weather**, **photo**, documents)
 - **JARVIS Memory** panel (brain icon in bottom bar)
 
 ### Persistence (SQLite on Fly)

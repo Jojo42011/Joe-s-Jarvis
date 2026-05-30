@@ -1,11 +1,19 @@
-import { getSystemState, logExecution, setSystemState } from "../db/queries";
+import {
+  clearGmailAuthAlertIfPresent,
+  getSystemState,
+  logExecution,
+  setSystemState
+} from "../db/queries";
 import { gmailCircuit } from "./circuitBreaker";
 import { logServiceError } from "../utils/logError";
 
-const GMAIL_SCOPES = [
+const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/gmail.send",
-  "https://www.googleapis.com/auth/gmail.modify"
+  "https://www.googleapis.com/auth/gmail.modify",
+  "https://www.googleapis.com/auth/gmail.metadata",
+  "https://www.googleapis.com/auth/gmail.labels",
+  "https://www.googleapis.com/auth/calendar"
 ].join(" ");
 
 const TOKEN_EXPIRY_KEY = "gmail_access_token_expires_at";
@@ -101,8 +109,15 @@ async function refreshAccessToken(): Promise<string> {
     }
 
     persistAccessToken(payload.access_token, payload.expires_in || 3600);
+    gmailCircuit.reset();
+    clearGmailAuthAlertIfPresent();
     return payload.access_token;
   });
+}
+
+/** Shared Google OAuth access token (Gmail + Calendar). */
+export async function getValidAccessToken(): Promise<string> {
+  return getGmailAccessToken();
 }
 
 /** Returns a valid access token; refreshes if expiring within 5 minutes. */
@@ -136,7 +151,7 @@ export function createGoogleAuthUrl() {
   url.searchParams.set("client_id", clientId!);
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", GMAIL_SCOPES);
+  url.searchParams.set("scope", GOOGLE_SCOPES);
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent");
 

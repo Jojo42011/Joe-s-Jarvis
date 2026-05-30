@@ -13,6 +13,7 @@ import {
   type PriorityQueueItem
 } from "../db/queries";
 import { buildDynamicSystemPrompt } from "../config/systemPrompt";
+import { formatBriefingTimePhrase } from "../utils/temporal";
 import { findWorkingModel } from "../services/claude";
 import { generateActivationBriefing, generateExecutionLogSummary } from "../services/claude";
 import type {
@@ -21,7 +22,7 @@ import type {
   ExecutionResult,
   PerceptionPayload
 } from "./types";
-import { Judgment } from "./judgment";
+import { Judgment, JARVIS_SPEECH_OUTPUT_RULES } from "./judgment";
 import {
   formatWorldIntelBriefingSpeech,
   getHighUnbriefedWorldIntel,
@@ -32,6 +33,78 @@ import {
 
 const BRIEFING_HOURS = 24;
 const DATA_WINDOW_MS = BRIEFING_HOURS * 60 * 60 * 1000;
+
+const SPOKEN_FALLBACK = "One moment, sir.";
+
+/** Final safety net before TTS — never throws. */
+export function sanitizeSpeech(speech: unknown): string {
+  try {
+    let text = String(speech ?? "").trim();
+    if (!text) return SPOKEN_FALLBACK;
+
+    if (/^\s*[\[{]/.test(text) || (text.includes('"speech"') && text.includes("{"))) {
+      try {
+        const jsonText = text.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+        const start = jsonText.indexOf("{");
+        const end = jsonText.lastIndexOf("}");
+        const slice =
+          start >= 0 && end >= start ? jsonText.slice(start, end + 1) : jsonText;
+        const parsed = JSON.parse(slice) as Record<string, unknown>;
+        const fromSpeech = parsed?.speech;
+        if (typeof fromSpeech === "string" && fromSpeech.trim()) {
+          text = fromSpeech.trim();
+        }
+      } catch {
+        const m = text.match(/"speech"\s*:\s*"((?:\\.|[^"\\])*)"/);
+        if (m?.[1]) {
+          text = m[1]
+            .replace(/\\n/g, " ")
+            .replace(/\\"/g, '"')
+            .replace(/\\\\/g, "\\")
+            .trim();
+        }
+      }
+    }
+
+    text = text.replace(/```[\s\S]*?```/g, " ");
+    text = text.replace(/`[^`]*`/g, " ");
+    text = text.replace(/\*\*([^*]+)\*\*/g, "$1");
+    text = text.replace(/__(.+?)__/g, "$1");
+    text = text.replace(/(?<=\s|^)#+\s*/gm, "");
+    text = text.replace(/\[[^\]]*\]\([^)]*\)/g, " ");
+
+    for (let i = 0; i < 6; i += 1) {
+      const next = text
+        .replace(/\{[^{}]*\}/g, " ")
+        .replace(/\[[^\[\]]*\]/g, " ");
+      if (next === text) break;
+      text = next;
+    }
+
+    text = text.replace(/\[(Claude|Gmail|Brave|ReAct)\][^\]]*/gi, " ");
+    text = text.replace(/\[[^\]]+\]/g, " ");
+    text = text.replace(/\boperator-briefing\b/gi, " ");
+    text = text.replace(/\bcircuit\.(open|closed|rate_limit)\b/gi, " ");
+    text = text.replace(/\bcircuit\b/gi, " ");
+    text = text.replace(/\b[a-f0-9]{12,}\b/gi, " ");
+    text = text.replace(/https?:\/\/\S+/gi, " ");
+    text = text.replace(/\bwww\.\S+/gi, " ");
+    text = text.replace(/\bnull\b/gi, " ");
+    text = text.replace(/\bundefined\b/gi, " ");
+    text = text.replace(/[{}[\]]/g, " ");
+    text = text.replace(/\n+/g, ". ");
+    text = text.replace(/\s+/g, " ").trim();
+
+    if (!text || /^[\s,.:;!?-]+$/.test(text)) return SPOKEN_FALLBACK;
+    return text;
+  } catch {
+    return SPOKEN_FALLBACK;
+  }
+}
+
+function spoken(text: unknown): string {
+  return sanitizeSpeech(text);
+}
 
 const briefingAnthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -112,13 +185,15 @@ function isWeatherIntelRow(row: WorldIntelRow): boolean {
   );
 }
 
-function buildFallbackBriefingSpeech(data: BriefingData): string {
+export function buildFallbackBriefingSpeech(data: BriefingData): string {
   if (data.isEmpty) {
     const h = Math.round(data.hoursElapsed) || BRIEFING_HOURS;
-    return `All systems nominal sir. No activity to report in the last ${h} hours. Standing by.`;
+    const when = formatBriefingTimePhrase(h);
+    return `All systems nominal sir. No activity to report ${when.toLowerCase()}. Standing by.`;
   }
 
   const parts: string[] = ["Sir,"];
+  const when = formatBriefingTimePhrase(data.hoursElapsed);
 
   if (data.weather?.summary) {
     parts.push(`field conditions: ${data.weather.summary.slice(0, 120)}.`);
@@ -126,7 +201,7 @@ function buildFallbackBriefingSpeech(data: BriefingData): string {
 
   if (data.emailsAutoHandled > 0) {
     parts.push(
-      `I handled ${data.emailsAutoHandled} email${data.emailsAutoHandled === 1 ? "" : "s"} autonomously.`
+      `${when} you had ${data.emailsAutoHandled} email${data.emailsAutoHandled === 1 ? "" : "s"} handled autonomously.`
     );
   }
 
@@ -284,23 +359,24 @@ export async function generateBriefing(data: BriefingData): Promise<GeneratedBri
 
   if (data.isEmpty) {
     return {
-      speech: buildFallbackBriefingSpeech(data),
+      speech: spoken(buildFallbackBriefingSpeech(data)),
       briefingData: data
     };
   }
 
   if (!briefingAnthropic) {
-    return { speech: buildFallbackBriefingSpeech(data), briefingData: data };
+    return { speech: spoken(buildFallbackBriefingSpeech(data)), briefingData: data };
   }
 
   const model = await findWorkingModel();
   if (!model) {
-    return { speech: buildFallbackBriefingSpeech(data), briefingData: data };
+    return { speech: spoken(buildFallbackBriefingSpeech(data)), briefingData: data };
   }
 
   const system = `${await buildDynamicSystemPrompt()}
 
-You are JARVIS delivering a full operational brief to Joe Stewart.`;
+You are JARVIS delivering a full operational brief to Joe Stewart.
+Reference time naturally — say "this morning", "two days ago", "yesterday" — never raw timestamps.`;
 
   const userPrompt = `Joe Stewart just activated you.
 It has been ${hoursLabel} hours since your last briefing. Deliver a complete operational brief.
@@ -322,8 +398,11 @@ Address Joe as "sir" once at the start.
 Target length: 45-75 words spoken.
 This is a briefing not a report.
 Never say "in the last 24 hours" repeatedly.
+Use natural time references: "this morning you had 3 emails handled", "two days ago JARVIS flagged a diesel price spike".
 Vary phrasing. Sound like a person, not a system.
-Return plain speech text only — no JSON, no markdown.`;
+Return plain speech text only — no JSON, no markdown.
+
+${JARVIS_SPEECH_OUTPUT_RULES}`;
 
   try {
     const response = await briefingAnthropic.messages.create({
@@ -334,11 +413,11 @@ Return plain speech text only — no JSON, no markdown.`;
       messages: [{ role: "user", content: userPrompt }]
     });
     const text = response.content.find((b) => b.type === "text")?.text?.trim() || "";
-    const speech = text || buildFallbackBriefingSpeech(data);
+    const speech = spoken(text || buildFallbackBriefingSpeech(data));
     return { speech, briefingData: data };
   } catch (error) {
     console.warn("[communication] generateBriefing failed:", error);
-    return { speech: buildFallbackBriefingSpeech(data), briefingData: data };
+    return { speech: spoken(buildFallbackBriefingSpeech(data)), briefingData: data };
   }
 }
 
@@ -391,11 +470,13 @@ export class Communication {
       if (!urgent.length) {
         return { shouldSpeak: false, message: null, uiPanel: null, uiData: null, briefedItemIds: [] };
       }
-      const message = await generateActivationBriefing({
-        executions: urgent,
-        context,
-        mode: "critical"
-      });
+      const message = spoken(
+        await generateActivationBriefing({
+          executions: urgent,
+          context,
+          mode: "critical"
+        })
+      );
       return {
         shouldSpeak: true,
         message,
@@ -406,11 +487,13 @@ export class Communication {
     }
 
     if (trigger === "critical") {
-      const message = await generateActivationBriefing({
-        executions: execResults,
-        context,
-        mode: "critical"
-      });
+      const message = spoken(
+        await generateActivationBriefing({
+          executions: execResults,
+          context,
+          mode: "critical"
+        })
+      );
       return {
         shouldSpeak: true,
         message,
@@ -432,7 +515,7 @@ export class Communication {
 
       return {
         shouldSpeak: true,
-        message: fullBrief.speech,
+        message: spoken(fullBrief.speech),
         uiPanel: "rundown",
         uiData: [{ queueItems: panelItems, briefingData: fullBrief.briefingData }],
         briefedItemIds: [],
@@ -448,7 +531,7 @@ export class Communication {
     if (!shouldBrief && !context.criticalAlertActive && !highWorldIntel.length) {
       return {
         shouldSpeak: true,
-        message: "All clear sir. What do you need?",
+        message: spoken("All clear sir. What do you need?"),
         uiPanel: null,
         uiData: null,
         briefedItemIds: []
@@ -471,7 +554,7 @@ export class Communication {
     if (!toBrief.length && !context.criticalAlertActive && !highWorldIntel.length) {
       return {
         shouldSpeak: true,
-        message: "All clear sir. What do you need?",
+        message: spoken("All clear sir. What do you need?"),
         uiPanel: null,
         uiData: null,
         briefedItemIds: []
@@ -480,15 +563,17 @@ export class Communication {
 
     let message = "";
     if (highWorldIntel.length) {
-      message = formatWorldIntelBriefingSpeech(highWorldIntel);
+      message = spoken(formatWorldIntelBriefingSpeech(highWorldIntel));
       markWorldIntelBriefed(highWorldIntel.map((w) => w.id));
     }
 
     if (toBrief.length || context.criticalAlertActive) {
-      const opsBrief = await this.generateOpsBriefingSince(since, context, toBrief);
-      message = message ? `${message} ${opsBrief}` : opsBrief;
+      const opsBrief = spoken(await this.generateOpsBriefingSince(since, context, toBrief));
+      message = message ? spoken(`${message} ${opsBrief}`) : opsBrief;
     } else if (!message) {
-      message = "All clear sir. What do you need?";
+      message = spoken("All clear sir. What do you need?");
+    } else {
+      message = spoken(message);
     }
 
     const newBriefed = [...briefedIds, ...toBrief.map((t) => t.itemId)].filter(Boolean);
@@ -511,22 +596,24 @@ export class Communication {
     const briefedIds = parseBriefedIds();
     const freshLogs = logs.filter((l) => !briefedIds.includes(l.itemId || ""));
 
-    return generateActivationBriefing({
-      executions:
-        executions.length > 0
-          ? executions
-          : freshLogs.map((l) => ({
-              success: l.result === "success",
-              summary: l.summary,
-              itemId: l.itemId || "",
-              itemType: l.type,
-              action: l.action,
-              notifyJoe: true,
-              notifyUrgency: "next_briefing" as const
-            })),
-      context,
-      mode: "activation"
-    });
+    return spoken(
+      await generateActivationBriefing({
+        executions:
+          executions.length > 0
+            ? executions
+            : freshLogs.map((l) => ({
+                success: l.result === "success",
+                summary: l.summary,
+                itemId: l.itemId || "",
+                itemType: l.type,
+                action: l.action,
+                notifyJoe: true,
+                notifyUrgency: "next_briefing" as const
+              })),
+        context,
+        mode: "activation"
+      })
+    );
   }
 
   recordBriefing(briefedItemIds: string[]) {
@@ -545,7 +632,7 @@ export class Communication {
       const now = new Date();
       return d.toDateString() === now.toDateString();
     });
-    if (!logs.length) return "Nothing handled autonomously today yet, sir.";
-    return generateExecutionLogSummary(logs);
+    if (!logs.length) return spoken("Nothing handled autonomously today yet, sir.");
+    return spoken(await generateExecutionLogSummary(logs));
   }
 }

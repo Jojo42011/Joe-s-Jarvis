@@ -1,4 +1,12 @@
-import { addToQueue, pendingQueueItemExists, setSystemState } from "../db/queries";
+import {
+  addToQueue,
+  logExecution,
+  markQueueItemHandled,
+  markQueueRetriageAttempted,
+  pendingQueueItemExists,
+  setSystemState
+} from "../db/queries";
+import { brainLog } from "../utils/requestLog";
 import { Communication } from "./communication";
 import { Execution } from "./execution";
 import { Judgment } from "./judgment";
@@ -30,17 +38,36 @@ function queueFromDecision(decision: JudgmentDecision) {
 
 export async function brainCycle() {
   if (cycleRunning) {
-    console.log("[brain] cycle skipped — previous run active");
+    brainLog("cycle skipped — previous run active");
     return;
   }
 
   cycleRunning = true;
+  const cycleId = Date.now().toString(36);
+  brainLog(`cycle ${cycleId} start`);
   try {
     const payload = await perception.sense();
+    brainLog(
+      `cycle ${cycleId} perception — queue: ${payload.currentQueueSize} newEmails: ${payload.newEmails.length}`
+    );
     const decisions = await judgment.evaluate(payload);
+    brainLog(`cycle ${cycleId} judgment — ${decisions.length} decision(s)`);
     const results = [];
 
     for (const decision of decisions) {
+      if (decision.sourceQueueId) {
+        if (decision.action === "execute_now") {
+          const result = await execution.execute(decision);
+          results.push(result);
+          markQueueItemHandled(decision.sourceQueueId);
+        } else if (decision.action === "ignore") {
+          markQueueItemHandled(decision.sourceQueueId);
+        } else if (decision.action === "queue") {
+          markQueueRetriageAttempted(decision.sourceQueueId);
+        }
+        continue;
+      }
+
       if (pendingQueueItemExists(decision.itemType, decision.itemId) && decision.action === "ignore") {
         continue;
       }
@@ -57,6 +84,23 @@ export async function brainCycle() {
 
     const comms = await communication.decide(results, payload, "cycle");
 
+    if (results.length) {
+      const lines = results
+        .slice(0, 5)
+        .map((r) => (r.success ? r.summary : `${r.summary} (failed)`))
+        .join(" | ");
+      logExecution({
+        type: "system",
+        action: "brain.cycle",
+        summary: `Autonomous cycle: ${results.length} action(s) — ${lines}`.slice(0, 500),
+        result: results.some((r) => !r.success) ? "failed" : "success"
+      });
+    }
+
+    brainLog(
+      `cycle ${cycleId} end — executed: ${results.length} speak: ${comms.shouldSpeak ? "yes" : "no"}`
+    );
+
     if (comms.shouldSpeak && comms.message) {
       await setSystemState(
         "active_alert",
@@ -71,6 +115,7 @@ export async function brainCycle() {
       communication.recordBriefing(comms.briefedItemIds);
     }
   } catch (error) {
+    brainLog(`cycle error: ${error instanceof Error ? error.message : "unknown"}`);
     console.error("[brain] cycle error:", error);
   } finally {
     cycleRunning = false;

@@ -5,24 +5,40 @@ import {
   normalizeMemoryCategory
 } from "../config/memoryCategories";
 import { invalidateDynamicPromptCache } from "../config/systemPrompt";
+import type { ConversationMessage } from "../db/queries";
 import {
   applyMemoryConfidenceDecay,
+  countMemoriesByCategory,
   deleteMemoryById,
   enqueueMemoryAuditAction,
   flagMemoryByKey,
   getAllMemoriesGrouped,
+  getEpisodesSinceDays,
   getMemoryAuditQueueByIds,
   getMemoryByCategoryKey,
+  getNeverRetrievedMemoriesOlderThanDays,
+  getRecentConversation,
+  getRecentEpisodes,
+  getTopRetrievedMemories,
+  insertEpisodicMemory,
+  insertSelfEvolutionEntry,
   logExecution,
   markMemoryAuditQueueReviewed,
   mergeMemoryKeys,
   saveMemory,
   setSystemState,
-  getSystemState
+  getSystemState,
+  upsertEntityProfile
 } from "../db/queries";
 import { claudeCircuit, CircuitOpenError } from "./circuitBreaker";
 import { logServiceWarn } from "../utils/logError";
-import { extractLearnableMemoriesFromTurn, findWorkingModel } from "./claude";
+import { memoryLog } from "../utils/requestLog";
+import {
+  extractEntitiesFromTurn,
+  extractLearnableMemoriesFromTurn,
+  findWorkingModel,
+  summarizeConversationForEpisodic
+} from "./claude";
 
 export { MEMORY_CATEGORIES } from "../config/memoryCategories";
 
@@ -148,6 +164,7 @@ export async function rememberMemory(input: {
   key: string;
   value: string;
   confidence?: number;
+  source?: string | null;
 }): Promise<void> {
   const category = normalizeMemoryCategory(input.category);
   const key = input.key.slice(0, 200);
@@ -159,8 +176,42 @@ export async function rememberMemory(input: {
     category,
     key,
     value: valueToWrite,
-    confidence: input.confidence
+    confidence: input.confidence,
+    source: input.source ?? null
   });
+  memoryLog(`write: ${category}/${key} (${valueToWrite.length} chars)`);
+}
+
+function memorySourceForIntent(intent: string): string {
+  if (intent === "world.intel") return "world_intel";
+  if (intent === "document.search") return "document";
+  return "chat";
+}
+
+async function extractAndSaveEntityProfiles(input: {
+  userMessage: string;
+  jarvisResponse: string;
+}) {
+  const entities = await extractEntitiesFromTurn(input);
+  const stamp = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date());
+
+  for (const entity of entities) {
+    upsertEntityProfile({
+      name: entity.name,
+      entityType: entity.entity_type,
+      notesAppend: `[${stamp}] ${entity.facts}`
+    });
+  }
+  if (entities.length) {
+    invalidateDynamicPromptCache();
+  }
 }
 
 function slugPreferenceTopic(text: string): string {
@@ -260,13 +311,7 @@ export async function extractAndSaveMemory(interaction: {
   outcome: string;
 }) {
   try {
-    if (
-      interaction.intent === "general.chat" &&
-      !turnHasMemorySignals(interaction.userMessage, interaction.jarvisResponse)
-    ) {
-      return;
-    }
-
+    const source = memorySourceForIntent(interaction.intent);
     const rows = await extractLearnableMemoriesFromTurn(interaction);
     for (const row of rows) {
       let category = normalizeMemoryCategory(row.category);
@@ -284,15 +329,157 @@ export async function extractAndSaveMemory(interaction: {
         category,
         key,
         value: row.value,
-        confidence: row.confidence
+        confidence: row.confidence,
+        source
       });
     }
     if (rows.length) {
       invalidateDynamicPromptCache();
     }
+
+    await extractAndSaveEntityProfiles({
+      userMessage: interaction.userMessage,
+      jarvisResponse: interaction.jarvisResponse
+    });
   } catch (error) {
     logServiceWarn("memory", "extractAndSaveMemory", error);
   }
+}
+
+export async function writeEpisodicMemory(
+  sessionId: string,
+  history: ConversationMessage[]
+) {
+  if (history.length < 6) return;
+
+  const turns = history.map((m) => ({ role: m.role, content: m.content }));
+  const summary = await summarizeConversationForEpisodic(turns);
+  if (!summary) return;
+
+  insertEpisodicMemory({
+    sessionId,
+    summary: summary.summary,
+    keyDecisions: summary.key_decisions,
+    peopleMentioned: summary.people_mentioned,
+    topics: summary.topics
+  });
+  invalidateDynamicPromptCache();
+  memoryLog(`episodic: session=${sessionId} (${summary.summary.length} chars)`);
+}
+
+export function scheduleEpisodicMemoryWrite(
+  sessionId: string,
+  intent: string,
+  toolName?: string | null
+) {
+  if (intent !== "general.chat" || toolName) return;
+
+  setImmediate(() => {
+    void (async () => {
+      try {
+        const history = getRecentConversation(sessionId, 20);
+        if (history.length < 6) return;
+        await writeEpisodicMemory(sessionId, history);
+      } catch (error) {
+        logServiceWarn("memory", "scheduleEpisodicMemoryWrite", error);
+      }
+    })();
+  });
+}
+
+export { getRecentEpisodes, searchEpisodes } from "../db/queries";
+
+function slugTopic(topic: string): string {
+  return topic
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 60);
+}
+
+export async function runSelfEvolutionAnalysis(): Promise<void> {
+  const counts = countMemoriesByCategory();
+  const gaps = counts.filter((c) => c.count < 3);
+
+  for (const gap of gaps) {
+    insertSelfEvolutionEntry({
+      category: "knowledge_gap",
+      observation: `Category "${gap.category}" has only ${gap.count} memor${gap.count === 1 ? "y" : "ies"}.`,
+      suggestedImprovement: `Brief Joe on ${gap.category.replace(/_/g, " ")} patterns so JARVIS can anticipate needs.`,
+      confidence: 0.75
+    });
+  }
+
+  const episodes = getEpisodesSinceDays(30, 200);
+  const topicCounts = new Map<string, number>();
+  for (const ep of episodes) {
+    if (!ep.topics) continue;
+    try {
+      const topics = JSON.parse(ep.topics) as unknown[];
+      if (!Array.isArray(topics)) continue;
+      for (const t of topics) {
+        const topic = String(t).trim().toLowerCase();
+        if (!topic) continue;
+        topicCounts.set(topic, (topicCounts.get(topic) || 0) + 1);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  for (const [topic, count] of topicCounts) {
+    if (count < 3) continue;
+    const key = `pattern_${slugTopic(topic)}`;
+    insertSelfEvolutionEntry({
+      category: "pattern",
+      observation: `Topic "${topic}" appeared in ${count} sessions over the last 30 days.`,
+      suggestedImprovement: `Track ${topic} proactively in briefings and operator state.`,
+      confidence: 0.8
+    });
+    await rememberMemory({
+      category: MEMORY_CATEGORIES.BUSINESS_CONTEXT,
+      key,
+      value: `Recurring session topic (${count}× in 30 days): ${topic}`,
+      confidence: 0.7,
+      source: "self_evolution"
+    });
+  }
+
+  const stale = getNeverRetrievedMemoriesOlderThanDays(30, 30);
+  for (const row of stale.slice(0, 15)) {
+    insertSelfEvolutionEntry({
+      category: "memory",
+      observation: `Memory key ${row.key} (${row.category}) has never been retrieved.`,
+      suggestedImprovement:
+        "May be poorly keyed or irrelevant — review or merge during memory audit.",
+      confidence: 0.65
+    });
+  }
+
+  const topRetrieved = getTopRetrievedMemories(5);
+  const totalMemories = counts.reduce((n, c) => n + c.count, 0);
+  const recentEpisodes = getRecentEpisodes(1);
+
+  const healthLines = [
+    `Total memories: ${totalMemories} across ${counts.length} categories.`,
+    `Entity profiles and episodic sessions: ${recentEpisodes.length > 0 ? "active" : "building"}.`,
+    `Knowledge gaps (<3 entries): ${gaps.map((g) => g.category).join(", ") || "none"}.`,
+    `Top retrieved: ${topRetrieved.map((m) => m.key).join(", ") || "none yet"}.`,
+    `Never-retrieved (>30d): ${stale.length} candidates flagged.`
+  ];
+
+  insertSelfEvolutionEntry({
+    category: "behavior",
+    observation: healthLines.join(" "),
+    suggestedImprovement:
+      gaps.length > 0
+        ? `Priority gaps: ${gaps.map((g) => g.category).join(", ")}. Ask Joe to brief those areas.`
+        : "Memory coverage is balanced — continue logging patterns from chat and brain cycles.",
+    confidence: 0.85
+  });
+
+  setSystemState("last_self_evolution_run", new Date().toISOString());
+  invalidateDynamicPromptCache();
 }
 
 function ohioWeekday(): string {
@@ -300,6 +487,12 @@ function ohioWeekday(): string {
     timeZone: "America/New_York",
     weekday: "long"
   }).format(new Date());
+}
+
+function daysSinceIso(iso: string | null | undefined): number {
+  if (!iso) return 999;
+  const ms = Date.now() - Date.parse(iso);
+  return Number.isFinite(ms) ? Math.floor(ms / (24 * 60 * 60 * 1000)) : 999;
 }
 
 export function runMemoryMaintenance(): void {
@@ -314,6 +507,11 @@ export function runMemoryMaintenance(): void {
           summary: `Stale memory auto-removed: ${row.key}`,
           result: "success"
         });
+      }
+
+      const lastEvolution = getSystemState("last_self_evolution_run");
+      if (daysSinceIso(lastEvolution) >= 7) {
+        await runSelfEvolutionAnalysis();
       }
 
       if (ohioWeekday() === "Sunday") {

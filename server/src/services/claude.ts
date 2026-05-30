@@ -1,8 +1,16 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { buildDynamicSystemPrompt } from "../config/systemPrompt";
 import { claudeCircuit, CircuitOpenError } from "./circuitBreaker";
+import { isRateLimitError } from "../utils/rateLimit";
 import { logServiceError } from "../utils/logError";
-import { JUDGMENT_RULES } from "../brain/judgment";
+import { buildExecutionSummarySpeech } from "../utils/executionSummary";
+import { briefLog, claudeLog } from "../utils/requestLog";
+import {
+  buildFallbackBriefingSpeech,
+  compileBriefingData
+} from "../brain/communication";
+import { JARVIS_SPEECH_OUTPUT_RULES, JUDGMENT_RULES } from "../brain/judgment";
+import type { ActivationContext } from "../brain/activationBriefing";
 import type { JudgmentDecision, PerceptionPayload } from "../brain/types";
 import type { ConversationMessage, ExecutionLogEntry } from "../db/queries";
 
@@ -23,6 +31,49 @@ const FAST_MODEL_CANDIDATES = ["claude-haiku-4-5", "claude-sonnet-4-6", "claude-
 
 let resolvedModel: string | null = null;
 let resolvedFastModel: string | null = null;
+
+/** Only one operator-briefing Claude call at a time (HUD polls /rundown frequently). */
+let operatorBriefingInFlight: Promise<string> | null = null;
+let lastOperatorBriefing = { text: "", at: 0 };
+let operatorBriefingMutexTimer: ReturnType<typeof setTimeout> | null = null;
+
+const BRIEFING_MUTEX_MS = 45_000;
+
+function operatorBriefingFallback(): string {
+  return buildFallbackBriefingSpeech(compileBriefingData());
+}
+
+function releaseBriefingMutex(reason: string) {
+  if (operatorBriefingMutexTimer) {
+    clearTimeout(operatorBriefingMutexTimer);
+    operatorBriefingMutexTimer = null;
+  }
+  if (operatorBriefingInFlight) {
+    briefLog(`mutex released: ${reason}`);
+  }
+  operatorBriefingInFlight = null;
+}
+
+function armBriefingMutexWatchdog() {
+  if (operatorBriefingMutexTimer) clearTimeout(operatorBriefingMutexTimer);
+  operatorBriefingMutexTimer = setTimeout(() => {
+    briefLog("mutex watchdog fired — force clear after 45s");
+    operatorBriefingMutexTimer = null;
+    operatorBriefingInFlight = null;
+  }, BRIEFING_MUTEX_MS);
+}
+
+function logClaudeUsage(
+  operation: string,
+  model: string,
+  startedAt: number,
+  usage?: { input_tokens?: number; output_tokens?: number }
+) {
+  const latency = Date.now() - startedAt;
+  const tokensIn = usage?.input_tokens ?? "?";
+  const tokensOut = usage?.output_tokens ?? "?";
+  claudeLog(`${operation}: ${model} | tokens_in: ${tokensIn} | tokens_out: ${tokensOut} | latency: ${latency}ms`);
+}
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -190,7 +241,7 @@ export async function generateJarvisIntentResponse(input: {
           system,
           messages
         }),
-        22_000,
+        35_000,
         "intent-chat"
       )
     );
@@ -248,7 +299,7 @@ export async function generateFastJarvisResponse(message: string) {
           max_tokens: 100,
           temperature: 0.25,
           system:
-            "You are JARVIS, Joe Stewart's autonomous operator. Reply briefly, confidently, and in operator tone. No tools, no claims of new actions, no JSON commentary. Return JSON only with speech, intent general.chat, entities {}, ui {panel:null,data:[],action:null}, tool {name:null,args:{}}.",
+            "You are JARVIS, Joe Stewart's autonomous operator. Reply briefly, confidently, and in operator tone. Greetings and pleasantries only — no tools, no capability claims, no JSON commentary. Return JSON only with speech, intent general.chat, entities {}, ui {panel:null,data:[],action:null}, tool {name:null,args:{}}.",
           messages: [{ role: "user", content: message }]
         }),
         8_000,
@@ -476,48 +527,90 @@ export async function triageInboundItem(type: string, content: string): Promise<
   }
 }
 
-export async function generateOperatorBriefing(queueJson: string): Promise<string> {
-  if (!anthropic) {
-    return "Priority queue is updating offline, sir. Connect Claude for a full verbal briefing.";
-  }
+async function runOperatorBriefing(queueJson: string): Promise<string> {
+  return withTimeout(
+    (async () => {
+      if (!anthropic) {
+        return operatorBriefingFallback();
+      }
 
-  const model = await findWorkingModel();
-  if (!model) {
-    return "Briefing engine is offline, sir.";
-  }
+      const model = await findWorkingModel();
+      if (!model) {
+        briefLog("no model — using compileBriefingData fallback");
+        return operatorBriefingFallback();
+      }
 
-  try {
-    const response = await claudeCircuit.execute("operator-briefing", () =>
-      withTimeout(
-        anthropic.messages.create({
-          model,
-          max_tokens: 450,
-          temperature: 0.35,
-          system: `You are JARVIS. Generate a concise operator briefing for Joe Stewart (landscaping business, Ohio).
+      const startedAt = Date.now();
+      try {
+        const response = await claudeCircuit.execute("operator-briefing", () =>
+          withTimeout(
+            anthropic!.messages.create({
+              model,
+              max_tokens: 450,
+              temperature: 0.35,
+              system: `You are JARVIS. Generate a concise operator briefing for Joe Stewart (landscaping business, Ohio).
 Rules:
 - Most urgent first (NOW, then TODAY, then THIS_WEEK).
 - One short sentence per queue item.
 - End with how many items are still unhandled if any.
 - Maximum ~60 seconds of speech if read aloud — stay tight.
 - Plain text only, no JSON.`,
-          messages: [
-            {
-              role: "user",
-              content: `Priority queue JSON:\n${queueJson.slice(0, 14000)}`
-            }
-          ]
-        }),
-        25_000,
-        "briefing"
-      )
-    );
+              messages: [
+                {
+                  role: "user",
+                  content: `Priority queue JSON:\n${queueJson.slice(0, 14000)}`
+                }
+              ]
+            }),
+            45_000,
+            "briefing"
+          )
+        );
 
-    const textBlock = response.content.find((block) => block.type === "text");
-    return textBlock?.text?.trim() || "Standing by, sir. Queue is quiet.";
-  } catch (error) {
-    logServiceError("Claude", "generateOperatorBriefing", error);
-    return "Briefing hit a fault, sir. Pull the queue in the app when you can.";
+        logClaudeUsage("operator-briefing", model, startedAt, response.usage);
+        const textBlock = response.content.find((block) => block.type === "text");
+        return textBlock?.text?.trim() || "Standing by, sir. Queue is quiet.";
+      } catch (error) {
+        if (error instanceof CircuitOpenError) {
+          briefLog("circuit open — compileBriefingData fallback");
+          return operatorBriefingFallback();
+        }
+        if (isRateLimitError(error)) {
+          briefLog("rate limited — compileBriefingData fallback");
+          return operatorBriefingFallback();
+        }
+        logServiceError("Claude", "generateOperatorBriefing", error);
+        return operatorBriefingFallback();
+      }
+    })(),
+    BRIEFING_MUTEX_MS,
+    "operator-briefing-total"
+  ).catch((error) => {
+    briefLog(`briefing failed: ${error instanceof Error ? error.message : "unknown"}`);
+    return operatorBriefingFallback();
+  });
+}
+
+export async function generateOperatorBriefing(queueJson: string): Promise<string> {
+  if (operatorBriefingInFlight) {
+    briefLog("operator-briefing skipped — already in progress");
+    if (lastOperatorBriefing.text) return lastOperatorBriefing.text;
+    return operatorBriefingFallback();
   }
+
+  briefLog("mutex acquired");
+  armBriefingMutexWatchdog();
+
+  operatorBriefingInFlight = runOperatorBriefing(queueJson)
+    .then((text) => {
+      lastOperatorBriefing = { text, at: Date.now() };
+      return text;
+    })
+    .finally(() => {
+      releaseBriefingMutex("completed");
+    });
+
+  return operatorBriefingInFlight;
 }
 
 export type MemoryExtraction = {
@@ -551,7 +644,45 @@ Rules:
 - Keys are short snake_case identifiers.
 - Values are one or two concise sentences.
 - If nothing clearly learnable, return [].
-- Never invent private data not implied by the messages.`;
+- Never invent private data not implied by the messages.
+
+QUALITY FILTER — Only extract if the memory would be useful in a future conversation 30+ days from now.
+Do not extract:
+- Things already resolved or handled (spam archived, routine ack sent)
+- Temporary states ("Joe is currently busy")
+- One-time events with no recurring value
+- Anything that will be stale in 48 hours
+DO extract:
+- Client preferences and history
+- Joe's decision patterns
+- Vendor relationships and pricing
+- Crew facts and patterns
+- Business rules Joe has stated
+- Anything JARVIS should remember forever`;
+
+export type EntityMentionExtraction = {
+  name: string;
+  entity_type: "client" | "vendor" | "crew" | "contact";
+  facts: string;
+};
+
+const ENTITY_EXTRACTION_SYSTEM = `Extract any people mentioned in this conversation turn.
+Return JSON only:
+[{ "name": string, "entity_type": "client"|"vendor"|"crew"|"contact", "facts": string }]
+Only include people where a meaningful fact was learned.
+Return [] if nothing meaningful.`;
+
+const EPISODIC_SUMMARY_SYSTEM = `Summarize this conversation session in 2-3 sentences.
+Extract: key decisions made, people mentioned, topics covered.
+Return JSON only:
+{
+  "summary": string,
+  "key_decisions": string[],
+  "people_mentioned": string[],
+  "topics": string[]
+}
+Only include sessions with meaningful content.
+If it was just small talk or all-clear, return null.`;
 
 export async function extractLearnableMemoriesFromTurn(input: {
   userMessage: string;
@@ -645,6 +776,136 @@ export async function extractLearnableMemoriesFromTurn(input: {
   } catch (error) {
     logServiceError("Claude", "extractLearnableMemoriesFromTurn", error);
     return [];
+  }
+}
+
+export async function extractEntitiesFromTurn(input: {
+  userMessage: string;
+  jarvisResponse: string;
+}): Promise<EntityMentionExtraction[]> {
+  if (!anthropic) return [];
+
+  const model = await findWorkingModel();
+  if (!model) return [];
+
+  try {
+    const response = await claudeCircuit.execute("entity-extract", () =>
+      withTimeout(
+        anthropic.messages.create({
+          model,
+          max_tokens: 350,
+          temperature: 0.1,
+          system: ENTITY_EXTRACTION_SYSTEM,
+          messages: [
+            {
+              role: "user",
+              content: JSON.stringify(input).slice(0, 8000)
+            }
+          ]
+        }),
+        18_000,
+        "entity-extract"
+      )
+    );
+
+    const textBlock = response.content.find((block) => block.type === "text");
+    const raw = textBlock?.text?.trim() || "[]";
+    const jsonText = raw
+      .replace(/^```(?:json)?/i, "")
+      .replace(/```$/i, "")
+      .trim();
+    const start = jsonText.indexOf("[");
+    const end = jsonText.lastIndexOf("]");
+    const parsed = JSON.parse(
+      start >= 0 && end >= start ? jsonText.slice(start, end + 1) : jsonText
+    ) as unknown[];
+
+    if (!Array.isArray(parsed)) return [];
+
+    const allowedTypes = new Set(["client", "vendor", "crew", "contact"]);
+    return parsed
+      .map((row) => {
+        if (!row || typeof row !== "object") return null;
+        const r = row as Record<string, unknown>;
+        const name = String(r.name || "").trim();
+        const entity_type = String(r.entity_type || "").trim() as EntityMentionExtraction["entity_type"];
+        const facts = String(r.facts || "").trim();
+        if (!name || !allowedTypes.has(entity_type) || !facts) return null;
+        return { name: name.slice(0, 200), entity_type, facts: facts.slice(0, 1500) };
+      })
+      .filter((x): x is EntityMentionExtraction => Boolean(x));
+  } catch (error) {
+    logServiceError("Claude", "extractEntitiesFromTurn", error);
+    return [];
+  }
+}
+
+export type EpisodicSummary = {
+  summary: string;
+  key_decisions: string[];
+  people_mentioned: string[];
+  topics: string[];
+};
+
+export async function summarizeConversationForEpisodic(
+  history: Array<{ role: string; content: string }>
+): Promise<EpisodicSummary | null> {
+  if (!anthropic || !history.length) return null;
+
+  const model = await findWorkingModel();
+  if (!model) return null;
+
+  try {
+    const response = await claudeCircuit.execute("episodic-summary", () =>
+      withTimeout(
+        anthropic.messages.create({
+          model,
+          max_tokens: 400,
+          temperature: 0.15,
+          system: EPISODIC_SUMMARY_SYSTEM,
+          messages: [
+            {
+              role: "user",
+              content: JSON.stringify({ turns: history.slice(-20) }).slice(0, 14000)
+            }
+          ]
+        }),
+        22_000,
+        "episodic-summary"
+      )
+    );
+
+    const textBlock = response.content.find((block) => block.type === "text");
+    const raw = textBlock?.text?.trim() || "null";
+    const jsonText = raw
+      .replace(/^```(?:json)?/i, "")
+      .replace(/```$/i, "")
+      .trim();
+    if (/^null$/i.test(jsonText)) return null;
+
+    const start = jsonText.indexOf("{");
+    const end = jsonText.lastIndexOf("}");
+    const parsed = JSON.parse(
+      start >= 0 && end >= start ? jsonText.slice(start, end + 1) : jsonText
+    ) as Record<string, unknown>;
+
+    const summary = String(parsed.summary || "").trim();
+    if (!summary) return null;
+
+    const key_decisions = Array.isArray(parsed.key_decisions)
+      ? parsed.key_decisions.map((v) => String(v).trim()).filter(Boolean)
+      : [];
+    const people_mentioned = Array.isArray(parsed.people_mentioned)
+      ? parsed.people_mentioned.map((v) => String(v).trim()).filter(Boolean)
+      : [];
+    const topics = Array.isArray(parsed.topics)
+      ? parsed.topics.map((v) => String(v).trim()).filter(Boolean)
+      : [];
+
+    return { summary, key_decisions, people_mentioned, topics };
+  } catch (error) {
+    logServiceError("Claude", "summarizeConversationForEpisodic", error);
+    return null;
   }
 }
 
@@ -806,7 +1067,9 @@ export async function generateAutonomousEmailReply(input: {
 
   const system = `${await buildDynamicSystemPrompt()}
 
-Write a plain-text email reply body only. No subject line. No JSON.
+Write a plain-text email reply body only. No subject line. No JSON. No commentary to Joe.
+Never include: "Here's a reply", strategy notes, "Want me to send?", separators (---), or markdown.
+Output only what the recipient reads: greeting, message, sign-off (Joe Stewart / Totally Outdoors LLC / 330-231-4080 as appropriate).
 Joe runs a successful landscaping business in Ohio. Professional, direct, no fluff.
 Match email type: ${input.emailType}`;
 
@@ -836,6 +1099,95 @@ Match email type: ${input.emailType}`;
   }
 }
 
+/** Dynamic spoken briefing for page-load / wake-word activation. */
+export async function generateActivationBriefingFromContext(
+  ctx: ActivationContext,
+  baseSystemPrompt: string
+): Promise<string> {
+  if (!ctx.executions.length && !ctx.pendingQueue.length && !ctx.calls.length) {
+    return "All clear sir. What do you need?";
+  }
+
+  if (!anthropic) {
+    return buildFallbackActivationSpeechFromContext(ctx);
+  }
+
+  const model = await findWorkingModel();
+  if (!model) return buildFallbackActivationSpeechFromContext(ctx);
+
+  const activationRules = `Activation briefing rules:
+- Current Ohio time: ${ctx.ohioTime}
+- Time since Joe was last active: ${ctx.elapsedSinceJoeActive}
+- Open with a time-aware greeting (${ctx.greeting})
+- Lead with what JARVIS has DONE autonomously since Joe was last here (executions list)
+- Then surface what is still PENDING and needs Joe's attention (pendingQueue)
+- Mention important calls if present
+- Be concise — spoken briefing, not a report
+- No bullet points. Natural operator cadence.
+- Never mention items already briefed (only use the lists provided)
+- If nothing meaningful in the lists, say exactly: All clear sir. What do you need?
+- Max 4-5 sentences total. Joe is busy.`;
+
+  const userPayload = {
+    greeting: ctx.greeting,
+    elapsedSinceJoeActive: ctx.elapsedSinceJoeActive,
+    autonomousActions: ctx.executions.map((e) => e.summary),
+    pendingAttention: ctx.pendingQueue.map((q) => ({
+      summary: q.summary,
+      action: q.detail
+    })),
+    callsSinceBriefing: ctx.calls.map((c) => c.summary)
+  };
+
+  try {
+    const response = await claudeCircuit.execute("activation-briefing", () =>
+      withTimeout(
+        anthropic.messages.create({
+          model,
+          max_tokens: 280,
+          temperature: 0.35,
+          system: `${baseSystemPrompt}\n\n${activationRules}\n\n${JARVIS_SPEECH_OUTPUT_RULES}`,
+          messages: [
+            {
+              role: "user",
+              content: `Joe Stewart just opened JARVIS or said Hey Jarvis. Deliver the activation briefing.\n\nDATA:\n${JSON.stringify(userPayload, null, 2)}\n\nReturn plain speech only.`
+            }
+          ]
+        }),
+        22_000,
+        "activation-briefing"
+      )
+    );
+    const textBlock = response.content.find((block) => block.type === "text");
+    return textBlock?.text?.trim() || buildFallbackActivationSpeechFromContext(ctx);
+  } catch {
+    return buildFallbackActivationSpeechFromContext(ctx);
+  }
+}
+
+function buildFallbackActivationSpeechFromContext(ctx: ActivationContext): string {
+  if (!ctx.executions.length && !ctx.pendingQueue.length && !ctx.calls.length) {
+    return "All clear sir. What do you need?";
+  }
+  const parts: string[] = [`${ctx.greeting}, sir.`];
+  if (ctx.executions.length) {
+    parts.push(
+      `Since you were away: ${ctx.executions
+        .slice(0, 3)
+        .map((e) => e.summary)
+        .join("; ")}.`
+    );
+  }
+  if (ctx.pendingQueue.length) {
+    parts.push(
+      `${ctx.pendingQueue.length} item${ctx.pendingQueue.length === 1 ? "" : "s"} need your attention sir.`
+    );
+  } else {
+    parts.push("Nothing pending that needs you right now.");
+  }
+  return parts.join(" ").replace(/\s+/g, " ").trim();
+}
+
 export async function generateActivationBriefing(input: {
   executions: Array<{ summary: string; itemType: string; action: string }>;
   context: PerceptionPayload;
@@ -856,7 +1208,9 @@ Rules:
 - Do not repeat routine spam/archive actions unless Joe should know.
 - mode critical: one urgent line first.
 - mode activation: what was handled since away + what needs awareness (not approval).
-- If list empty, return exactly: All clear sir. What do you need?`;
+- If list empty, return exactly: All clear sir. What do you need?
+
+${JARVIS_SPEECH_OUTPUT_RULES}`;
 
   try {
     const response = await claudeCircuit.execute("activation-briefing", () =>
@@ -905,8 +1259,9 @@ export async function generateExecutionLogSummary(logs: ExecutionLogEntry[]) {
           model,
           max_tokens: 350,
           temperature: 0.3,
-          system:
-            "Summarize what JARVIS handled today for Joe in 3-6 short sentences. Operator tone. Plain text.",
+          system: `Summarize what JARVIS handled today for Joe in 3-6 short sentences. Operator tone. Plain text.
+
+${JARVIS_SPEECH_OUTPUT_RULES}`,
           messages: [
             {
               role: "user",
@@ -921,6 +1276,6 @@ export async function generateExecutionLogSummary(logs: ExecutionLogEntry[]) {
     const textBlock = response.content.find((block) => block.type === "text");
     return textBlock?.text?.trim() || "Handled several items today, sir.";
   } catch {
-    return logs.map((l) => l.summary).join(" ");
+    return buildExecutionSummarySpeech(logs);
   }
 }

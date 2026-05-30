@@ -56,6 +56,8 @@ export type JudgmentDecision = {
   executionPlan: { tool: string; args: Record<string, unknown> } | null;
   summary: string;
   urgency?: "NOW" | "TODAY" | "THIS_WEEK" | "NONE";
+  /** Set when decision comes from stale priority_queue re-triage */
+  sourceQueueId?: number;
 };
 
 export type ExecutionResult = {

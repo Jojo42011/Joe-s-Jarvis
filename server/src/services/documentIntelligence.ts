@@ -4,6 +4,12 @@ import { db } from "../db";
 import { logExecution } from "../db/queries";
 import { findWorkingModel } from "./claude";
 import { claudeCircuit } from "./circuitBreaker";
+import { logServiceWarn } from "../utils/logError";
+
+const IMAGE_VISION_PROMPT =
+  "Extract and describe all text, data, and meaningful content from this image in full detail. Structure it clearly so it can be stored as business intelligence.";
+
+type ClaudeImageMediaType = "image/jpeg" | "image/png" | "image/webp";
 
 const CHUNK_SIZE = 600;
 const CHUNK_OVERLAP = 100;
@@ -28,6 +34,7 @@ export type DocumentListItem = {
   source: string;
   chunkCount: number;
   originalFilename: string | null;
+  mimeType: string | null;
 };
 
 export type DocumentChunkResult = {
@@ -58,6 +65,81 @@ function stripHtml(html: string): string {
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function resolveImageMediaType(mime: string, filename: string): ClaudeImageMediaType | null {
+  const m = mime.toLowerCase();
+  if (m === "image/jpeg" || m === "image/jpg") return "image/jpeg";
+  if (m === "image/png") return "image/png";
+  if (m === "image/webp") return "image/webp";
+  if (/\.jpe?g$/i.test(filename)) return "image/jpeg";
+  if (/\.png$/i.test(filename)) return "image/png";
+  if (/\.webp$/i.test(filename)) return "image/webp";
+  return null;
+}
+
+function isImageUpload(mime: string, filename: string): boolean {
+  return resolveImageMediaType(mime, filename) !== null;
+}
+
+async function extractImageTextWithVision(
+  buffer: Buffer,
+  mediaType: ClaudeImageMediaType
+): Promise<string> {
+  if (!anthropic) {
+    throw new Error("Claude API is not configured — cannot extract image content");
+  }
+
+  const model = await findWorkingModel();
+  if (!model) {
+    throw new Error("No working Claude model available for vision extraction");
+  }
+
+  const base64 = buffer.toString("base64");
+
+  try {
+    const response = await claudeCircuit.execute("document-vision", () =>
+      anthropic!.messages.create({
+        model,
+        max_tokens: 4096,
+        temperature: 0.2,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: mediaType,
+                  data: base64
+                }
+              },
+              {
+                type: "text",
+                text: IMAGE_VISION_PROMPT
+              }
+            ]
+          }
+        ]
+      })
+    );
+
+    const text = response.content
+      .filter((block) => block.type === "text")
+      .map((block) => (block.type === "text" ? block.text : ""))
+      .join("\n")
+      .trim();
+
+    if (!text) {
+      throw new Error("Vision model returned no extractable text");
+    }
+
+    return text;
+  } catch (error) {
+    logServiceWarn("documentIntelligence", "extractImageTextWithVision", error);
+    throw error instanceof Error ? error : new Error("Vision extraction failed");
+  }
 }
 
 async function extractPdfText(buffer: Buffer): Promise<string> {
@@ -145,25 +227,35 @@ export async function ingestDocument(input: {
     } else if (mime.includes("html") || filename.endsWith(".html") || filename.endsWith(".htm")) {
       docType = "html";
       rawText = stripHtml(input.buffer.toString("utf8"));
-    } else if (
-      mime.startsWith("image/") ||
-      /\.(png|jpe?g|gif|webp)$/i.test(filename)
-    ) {
+    } else if (isImageUpload(mime, filename)) {
+      const mediaType = resolveImageMediaType(mime, filename);
+      if (!mediaType) {
+        throw new Error("Unsupported image format — use JPG, PNG, or WebP");
+      }
       docType = "image";
-      rawText = "Image upload — OCR not yet supported. No searchable text extracted.";
+      rawText = await extractImageTextWithVision(input.buffer, mediaType);
     } else {
       docType = "text";
       rawText = input.buffer.toString("utf8");
     }
   }
 
+  if (!rawText.trim()) {
+    throw new Error("No text could be extracted from this document");
+  }
+
   const title = input.title.trim() || input.originalFilename || "Untitled document";
   const now = new Date().toISOString();
 
+  const storedMime =
+    docType === "image"
+      ? resolveImageMediaType(mime, filename) || mime || null
+      : mime || null;
+
   db.prepare(
     `
-    INSERT INTO documents (id, notebook_id, title, type, original_filename, content_raw, status, uploaded_at, char_count, source)
-    VALUES (@id, @notebookId, @title, @type, @originalFilename, @contentRaw, 'processing', @uploadedAt, 0, @source)
+    INSERT INTO documents (id, notebook_id, title, type, original_filename, mime_type, content_raw, status, uploaded_at, char_count, source)
+    VALUES (@id, @notebookId, @title, @type, @originalFilename, @mimeType, @contentRaw, 'processing', @uploadedAt, 0, @source)
   `
   ).run({
     id: documentId,
@@ -171,6 +263,7 @@ export async function ingestDocument(input: {
     title,
     type: docType,
     originalFilename: input.originalFilename || null,
+    mimeType: storedMime,
     contentRaw: rawText,
     uploadedAt: now,
     source
@@ -452,7 +545,7 @@ export function listDocuments(notebookId?: string): DocumentListItem[] {
   const rows = db
     .prepare(
       `
-    SELECT d.id, d.notebook_id, d.title, d.type, d.status, d.uploaded_at, d.char_count, d.source, d.original_filename,
+    SELECT d.id, d.notebook_id, d.title, d.type, d.status, d.uploaded_at, d.char_count, d.source, d.original_filename, d.mime_type,
            (SELECT COUNT(*) FROM document_chunks c WHERE c.document_id = d.id) as chunk_count
     FROM documents d${notebookSql}
     ORDER BY d.uploaded_at DESC
@@ -468,6 +561,7 @@ export function listDocuments(notebookId?: string): DocumentListItem[] {
     char_count: number;
     source: string;
     original_filename: string | null;
+    mime_type: string | null;
     chunk_count: number;
   }>;
 
@@ -481,7 +575,8 @@ export function listDocuments(notebookId?: string): DocumentListItem[] {
     charCount: row.char_count,
     source: row.source,
     chunkCount: row.chunk_count,
-    originalFilename: row.original_filename
+    originalFilename: row.original_filename,
+    mimeType: row.mime_type
   }));
 }
 

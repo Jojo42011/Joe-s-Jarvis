@@ -39,11 +39,17 @@ import type {
   SearchDecision,
   WeatherPanelData
 } from "./types";
+import { isOperationalBriefQuery } from "./operationalBrief";
+import { routeLog } from "../../utils/requestLog";
 
 export function messageNeedsLiveDataSearch(message: string): boolean {
+  if (isOperationalBriefQuery(message)) return false;
   if (isSendCommand(message) || isSendVerification(message)) return false;
 
   const q = message.toLowerCase();
+  if (/\b(brief me|rundown|catch me up|fill me in|last night|overnight|what did you do|what have you done)\b/.test(q)) {
+    return false;
+  }
   if (shouldUseWeatherSearch(message) || shouldUseNewsSearch(message)) return true;
 
   const weatherPattern =
@@ -462,6 +468,7 @@ export async function runReactLiveDataRoute(
   alertPayload: ReturnType<typeof getActiveAlertPayload>
 ): Promise<ReactLiveDataResult | null> {
   if (!messageNeedsLiveDataSearch(message)) return null;
+  routeLog("hit: runReactLiveDataRoute");
 
   if (!process.env.BRAVE_API_KEY?.trim()) {
     return {

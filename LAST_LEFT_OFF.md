@@ -4,7 +4,7 @@
 **Production URL:** https://joes-jarvis.fly.dev/  
 **Fly app name:** `joes-jarvis`  
 **Region:** `ord`  
-**Last Fly deploy:** May 18, 2026 — `deployment-01KRYSXM5S77HVFRHXRVKDA7V5` (memory overhaul, documents, ReAct, briefing, memory API/HUD).  
+**Last Fly deploy:** May 18, 2026 — `deployment-01KSBJRZTA511P5MZJX3J47FKY` (temporal awareness, upload ack, Nano Banana image gen, job-site REC/transcripts, plus prior mobile UI/TTS/briefing fixes).  
 **Production:** https://joes-jarvis.fly.dev/
 
 ---
@@ -18,8 +18,12 @@ This project is **not** a chatbot. It is:
 3. **Live-data ReAct** — Brave runs *before* JARVIS speaks on weather/news/lookup questions  
 4. **World intelligence** — daily 7am Ohio `senseWorld()`, `world_intel` cache, promotion to durable memory  
 5. **Smart 24-hour briefing** — full brief only when 24h elapsed since `last_briefing_delivered`  
-6. **Document intelligence** — upload PDF/txt/md/csv/html, chunk, search, cite in chat  
-7. **Memory system overhaul** — unified categories, contradiction checks, decay, audit, HUD memory panel  
+6. **Document intelligence** — upload PDF/txt/md/csv/html/images, chunk, search, cite in chat  
+7. **Memory system overhaul** — unified categories, contradiction checks, decay, audit queue, HUD memory panel  
+8. **Temporal awareness** — Ohio Eastern time in every Claude prompt; relative ages on memory + execution log; natural briefing phrasing  
+9. **Upload acknowledgment** — immediate spoken ack on any upload (single or batch); session-scoped upload context for follow-ups  
+10. **Nano Banana image generation** — upload image + generation intent → finished preview in photo panel; `store it` saves to documents  
+11. **Job-site recording mode** — mobile-only REC toggle; Deepgram capture → summarize → `transcripts` table; query by weekday  
 
 **Do not** re-introduce:
 
@@ -30,7 +34,7 @@ This project is **not** a chatbot. It is:
 
 **Do not deploy** unless Joe explicitly asks.
 
-**Do not touch** unless asked: email brain internals, Brave search service, ReAct loop core, document intelligence service, Vapi.
+**Do not touch** unless asked: email brain internals, Brave search service, ReAct loop core, document intelligence ingest/search core, Vapi.
 
 **Replication template:** [README.md](./README.md) → “Replication template”.
 
@@ -151,13 +155,14 @@ These are **intentionally documented** so the next agent does not mistake gaps f
 
 | Issue | Severity | Detail |
 |-------|----------|--------|
-| **`chat.ts` monolith** | Maintainability | ~2,000+ lines: ReAct, documents, memory feedback, tools, activation, truth guards. **Next refactor:** split LiveData / Memory / Documents orchestrators; keep HTTP route thin. |
-| **Dumb memory reads** | Product | Writes are smart (`rememberMemory`); reads are **`getTopMemories(20)`** by confidence only in `buildDynamicSystemPrompt()`. No embeddings, no intent-based retrieval, flagged rows not excluded in code. **Phase 2 priority.** |
-| **No circuit breakers** | Ops | Many Claude calls per turn (intent, contradiction, extraction, audit, world intel). No budget caps, backoff, or rate-limit handling beyond timeouts. Risk: cost spikes + latency under load. |
+| **`chat.ts` monolith** | Maintainability | Split into `routes/chat/*` (`processChat.ts`, `liveData.ts`, `uploadOrchestrator.ts`, etc.). Further splits optional. |
+| **Dumb memory reads** | Product | **Partially fixed:** `getMemoriesForMessage()` by intent/keywords. No embeddings yet. |
+| **Circuit breakers** | Ops | **Implemented** for Gmail, Brave, Claude — still no global budget caps. |
 | **No automated tests** | Quality | Decay, contradiction, audit, briefing 24h rule, ReAct override — **untested**. Golden-path tests recommended before large refactors. |
 | **Audit auto-deletes** | Safety | Weekly `auditMemory()` can **delete/merge** via Claude without human approval. HUD + `execution_log` are the safety net — watch first production audits. |
 | **Gmail OAuth dead on prod** | Blocker | `GMAIL_REFRESH_TOKEN` expired/revoked → brain email perception off, rundown noise. Joe must re-OAuth + `fly secrets set`. |
-| **Prod lag** | Deploy | Last confirmed deploy May 15; memory + documents + latest ReAct may need `fly deploy`. |
+| **Prod lag** | Deploy | Latest feature deploy: `deployment-01KSBJRZTA511P5MZJX3J47FKY`. Run `git status` — repo may be ahead of last commit. |
+| **`NANO_BANANA_API_KEY` missing** | Feature | Image gen speaks “unavailable” until Fly secret set. |
 | **Two “world” layers** | Conceptual | `world_intel` (cache) vs `jarvis_memory.world_intel` (durable) vs live Brave — prompt explains; easy to confuse in code. |
 | **`intelligence.ts` legacy** | Cleanup | Old 5-min loop replaced by `brainCycle()`; file mostly dead. |
 | **Gmail archive scope** | Minor | May lack `gmail.modify`; archive warn-fails. |
@@ -283,46 +288,138 @@ Full rebuild of `jarvis_memory` — memory is treated as the operator’s long-t
 
 ## Where we are leaving off (next chat should start here)
 
-### Done — ready to use locally
+### Shipped and deployed (`deployment-01KSBJRZTA511P5MZJX3J47FKY`)
 
-1. Memory overhaul (all 9 steps above)  
-2. Document intelligence layer  
-3. Smart briefing + live ReAct + weather panel (code in tree)  
-4. **Foundation hardening pass (May 18 evening):**
-   - `chat.ts` split into `routes/chat/index.ts`, `liveData.ts`, `memoryOrchestrator.ts`, `documentOrchestrator.ts`, `tools.ts`, `truthGuard.ts`, `utils.ts`, `types.ts`
-   - Chat order is now explicit: status route → document route → live ReAct → normal Claude path → truth guard → async memory extraction
-   - Smart memory reads via `getMemoriesForMessage(message, 20)`; prompt excludes flagged and confidence `<0.3` memories
-   - Circuit breakers added for Gmail, Brave, Claude (`CLOSED` / `OPEN` / `HALF_OPEN`, 3 failures, 60s recovery window)
-   - Memory audit no longer deletes/merges automatically; audit candidates go to `memory_audit_queue`
-   - HUD memory panel has audit queue review/approve flow
-   - Gmail access token auto-refresh persists token + expiry in `system_state`
-   - Targeted production logging cleaned to one-line service logs with stacks only in development
-5. `npm run build` green  
+**Four additive features (May 18, 2026 — one deploy, no brain/Gmail architecture changes):**
 
-### Not done / next priorities
+| # | Feature | Key files | How it works |
+|---|---------|-----------|--------------|
+| 1 | **Temporal awareness** | `server/src/utils/temporal.ts`, `systemPrompt.ts`, `memoryOrchestrator.ts`, `communication.ts`, `utils.ts` | `Current time: Saturday May 23 2026 3:47 PM EDT` prepended to every dynamic system prompt. Memory lines: `Remembered 3 days ago: …`. Execution log in operator state uses `formatExecutionLogLine()` — relative time + human summary, no raw timestamps/hex IDs. Briefings told to say “this morning you had 3 emails handled”, etc. **Today** = since midnight **Ohio Eastern**, not rolling 24h. |
+| 2 | **Upload acknowledgment** | `server/src/services/uploadSession.ts`, `routes/documents.ts`, `client/index.html` | On upload complete, API returns `speech` immediately (before chat). Single/batch wording per spec. `POST /api/documents/upload-batch` (multipart `files`, max 12). Session uploads keyed by `x-session-id`; `pendingUploads` in `buildChatStateForClaude()`. Failures: “Upload failed sir, please try again.” Session context is **in-memory only** — cleared on page reload. |
+| 3 | **Nano Banana image gen** | `server/src/services/nanoBanana.ts`, `routes/chat/uploadOrchestrator.ts`, client photo panel | Intent: generate / finish this / make this look done, etc. Uses `NANO_BANANA_API_KEY` + optional `NANO_BANANA_API_BASE` (default `https://nanobanana.aikit.club`). `POST /v1/images/edits` with reference image from session buffer. Multiple images → ask which one. Client speaks “Generating now sir, one moment.” before long wait. UI: `ui.panel: "photo"`. `store it` → ingest PNG to documents; `send it` → “Send isn’t wired yet sir.” Graceful if key missing. |
+| 4 | **REC / transcripts** | `server/src/db/transcriptQueries.ts`, `routes/transcripts.ts`, `schema.ts` migration, mobile REC in `client/index.html` | Mobile-only **REC** button (desktop hidden). Continuous Deepgram, no Claude during record. Stop → `POST /api/transcripts/summarize` → Claude JSON summary → SQLite `transcripts`. Mic disabled while recording. Wake lock when available; 3h auto-save; reconnect gaps logged as `[connection gap ~Xmin]`. Chat: “What did we decide on Tuesday?” → `tryTranscriptQueryRoute()`. |
 
-1. **`fly deploy -a joes-jarvis`** — when Joe asks; then verify memory panel at https://joes-jarvis.fly.dev/  
-2. **Gmail OAuth** — `GMAIL_REFRESH_TOKEN` expired/revoked on prod → brain email perception broken, rundown errors; Joe must re-OAuth and `fly secrets set GMAIL_REFRESH_TOKEN=...`  
-3. **Production smoke test hardening changes** — chat route split, live weather ReAct, Gmail fetch/send, memory audit queue approval, activation brief  
-4. **Delete or wire `intelligence.ts`** — legacy loop unused; brain replaced it  
-5. **Tests** — decay, contradiction, audit queue approval, circuit breaker transitions, briefing 24h rule, ReAct override untested  
-6. **Re-test “Jahan lead” send** on prod after truth fixes  
+**Also in this deploy (earlier same arc, same codebase):**
+
+- Briefing death-spiral fix: mutex watchdog, operational brief route before Brave, rundown cache 5 min, circuit logging only on state change  
+- Mobile TTS: `unlockAudioFromUserGesture()` + Web Audio API playback (iOS autoplay)  
+- Mobile immersive UI (≤767px): radar + bottom bar only; desktop unchanged  
+- Chat modularized under `server/src/routes/chat/` (`processChat.ts`, `liveData.ts`, `operationalBrief.ts`, `truthGuard.ts`, etc.)
+
+### Chat route order (`processChat.ts`)
+
+Use this order when debugging — **do not reorder casually**:
+
+1. `__JARVIS_ACTIVATE__`  
+2. `tryFetchEmailsRoute` / `tryEmailConnectionRoute`  
+3. `tryOperationalBriefRoute` (before Brave-heavy paths)  
+4. `tryOperatorStatusRoute`  
+5. `tryOpenEndedBriefingRoute`  
+6. **`tryTranscriptQueryRoute`** (new)  
+7. **`tryUploadFollowUpRoute`** (store/send/analyze uploaded files)  
+8. **`tryImageGenerationRoute`** (new)  
+9. `tryDocumentChatRoute`  
+10. `runReactLiveDataRoute`  
+11. Normal Claude intent path + truth guard + memory extraction  
+
+### Done locally / in prod tree
+
+- [x] All four features above implemented  
+- [x] `npm run build` passes  
+- [x] `fly deploy -a joes-jarvis` — `deployment-01KSBJRZTA511P5MZJX3J47FKY`  
+- [x] Memory overhaul, documents, ReAct, briefing, circuit breakers, chat split, cinematic HUD (prior passes)  
+
+### Not done / next priorities for Joe or next agent
+
+1. **`NANO_BANANA_API_KEY` on Fly** — image generation returns “unavailable” until set:  
+   `fly secrets set NANO_BANANA_API_KEY=... -a joes-jarvis`  
+2. **Production smoke test** (phone + desktop):  
+   - Upload single + multi file → immediate spoken ack  
+   - Upload lawn photo → “finish this” → photo panel + store to documents  
+   - REC on mobile → stop → summary spoken + row in `transcripts`  
+   - Ask “what did we decide on [weekday]?” after a recording  
+   - Briefing/status uses natural time phrases  
+3. **Gmail OAuth** — `GMAIL_REFRESH_TOKEN` may still be expired on prod → brain email perception off; Joe re-OAuth + `fly secrets set`  
+4. **Git commit / PR** — large uncommitted set; Joe did not ask for commit in feature pass — run `git status` before assuming prod = HEAD  
+5. **Automated tests** — still none for temporal, upload session, image gen, transcripts  
+6. **`send it` for generated images** — explicitly not built; ack only  
+7. **Desktop Execution Feed** — may still be hidden by `hud-fold` CSS on desktop (reported earlier, not fixed in REC pass)  
 
 ### Files the next agent will touch most often
 
 | Path | Purpose |
 |------|---------|
-| `server/src/services/memory.ts` | `rememberMemory`, audit, decay hook, extraction |
-| `server/src/config/memoryCategories.ts` | Category constants |
-| `server/src/routes/memory.ts` | Memory API |
-| `server/src/db/queries.ts` | CRUD, decay, stats, grouped fetch |
-| `server/src/routes/chat/index.ts` | Chat route entry point and response assembly |
-| `server/src/routes/chat/liveData.ts` | ReAct / Brave / weather orchestration |
-| `server/src/routes/chat/tools.ts` | Gmail/tool dispatch |
-| `server/src/routes/chat/truthGuard.ts` | Status route + truthful speech guard |
-| `server/src/brain/*` | Autonomous loop |
-| `client/index.html` | HUD + memory panel + docs + voice |
-| `server/src/config/systemPrompt.ts` | Operator identity + MEMORY SYSTEM |
+| `server/src/utils/temporal.ts` | Ohio-relative time for prompts, memory, execution log |
+| `server/src/services/uploadSession.ts` | In-memory session uploads + generated image buffer |
+| `server/src/services/nanoBanana.ts` | Image-to-image API client |
+| `server/src/routes/chat/uploadOrchestrator.ts` | Image gen, upload follow-up, transcript query routes |
+| `server/src/routes/chat/processChat.ts` | Main chat pipeline + route order |
+| `server/src/routes/documents.ts` | Upload + upload-batch + speech in response |
+| `server/src/routes/transcripts.ts` | Summarize + search transcripts |
+| `server/src/db/transcriptQueries.ts` | `transcripts` CRUD + Claude summarize |
+| `server/src/config/systemPrompt.ts` | Base prompt + temporal memory lines |
+| `server/src/routes/chat/memoryOrchestrator.ts` | `buildChatStateForClaude()` |
+| `client/index.html` | Mobile REC, upload batch, photo panel, TTS, immersive CSS |
+| `LAST_LEFT_OFF.md` | This handoff doc |
+
+---
+
+## What we just did (May 18, 2026) — FOUR ADDITIVE FEATURES (DEPLOYED)
+
+Single PR scope: temporal + upload ack + Nano Banana + REC/transcripts. **Zero changes** to core brain loop, Gmail send logic, or ReAct decision core.
+
+### 1. Temporal awareness
+
+- **`server/src/utils/temporal.ts`**
+  - `formatCurrentTimeForPrompt()` — `Current time: {weekday} {month} {day} {year} {time} {TZ}`
+  - `formatRelativeAge()` — Ohio calendar day logic (“this morning”, “2 hours ago”, “two days ago”)
+  - `formatMemoryLine()`, `formatExecutionLogLine()`, `formatBriefingTimePhrase()`
+- **`buildDynamicSystemPrompt()`** — prepends current time to every cached dynamic prompt
+- **Memory in prompt** — `Remembered {age}: {category} — {key} = {value}` (not raw `last_seen`)
+- **`buildChatStateForClaude()`** — `executionLogToday[].line` / `.when`; grouped summary uses relative times; `pendingUploads` list
+- **Briefings** — fallback + Claude user prompt instruct natural time references
+
+### 2. Upload acknowledgment (all file types)
+
+- **`uploadSession.ts`** — `Map<sessionId, SessionUpload[]>` + in-memory image buffers for generation
+- **`POST /api/documents/upload`** — returns `{ speech, files, ... }`; header `x-session-id`
+- **`POST /api/documents/upload-batch`** — multipart `files[]`, one ack for whole batch
+- **Client** — `multiple` on file input; `uploadDocumentFiles()`; speaks server `speech` on success (not old “added to knowledge base” only)
+- **MIME expanded** — docx, gif, etc.
+
+### 3. Nano Banana image generation
+
+- **Env:** `NANO_BANANA_API_KEY` (required), `NANO_BANANA_API_BASE` (optional)
+- **`nanoBanana.ts`** — `generateFromReferenceImage()` → `POST {base}/v1/images/edits`, `response_format: b64_json`
+- **`uploadOrchestrator.ts`** — `tryImageGenerationRoute`, `tryUploadFollowUpRoute`, `tryTranscriptQueryRoute`
+- **Client** — `IMAGE_GEN_INTENT` → immediate “Generating now sir, one moment.”; `renderPhotoPanel()` for `ui.panel === 'photo'`
+
+### 4. Meeting / job site recording
+
+- **Schema migration** — `transcripts` table: `id`, `title`, `date`, `duration_seconds`, `raw_transcript`, `summary`, `action_items`, `created_at`
+- **`POST /api/transcripts/summarize`** — body: `rawTranscript`, `durationSeconds`, `date`; always saves raw even if summarize fails
+- **`GET /api/transcripts/search?q=...`** — weekday hint matching (Ohio)
+- **Client (mobile ≤767px only)** — `#recButton`, `#recordingTimer`, `recordingModeActive`, mutual exclusion with mic, wake lock, 3h cap, Deepgram reconnect gaps
+
+### Verification
+
+- [x] `npm run build` passes  
+- [x] `fly deploy -a joes-jarvis` succeeded  
+- [ ] Joe smoke test on iPhone (upload ack, REC, image gen with API key)  
+
+---
+
+## Earlier “where we left off” (May 18 pre-feature-pass) — superseded by section above
+
+<details>
+<summary>Archived: foundation hardening checklist (still true in codebase)</summary>
+
+1. Memory overhaul (all 9 steps) — done  
+2. Document intelligence — done  
+3. Smart briefing + live ReAct + weather panel — done  
+4. Foundation hardening: chat split, smart memory reads, circuit breakers, audit queue, Gmail token refresh — done  
+5. Latency/UI/circuit/cinematic HUD passes — done  
+</details>
 
 ---
 
@@ -331,8 +428,8 @@ Full rebuild of `jarvis_memory` — memory is treated as the operator’s long-t
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │  client/index.html                                                │
-│  Voice (Deepgram WS) | HUD panels | docs upload | MEMORY panel   │
-│  POST /api/chat  |  GET/PATCH/DELETE /api/memory/*                 │
+│  Voice (Deepgram WS) | REC (mobile) | HUD panels | docs upload (batch) | MEMORY panel   │
+│  POST /api/chat  |  POST /api/documents/upload-batch  |  POST /api/transcripts/summarize │
 └────────────────────────────┬─────────────────────────────────────┘
                              │
 ┌────────────────────────────▼─────────────────────────────────────┐
@@ -368,6 +465,7 @@ Full rebuild of `jarvis_memory` — memory is treated as the operator’s long-t
 | `priority_queue` | Brain triage |
 | `system_state` | Cursors, briefing, `last_memory_decay_run`, `last_memory_audit_run`, alerts |
 | `notebooks`, `documents`, `document_chunks` | Document intelligence |
+| `transcripts` | Job-site / meeting recordings (raw + summary + action_items) |
 | `calls`, `texts`, `priority_contacts`, `contacts`, ... | Ops data |
 
 ---
@@ -383,10 +481,13 @@ Full rebuild of `jarvis_memory` — memory is treated as the operator’s long-t
 | POST | `/api/memory/audit` | Run `auditMemory()` and queue candidates only |
 | GET | `/api/memory/audit-queue` | Pending audit candidates |
 | POST | `/api/memory/audit-approve` | Execute approved delete/merge/flag actions |
-| POST | `/api/documents/upload` | Multipart ingest |
+| POST | `/api/documents/upload` | Single file; returns `speech` + ingest metadata |
+| POST | `/api/documents/upload-batch` | Multipart `files[]`; one batch ack |
 | GET | `/api/documents` | List documents |
 | DELETE | `/api/documents/:id` | Remove doc + chunks |
 | POST | `/api/documents/search` | RAG search + answer |
+| POST | `/api/transcripts/summarize` | End recording → summarize → save `transcripts` |
+| GET | `/api/transcripts/search?q=` | Find transcripts (weekday hints) |
 
 (Plus existing: `/api/chat`, `/api/intelligence/*`, `/api/rundown`, voice, calls, health.)
 
@@ -399,6 +500,8 @@ ANTHROPIC_API_KEY
 BRAVE_API_KEY          # world intel + live ReAct
 DEEPGRAM_API_KEY
 ELEVENLABS_API_KEY
+NANO_BANANA_API_KEY    # image finish generation (uploadOrchestrator) — set on Fly for prod
+NANO_BANANA_API_BASE   # optional; default https://nanobanana.aikit.club
 GMAIL_CLIENT_ID
 GMAIL_CLIENT_SECRET
 GMAIL_REFRESH_TOKEN    # ⚠️ may be expired on prod
@@ -554,22 +657,18 @@ See table **“Known issues & architectural debt (Cursor review)”** above for 
 
 **Do not commit unless Joe asks.** Large uncommitted set likely includes memory overhaul + documents + briefing. Run `git status` before assuming prod matches HEAD.
 
-**Docs updated:** May 18, 2026 — `README.md` (full build inventory), this file (memory handoff + hardening pass).
+**Docs updated:** May 18, 2026 — four-feature deploy handoff + prior memory/doc/ReAct/mobile passes.
 
 ---
 
-## Acceptance when we stopped (May 18)
+## Acceptance when we stopped (May 18, 2026)
 
 - [x] Memory overhaul implemented per spec  
+- [x] Four additive features: temporal, upload ack, Nano Banana, REC/transcripts  
 - [x] `npm run build` passes  
-- [x] Memory API + HUD panel in `client/index.html`  
-- [x] `fly deploy` for latest code (`deployment-01KRYSXM5S77HVFRHXRVKDA7V5`)  
-- [x] Foundation hardening pass implemented locally  
-- [x] `npm run build` passes after hardening  
-- [x] Latency/UI/circuit completion pass implemented locally  
-- [x] `npm run build` passes after each part of latency/UI/circuit pass  
-- [x] Cinematic HUD / conversational UX pass implemented locally  
-- [x] `npm run build` passes after cinematic pass  
-- [ ] Prod test: memory panel, audit button, contradiction on real correction  
+- [x] `fly deploy` — `deployment-01KSBJRZTA511P5MZJX3J47FKY`  
+- [x] Foundation hardening + latency/UI/circuit/cinematic passes in tree  
+- [ ] Set `NANO_BANANA_API_KEY` on Fly and smoke-test image generation  
+- [ ] Prod test: upload ack (single + batch), REC summarize, transcript query by weekday  
 - [ ] Gmail re-auth on Fly  
-- [ ] Prod test: chat route split, Gmail auto-refresh, audit queue approval, circuit breaker graceful responses
+- [ ] Git commit/PR if Joe wants repo synced to prod  

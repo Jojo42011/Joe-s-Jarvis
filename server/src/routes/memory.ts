@@ -2,11 +2,15 @@ import { Router } from "express";
 import {
   deleteMemoryById,
   getAllMemoriesGrouped,
+  getEvolutionHudStats,
   getMemoryStats,
+  getSelfEvolutionInsights,
   getSystemState,
   logExecution,
+  resolveSelfEvolutionInsight,
   updateMemoryById
 } from "../db/queries";
+import { invalidateDynamicPromptCache } from "../config/systemPrompt";
 import { approveMemoryAuditActions, auditMemory } from "../services/memory";
 import { getPendingMemoryAuditQueue } from "../db/queries";
 
@@ -55,6 +59,22 @@ memoryRouter.get("/memory", (_req, res) => {
 
 memoryRouter.get("/memory/stats", (_req, res) => {
   res.json(getMemoryStats());
+});
+
+memoryRouter.get("/memory/evolution", (_req, res) => {
+  const rows = getSelfEvolutionInsights("pending", 10);
+  const stats = getEvolutionHudStats();
+  res.json({
+    insights: rows.map((row) => ({
+      id: row.id,
+      observation: row.observation,
+      suggested_improvement: row.suggested_improvement,
+      category: row.category,
+      confidence: row.confidence,
+      created_at: row.created_at
+    })),
+    stats
+  });
 });
 
 memoryRouter.delete("/memory/:id", (req, res) => {
@@ -137,7 +157,35 @@ memoryRouter.post("/memory/audit", async (_req, res, next) => {
 
 memoryRouter.post("/memory/audit-approve", async (req, res, next) => {
   try {
-    const body = req.body as { ids?: number[] };
+    const body = req.body as {
+      ids?: number[];
+      id?: number;
+      status?: string;
+    };
+
+    if (body.status === "approved" || body.status === "rejected") {
+      const id = Number(body.id ?? body.ids?.[0]);
+      if (!Number.isFinite(id) || id <= 0) {
+        res.status(400).json({ error: "id required with status" });
+        return;
+      }
+      const ok = resolveSelfEvolutionInsight(id, body.status);
+      if (!ok) {
+        res.status(404).json({ error: "Insight not found or already resolved" });
+        return;
+      }
+      invalidateDynamicPromptCache();
+      logExecution({
+        type: "memory",
+        action: `evolution.${body.status}`,
+        item_id: String(id),
+        summary: `Self-evolution insight ${body.status}: #${id}`,
+        result: "success"
+      });
+      res.json({ ok: true, id, status: body.status });
+      return;
+    }
+
     const ids = Array.isArray(body.ids)
       ? body.ids.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0)
       : [];

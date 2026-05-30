@@ -146,6 +146,20 @@ export function getWorldIntelSinceHours(hours = 48): WorldIntelRow[] {
   return rows.map(mapRow);
 }
 
+/** Prompt cache: HIGH within 48h, MEDIUM within 7 days (168h). */
+export function getWorldIntelForPrompt(): WorldIntelRow[] {
+  const high = getWorldIntelSinceHours(48).filter((w) => w.relevance === "HIGH");
+  const medium = getWorldIntelSinceHours(168).filter((w) => w.relevance === "MEDIUM");
+  const seen = new Set<number>();
+  const merged: WorldIntelRow[] = [];
+  for (const row of [...high, ...medium]) {
+    if (seen.has(row.id)) continue;
+    seen.add(row.id);
+    merged.push(row);
+  }
+  return merged;
+}
+
 export function getWorldIntelById(id: number): WorldIntelRow | null {
   const row = db
     .prepare(

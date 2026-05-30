@@ -1,6 +1,7 @@
 import type { Request } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import type { ConversationState } from "../../db/queries";
+import { sanitizeSpeech } from "../../brain/communication";
 import type { IntentResponse, JarvisUiPayload, ToolPayload } from "./types";
 
 export const CHECKING_SPEECH_PATTERN =
@@ -26,20 +27,14 @@ export function claudeWithTimeout<T>(promise: Promise<T>, ms: number, label: str
   });
 }
 
+import { formatCurrentTimeForPrompt } from "../../utils/temporal";
+
 export function getOhioDateTimeString(): string {
-  return new Date().toLocaleString("en-US", {
-    timeZone: "America/New_York",
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
+  return formatCurrentTimeForPrompt().replace(/^Current time: /, "");
 }
 
 export function buildDateTimePromptPrefix(): string {
-  return `CURRENT DATE/TIME: ${getOhioDateTimeString()} (Ohio / Eastern Time)\n`;
+  return `${formatCurrentTimeForPrompt()}\n`;
 }
 export function parseTemperatureF(text: string): number | null {
   const m =
@@ -130,7 +125,8 @@ export function sanitizeSpeechForClient(
   }
 
   if (looksLikeJsonBlob(current)) return fallback;
-  return current || fallback;
+  const cleaned = sanitizeSpeech(current);
+  return cleaned && cleaned !== "One moment, sir." ? cleaned : fallback;
 }
 
 function intentFromParsed(parsed: Record<string, unknown>): IntentResponse {

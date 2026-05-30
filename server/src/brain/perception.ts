@@ -2,6 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 
 import {
 
+  clearGmailAuthAlertIfPresent,
+
   countHandledQueueItems,
 
   getCallsAfterRowId,
@@ -528,6 +530,7 @@ export class Perception {
       }
 
       setSystemState("last_email_check", new Date(emailCursor).toISOString());
+      clearGmailAuthAlertIfPresent();
 
     } catch (error) {
       logServiceWarn("Gmail", "perception poll", error);

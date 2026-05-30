@@ -2,27 +2,45 @@ import {
   addPriorityContact,
   clearAlertIfMatchingQueueItem,
   getActiveAlertPayload,
+  getAppointmentById,
   getPriorityContacts,
   getQueue,
   getQueueGroupedByUrgency,
   getRecentCalls,
   getState,
   getTextsSince,
+  getUpcomingAppointments,
   logExecution,
   markQueueItemHandled,
   setState,
+  updateAppointmentStatus,
   type ConversationState
 } from "../../db/queries";
-import {
-  generateAutonomousEmailReply,
-  generateOperatorBriefing
-} from "../../services/claude";
+import { generateOperatorBriefing } from "../../services/claude";
 import { getRecentGmailMessages, sendGmailReply } from "../../services/gmail";
+import { generateAutonomousEmailReply } from "../../services/claude";
+import { resolveOutboundEmailBody } from "../../utils/emailBody";
 import { communication } from "../../brain/cycle";
 import { logServiceError } from "../../utils/logError";
+import { toolLog } from "../../utils/requestLog";
 import { findEmailFromMessage } from "./truthGuard";
 import { extractNameRefs } from "./truthGuard";
 import { isSendCommand, normalizeText, resolveItemFromState } from "./utils";
+import {
+  resolveImageGenerationTarget,
+  runImageGeneration
+} from "./uploadOrchestrator";
+import { getSessionImages } from "../../services/uploadSession";
+import {
+  bookAppointmentFromExtraction,
+  defaultNextWeekdaySlot,
+  type AppointmentExtraction
+} from "../../services/appointmentBooking";
+import {
+  checkAvailability,
+  deleteCalendarEvent,
+  getUpcomingEvents
+} from "../../services/googleCalendar";
 import type { EmailStateItem, IntentResponse, JarvisUiPayload } from "./types";
 
 ﻿function summarizeDraft(draft: string) {
@@ -121,24 +139,28 @@ export async function sendEmailImmediately(
     return null;
   }
 
-  const body =
-    bodyHint.trim() ||
-    (await generateAutonomousEmailReply({
-      from: selected.from,
-      subject: selected.subject,
+  const messageId = selected.id;
+  const to = selected.from;
+  const subject = selected.subject;
+
+  const body = await resolveOutboundEmailBody(bodyHint, () =>
+    generateAutonomousEmailReply({
+      from: to,
+      subject,
       snippet: selected.snippet || currentMessage,
       emailType: selected.priority || "general"
-    }));
+    })
+  );
 
   await sendGmailReply({
-    messageId: selected.id,
+    messageId,
     threadId: selected.threadId,
-    to: selected.from,
-    subject: selected.subject,
+    to,
+    subject,
     body
   });
 
-  const summary = `Sent reply to ${selected.from} re: ${selected.subject}`;
+  const summary = `Sent reply to ${to} re: ${subject}`;
   logExecution({
     type: "email",
     action: "gmail.send_reply",
@@ -173,18 +195,31 @@ export async function sendEmailImmediately(
 
 export async function sendReplyFromState(state: ConversationState) {
   const selected = state.selectedItem as EmailStateItem | null;
-  const draft = String(state.draft || "").trim();
+  const draftHint = String(state.draft || "").trim();
 
-  if (!selected?.id || !selected.from || !selected.subject || !draft) {
+  if (!selected?.id || !selected.from || !selected.subject || !draftHint) {
     return null;
   }
 
+  const messageId = selected.id;
+  const to = selected.from;
+  const subject = selected.subject;
+
+  const body = await resolveOutboundEmailBody(draftHint, () =>
+    generateAutonomousEmailReply({
+      from: to,
+      subject,
+      snippet: selected.snippet || "",
+      emailType: selected.priority || "general"
+    })
+  );
+
   await sendGmailReply({
-    messageId: selected.id,
+    messageId,
     threadId: selected.threadId,
-    to: selected.from,
-    subject: selected.subject,
-    body: draft
+    to,
+    subject,
+    body
   });
 
   return selected;
@@ -198,6 +233,9 @@ export async function executeTool(
 ): Promise<{ response: IntentResponse; statePatch: Partial<ConversationState>; sentEmail?: boolean }> {
   const toolName = response.tool.name;
   const args = response.tool.args || {};
+  toolLog(
+    `execute: intent=${response.intent} tool=${toolName || "none"} session=${sessionId.slice(0, 12)}`
+  );
 
   if (response.intent === "execute.cancel") {
     return {
@@ -214,6 +252,54 @@ export async function executeTool(
       statePatch: {
         selectedItem: null,
         lastIntent: "execute.cancel"
+      }
+    };
+  }
+
+  if (
+    toolName === "image.generate" ||
+    response.intent === "image.generate" ||
+    (typeof response.intent === "string" && response.intent.startsWith("image.generate"))
+  ) {
+    toolLog("image.generate tool handler — invoking Gemini");
+    const prompt = String(
+      args.prompt || args.message || args.text || response.entities?.prompt || currentMessage
+    ).trim();
+    const target = resolveImageGenerationTarget(
+      sessionId,
+      prompt || currentMessage,
+      args,
+      currentMessage
+    );
+
+    if (target === null && getSessionImages(sessionId).length > 1) {
+      const names = getSessionImages(sessionId).map((i) => i.filename).join(" or ");
+      return {
+        sentEmail: false,
+        response: {
+          speech: `Which image sir — ${names}?`,
+          intent: "image.generate.select",
+          entities: {},
+          ui: { panel: null, data: [], action: null },
+          tool: { name: null, args: {} }
+        },
+        statePatch: { lastIntent: "image.generate.select" }
+      };
+    }
+
+    const genResult = await runImageGeneration(
+      prompt || currentMessage,
+      sessionId,
+      target
+    );
+
+    return {
+      sentEmail: false,
+      response: genResult,
+      statePatch: {
+        activePanel: (genResult.ui.panel as ConversationState["activePanel"]) || "photo",
+        activeItems: genResult.ui.data || [],
+        lastIntent: genResult.intent
       }
     };
   }
@@ -279,6 +365,12 @@ export async function executeTool(
 
   if (response.intent === "fetch.emails") {
     const emails = await getRecentGmailMessages(8);
+    logExecution({
+      type: "email",
+      action: "gmail.fetch",
+      summary: `Inbox opened — ${emails.length} message${emails.length === 1 ? "" : "s"} loaded for Joe`,
+      result: "success"
+    });
     return {
       response: {
         ...response,
@@ -337,6 +429,12 @@ export async function executeTool(
 
   if (toolName === "gmail.fetch" || toolName === "gmail.fetch_unread") {
     const emails = await getRecentGmailMessages(8);
+    logExecution({
+      type: "email",
+      action: toolName,
+      summary: `Inbox opened — ${emails.length} message${emails.length === 1 ? "" : "s"} loaded for Joe`,
+      result: "success"
+    });
     return {
       response: {
         ...response,
@@ -619,6 +717,173 @@ export async function executeTool(
         lastIntent: response.intent
       }
     };
+  }
+
+  if (
+    response.intent === "calendar.list" ||
+    toolName === "calendar.list" ||
+    response.intent === "calendar.check" ||
+    toolName === "calendar.check" ||
+    response.intent === "calendar.create" ||
+    toolName === "calendar.create" ||
+    response.intent === "calendar.cancel" ||
+    toolName === "calendar.cancel"
+  ) {
+    const days = Number(args.days) || 7;
+
+    if (response.intent === "calendar.list" || toolName === "calendar.list") {
+      const [events, localAppts] = await Promise.all([
+        getUpcomingEvents(days),
+        Promise.resolve(getUpcomingAppointments(20))
+      ]);
+      const lines: string[] = [];
+      if (events?.length) {
+        for (const ev of events.slice(0, 8)) {
+          const when = ev.start
+            ? new Date(ev.start).toLocaleString("en-US", {
+                timeZone: "America/New_York",
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit"
+              })
+            : "TBD";
+          lines.push(`${when}: ${ev.summary}`);
+        }
+      }
+      if (localAppts.length) {
+        for (const a of localAppts.slice(0, 5)) {
+          lines.push(
+            `${a.callerName || "Client"} — ${a.serviceRequested || "appointment"} (${a.preferredDate || "scheduled"})`
+          );
+        }
+      }
+      const speech =
+        response.speech ||
+        (lines.length
+          ? `On the calendar sir: ${lines.join(". ")}.`
+          : "Nothing on the calendar for that window, sir.");
+      return {
+        response: {
+          ...response,
+          speech,
+          ui: {
+            panel: "rundown",
+            action: "open",
+            data: [{ calendarEvents: events || [], appointments: localAppts }]
+          }
+        },
+        statePatch: { lastIntent: "calendar.list", activePanel: "rundown" }
+      };
+    }
+
+    if (response.intent === "calendar.check" || toolName === "calendar.check") {
+      const startRaw = String(args.startDateTime || args.start || "").trim();
+      const endRaw = String(args.endDateTime || args.end || "").trim();
+      let start = startRaw;
+      let end = endRaw;
+      if (!start) {
+        const slot = defaultNextWeekdaySlot();
+        start = slot.start;
+        end = slot.end;
+      } else if (!end) {
+        const ms = Date.parse(start);
+        end = Number.isFinite(ms) ? new Date(ms + 3600000).toISOString() : start;
+      }
+      const free = await checkAvailability(start, end);
+      const when = new Date(start).toLocaleString("en-US", {
+        timeZone: "America/New_York",
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+      });
+      const speech =
+        response.speech ||
+        (free === true
+          ? `You're clear at ${when}, sir.`
+          : free === false
+            ? `That slot is taken, sir — ${when} has a conflict.`
+            : "I couldn't reach the calendar right now, sir.");
+      return {
+        response: { ...response, speech, ui: { panel: null, data: [], action: null } },
+        statePatch: { lastIntent: "calendar.check" }
+      };
+    }
+
+    if (response.intent === "calendar.create" || toolName === "calendar.create") {
+      const extraction: AppointmentExtraction = {
+        shouldBook: true,
+        callerName: String(args.callerName || args.name || response.entities?.name || "Client").trim(),
+        callerPhone: String(args.callerPhone || args.phone || "").trim(),
+        serviceRequested: String(
+          args.serviceRequested || args.service || args.summary || "Consultation"
+        ).trim(),
+        preferredDate: String(args.preferredDate || args.date || "flexible").trim(),
+        preferredTime: String(args.preferredTime || args.time || "flexible").trim(),
+        notes: String(args.notes || currentMessage).trim(),
+        startDateTime: args.startDateTime ? String(args.startDateTime) : null,
+        endDateTime: args.endDateTime ? String(args.endDateTime) : null
+      };
+      const booked = await bookAppointmentFromExtraction(extraction, "chat");
+      return {
+        response: {
+          ...response,
+          speech:
+            response.speech ||
+            (booked.ok && booked.speech
+              ? booked.speech
+              : "Couldn't lock that appointment in, sir. Calendar may be unavailable."),
+          ui: { panel: "rundown", action: "open", data: [{ appointmentBooked: booked.ok }] }
+        },
+        statePatch: { lastIntent: "calendar.create", activePanel: "rundown" }
+      };
+    }
+
+    if (response.intent === "calendar.cancel" || toolName === "calendar.cancel") {
+      const apptId = Number(args.appointmentId || args.id);
+      const eventId = String(args.eventId || "").trim();
+      let appt = Number.isFinite(apptId) && apptId > 0 ? getAppointmentById(apptId) : null;
+      if (!appt && eventId) {
+        const all = getUpcomingAppointments(50);
+        appt = all.find((a) => a.eventId === eventId) || null;
+      }
+      if (!appt?.eventId) {
+        return {
+          response: {
+            ...response,
+            speech: response.speech || "No matching appointment to cancel, sir.",
+            ui: { panel: null, data: [], action: null }
+          },
+          statePatch: { lastIntent: "calendar.cancel" }
+        };
+      }
+      const deleted = await deleteCalendarEvent(appt.eventId);
+      if (deleted) {
+        updateAppointmentStatus(appt.id, "cancelled");
+        logExecution({
+          type: "calendar",
+          action: "calendar.cancel",
+          item_id: appt.eventId,
+          summary: `Cancelled appointment for ${appt.callerName || "client"}`,
+          result: "success"
+        });
+      }
+      return {
+        response: {
+          ...response,
+          speech:
+            response.speech ||
+            (deleted
+              ? `Cancelled, sir. ${appt.callerName || "Client"} — ${appt.serviceRequested || "appointment"}.`
+              : "Calendar cancel failed, sir."),
+          ui: { panel: null, data: [], action: null }
+        },
+        statePatch: { lastIntent: "calendar.cancel" }
+      };
+    }
   }
 
   return {

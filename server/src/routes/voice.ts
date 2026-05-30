@@ -7,21 +7,23 @@ import {
   streamElevenLabsSpeech,
   synthesizeElevenLabsSpeech
 } from "../services/elevenlabs";
+import { sanitizeSpeech } from "../brain/communication";
 
 export const voiceRouter = Router();
 
 const activeTtsProvider = process.env.TTS_PROVIDER || "deepgram";
 
 async function streamSpeech(text: string, signal?: AbortSignal) {
+  const spoken = sanitizeSpeech(text);
   if (activeTtsProvider === "elevenlabs") {
     try {
-      return await streamElevenLabsSpeech(text, signal);
+      return await streamElevenLabsSpeech(spoken, signal);
     } catch (error) {
       console.error("ElevenLabs stream failed, falling back to Deepgram:", error);
     }
   }
 
-  const speech = await streamDeepgramSpeech(text, signal);
+  const speech = await streamDeepgramSpeech(spoken, signal);
   return {
     ...speech,
     provider: "deepgram",
@@ -30,15 +32,16 @@ async function streamSpeech(text: string, signal?: AbortSignal) {
 }
 
 async function synthesizeSpeech(text: string) {
+  const spoken = sanitizeSpeech(text);
   if (activeTtsProvider === "elevenlabs") {
     try {
-      return await synthesizeElevenLabsSpeech(text);
+      return await synthesizeElevenLabsSpeech(spoken);
     } catch (error) {
       console.error("ElevenLabs synthesis failed, falling back to Deepgram:", error);
     }
   }
 
-  const speech = await synthesizeDeepgramSpeech(text);
+  const speech = await synthesizeDeepgramSpeech(spoken);
   return {
     ...speech,
     provider: "deepgram",

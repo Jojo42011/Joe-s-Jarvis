@@ -14,7 +14,7 @@ healthRouter.get("/health", (_req, res) => {
 
 healthRouter.get("/execution/log", (_req, res) => {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const entries = getExecutionLogSince(since, 60).map((e) => ({
+  const entries = getExecutionLogSince(since, 100).map((e) => ({
     id: e.id,
     type: e.type,
     action: e.action,
@@ -23,5 +23,10 @@ healthRouter.get("/execution/log", (_req, res) => {
     itemId: e.itemId,
     timestamp: e.timestamp
   }));
-  res.json({ entries, count: entries.length });
+  res.json({
+    entries,
+    count: entries.length,
+    ordered: "newest_first",
+    since: since.toISOString()
+  });
 });

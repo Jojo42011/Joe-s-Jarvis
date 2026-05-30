@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#080608" />
+<meta name="mobile-web-app-capable" content="yes" />
 <title>JARVIS | Joe Stewart</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap');
@@ -195,12 +197,6 @@ body::after{
   to{box-shadow:0 0 90px rgba(224,32,48,.3),0 0 180px rgba(160,16,32,.14)}
 }
 
-.holo-core svg{
-  width:44px;height:44px;color:var(--white);
-  filter:drop-shadow(0 0 22px rgba(255,255,255,.65));
-  transition:transform .2s;
-}
-.hologram-container:hover .holo-core svg{transform:scale(1.15)}
 .hologram-container:hover .holo-core{
   box-shadow:0 0 100px rgba(224,32,48,.35),0 0 200px rgba(160,16,32,.18);
 }
@@ -355,6 +351,101 @@ body::after{
 }
 .memory-btn:hover{border-color:var(--red);color:var(--white);background:rgba(224,32,48,.1)}
 .memory-btn svg{width:17px;height:17px}
+
+.rec-btn{
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  flex-shrink:0;height:40px;min-width:40px;padding:0 12px;
+  border:1.5px solid rgba(255,255,255,.12);border-radius:6px;
+  background:rgba(255,255,255,.03);color:var(--muted);cursor:pointer;
+  font-family:var(--mono);font-size:9px;letter-spacing:.12em;
+  transition:all .25s;touch-action:manipulation;
+}
+.rec-btn:hover{border-color:var(--red);color:var(--white);background:rgba(224,32,48,.1)}
+.rec-btn.active{border-color:#ff3344;background:rgba(255,51,68,.18);color:var(--white)}
+.rec-dot{
+  width:7px;height:7px;border-radius:50%;background:#ff3344;opacity:.85;
+}
+.rec-btn.active .rec-dot{animation:recPulse 1.2s ease-in-out infinite}
+@keyframes recPulse{0%,100%{opacity:.45;transform:scale(.92)}50%{opacity:1;transform:scale(1.08)}}
+
+/* ─── SELF EVOLUTION PANEL (desktop sidebar) ─── */
+#evolution-panel{margin-top:auto;border-top:1px solid rgba(255,255,255,.08)}
+#evolution-panel .section-title{cursor:pointer;margin-bottom:0;user-select:none}
+#evolution-panel .evolution-header-inner{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%}
+.evolution-pulse-dot{
+  width:7px;height:7px;border-radius:50%;flex-shrink:0;
+  background:var(--maroon);box-shadow:0 0 8px var(--maroon),0 0 14px rgba(160,16,32,.45);
+  animation:evolutionDotPulse 1.4s ease-in-out infinite;
+}
+.evolution-pulse-dot.hidden{display:none}
+@keyframes evolutionDotPulse{0%,100%{opacity:.45;transform:scale(.9)}50%{opacity:1;transform:scale(1.1)}}
+.evolution-stats-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;
+}
+.evolution-stat{
+  padding:8px 10px;border:1px solid rgba(255,255,255,.08);border-radius:6px;
+  background:rgba(255,255,255,.02);
+}
+.evolution-stat-lbl{font-size:9px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.evolution-stat-val{
+  font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;color:var(--white);
+  margin-top:4px;line-height:1.3;word-break:break-word;
+}
+.evolution-section-label{
+  font-family:'Orbitron',sans-serif;font-size:8px;font-weight:700;letter-spacing:.2em;
+  color:var(--red);margin:12px 0 8px;text-transform:uppercase;
+}
+.evolution-gap-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.evolution-gap-pill{
+  padding:4px 10px;border-radius:999px;border:1px solid rgba(160,16,32,.55);
+  background:rgba(160,16,32,.18);color:var(--white);font-size:10px;letter-spacing:.04em;
+}
+.evolution-insight-card{
+  border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px 12px;
+  margin-bottom:10px;background:rgba(255,255,255,.02);
+}
+.evolution-insight-card.expanded .evolution-observation{-webkit-line-clamp:unset}
+.evolution-cat-badge{
+  display:inline-block;font-family:'Orbitron',sans-serif;font-size:7px;font-weight:800;
+  letter-spacing:.12em;padding:3px 8px;border-radius:4px;margin-bottom:8px;text-transform:uppercase;
+}
+.evolution-cat-badge.knowledge_gap{border:1px solid var(--maroon);color:var(--white);background:rgba(160,16,32,.35)}
+.evolution-cat-badge.pattern{border:1px solid rgba(80,80,80,.8);color:var(--text);background:rgba(40,40,40,.6)}
+.evolution-cat-badge.behavior{border:1px solid rgba(255,255,255,.45);color:var(--white);background:transparent}
+.evolution-cat-badge.memory{border:1px solid rgba(255,255,255,.12);color:var(--muted);background:rgba(0,0,0,.25)}
+.evolution-observation{
+  font-size:11px;color:var(--text);line-height:1.45;margin-bottom:6px;cursor:pointer;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+}
+.evolution-suggestion{font-size:11px;color:var(--muted);line-height:1.4;margin-bottom:8px}
+.evolution-conf-bar{
+  height:3px;border-radius:2px;background:rgba(255,255,255,.06);overflow:hidden;margin-bottom:10px;
+}
+.evolution-conf-fill{
+  height:100%;background:linear-gradient(90deg,var(--maroon),var(--red-hot));
+  box-shadow:0 0 6px rgba(160,16,32,.4);
+}
+.evolution-card-actions{display:flex;gap:8px}
+.evolution-card-actions button{
+  flex:1;padding:6px 8px;border:1px solid rgba(255,255,255,.14);border-radius:4px;
+  background:rgba(255,255,255,.03);color:var(--muted);
+  font-family:'Orbitron',sans-serif;font-size:8px;font-weight:700;letter-spacing:.1em;cursor:pointer;
+}
+.evolution-card-actions button:hover{border-color:var(--red);color:var(--white);background:rgba(224,32,48,.12)}
+.evolution-card-actions button.approve{border-color:rgba(160,16,32,.6);color:var(--white)}
+.evolution-empty{font-size:11px;color:var(--muted);line-height:1.5;padding:4px 0}
+
+@media (max-width:768px){
+  #evolution-panel{display:none!important}
+}
+
+.recording-timer{
+  display:none;position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:90;
+  padding:8px 14px;border-radius:999px;
+  background:rgba(8,6,8,.88);border:1px solid rgba(255,51,68,.35);
+  font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:#ff6677;
+}
+.recording-timer.visible{display:block}
 .memory-panel-layer{
   position:fixed;top:0;right:0;bottom:0;width:min(480px,100vw);z-index:35;
   pointer-events:none;transform:translateX(100%);transition:transform .32s cubic-bezier(.22,1,.36,1);
@@ -530,7 +621,10 @@ body::after{
   font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:.18em;color:var(--red-hot);
 }
 .execution-feed{
-  display:flex;flex-direction:column;gap:8px;max-height:240px;overflow-y:auto;padding-right:4px;margin-bottom:4px;
+  display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto;padding-right:4px;margin-bottom:4px;
+}
+.execution-feed-hint{
+  font-size:9px;color:var(--muted);letter-spacing:.06em;margin:-2px 0 6px;opacity:.9;
 }
 .execution-entry{
   border:1px solid rgba(255,255,255,.06);border-left:2px solid rgba(224,32,48,.45);
@@ -541,6 +635,7 @@ body::after{
 .execution-entry.success{border-left-color:rgba(245,245,247,.55)}
 .execution-entry.failed{border-left-color:var(--red-hot);background:rgba(80,8,16,.18)}
 .execution-entry .exec-action{color:var(--red-hot);letter-spacing:.06em;text-transform:uppercase;font-size:9px}
+.execution-entry .exec-type{color:var(--muted);text-transform:lowercase;font-weight:400}
 .execution-entry .exec-summary{color:var(--text);margin:3px 0}
 .execution-entry .exec-meta{font-size:9px;color:var(--muted);opacity:.85}
 .execution-empty{font-size:11px;color:var(--muted);padding:16px 8px;text-align:center}
@@ -680,6 +775,158 @@ body::after{
 }
 .intel-alert-close:hover{border-color:var(--white);background:rgba(255,255,255,.12)}
 @keyframes alertSlideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ─── MOBILE ONLY (≤767px) — immersive radar + bottom bar; desktop unchanged ─── */
+@media (max-width:767px){
+  html,body{
+    overflow:hidden;height:100%;min-height:100%;
+    -webkit-text-size-adjust:100%;
+  }
+
+  .hud{
+    display:flex;flex-direction:column;
+    height:100dvh;height:100svh;
+    width:100%;max-width:100vw;overflow:hidden;
+    gap:0;
+  }
+
+  /* Hide HUD data panels — desktop-only */
+  .left-panel,
+  .right-panel,
+  .transcript-section,
+  .waveform-section,
+  .directives-section,
+  .execution-feed,
+  .execution-feed-hint,
+  .operator-log,
+  .cmd-prefix,
+  .hint-text{
+    display:none!important;
+  }
+
+  .topbar{
+    flex-shrink:0;flex-wrap:nowrap;padding:10px 16px;gap:10px;
+    min-height:52px;border-bottom:1px solid rgba(224,32,48,.15);
+  }
+  .topbar-left{gap:10px;flex:1;min-width:0}
+  .logo{font-size:16px;letter-spacing:.14em}
+  .status-badge{padding:6px 12px;font-size:9px;flex-shrink:0}
+  .topbar-right{gap:8px;flex-shrink:0;width:auto}
+  .user-tag{display:none}
+  .clock{font-size:12px}
+
+  .center-stage{
+    flex:1 1 auto;min-height:0;width:100%;
+    max-height:none;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+    padding:8px 12px calc(8px + env(safe-area-inset-bottom,0));
+  }
+  .hologram-container{
+    width:min(88vw,88vmin,420px);
+    height:min(88vw,88vmin,420px);
+    max-height:calc(100dvh - 52px - 88px - env(safe-area-inset-bottom,0));
+    max-width:calc(100dvh - 52px - 88px - env(safe-area-inset-bottom,0));
+  }
+  .holo-text{font-size:9px;letter-spacing:.22em;bottom:8px}
+
+  .bottombar{
+    flex-shrink:0;position:fixed;left:0;right:0;bottom:0;z-index:80;
+    display:flex;flex-wrap:nowrap;align-items:center;
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom,0));
+    gap:10px;border-top:1px solid rgba(224,32,48,.25);
+    background:rgba(8,6,8,.92);backdrop-filter:blur(20px);
+    box-shadow:0 -12px 40px rgba(0,0,0,.55);
+  }
+  #commandForm{flex:1;min-width:0;order:unset;display:flex}
+  .cmd-input{
+    font-size:16px;min-height:44px;width:100%;
+    padding:10px 12px;
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.08);border-radius:6px;
+  }
+  .send-btn{
+    flex-shrink:0;min-height:48px;min-width:80px;padding:12px 14px;font-size:10px;
+    touch-action:manipulation;
+  }
+  .mic-btn{
+    flex-shrink:0;width:56px;height:56px;min-width:56px;min-height:56px;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  }
+  .mic-btn svg{width:24px;height:24px}
+  .doc-upload-btn{
+    flex-shrink:0;width:48px;height:48px;min-width:48px;min-height:48px;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  }
+  .doc-upload-btn svg{width:20px;height:20px}
+  .memory-btn{
+    flex-shrink:0;width:48px;height:48px;min-width:48px;min-height:48px;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  }
+  .memory-btn svg{width:20px;height:20px}
+
+  .dynamic-panel-layer{
+    top:0;right:0;bottom:0;left:0;width:100%;max-width:100vw;
+    padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);
+  }
+  .dynamic-panel-shell{
+    border-radius:0;border-left:none;border-right:none;
+    max-height:100%;
+  }
+  .dynamic-panel-close{
+    width:44px;height:44px;min-width:44px;min-height:44px;
+    font-size:18px;touch-action:manipulation;
+  }
+  .dynamic-panel-body{
+    -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+    padding:14px;padding-bottom:calc(14px + env(safe-area-inset-bottom,0));
+  }
+  .panel-primary,.panel-secondary,.memory-value{font-size:14px;word-break:break-word}
+  .weather-crew-status{font-size:22px;padding:16px 10px}
+  .summary-grid{grid-template-columns:1fr 1fr;gap:10px}
+
+  .memory-panel-layer{width:100%;max-width:100vw}
+  .memory-panel-actions button{
+    min-height:44px;padding:10px 12px;font-size:9px;
+    touch-action:manipulation;
+  }
+  .memory-tab{min-height:40px;padding:8px 10px;font-size:8px}
+  .memory-panel-body{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .memory-card-actions button{min-height:40px;min-width:40px}
+
+  .doc-toast{
+    bottom:calc(88px + env(safe-area-inset-bottom,0));
+    max-width:calc(100vw - 24px);font-size:13px;
+  }
+
+  .rec-btn{
+    min-width:56px;height:48px;padding:0 10px;font-size:10px;
+    border-color:rgba(224,32,48,.45);background:rgba(224,32,48,.08);color:var(--white);
+  }
+  .rec-dot{width:8px;height:8px}
+  .generated-image-panel img{width:100%;max-height:70vh;object-fit:contain;border-radius:8px}
+}
+.generated-image-panel img{
+  width:100%;max-height:min(70vh,640px);object-fit:contain;border-radius:8px;
+  display:block;background:rgba(0,0,0,.25);
+}
+.generated-image-actions{
+  display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;
+}
+.generated-image-download{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:10px 18px;border:1px solid var(--red);border-radius:6px;
+  background:rgba(224,32,48,.12);color:var(--white);
+  font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;
+  letter-spacing:.12em;text-decoration:none;cursor:pointer;
+  touch-action:manipulation;
+}
+.generated-image-download:hover{background:rgba(224,32,48,.28);color:var(--white)}
+
+@media (min-width:768px){
+  .hud-fold>summary.section-title{display:none}
+  .hud-fold>.hud-fold-body{display:block!important;padding:0}
+  .hud-fold{border:none}
+}
 </style>
 </head>
 <body>
@@ -689,6 +936,7 @@ body::after{
   <div class="ambient-glow"></div>
 </div>
 <div class="brain-pulse-ring" id="brainPulseRing" aria-hidden="true"></div>
+<div class="recording-timer" id="recordingTimer" aria-live="polite">REC 00:00</div>
 
 <main class="hud" id="hudRoot">
   <!-- TOP BAR -->
@@ -710,28 +958,47 @@ body::after{
 
   <!-- LEFT PANEL -->
   <aside class="left-panel">
-    <div class="section">
-      <div class="section-title">Operations</div>
-      <div class="metric-row"><span class="label">Priority Calls</span><span class="value" id="metricPriorityCalls">0</span></div>
-      <div class="metric-row"><span class="label">Messages</span><span class="value" id="metricMessages">0</span></div>
-      <div class="metric-row"><span class="label">Flagged Emails</span><span class="value alert" id="metricFlaggedEmails">0</span></div>
-      <div class="metric-row"><span class="label">Active Crews</span><span class="value" id="metricActiveCrews">0</span></div>
-    </div>
-    <div class="section">
-      <div class="section-title">Execution Feed</div>
-      <div class="execution-feed" id="executionFeed">
-        <div class="execution-empty">Loading operator truth layer...</div>
+    <details class="section hud-fold" open>
+      <summary class="section-title">Operations</summary>
+      <div class="hud-fold-body">
+        <div class="metric-row"><span class="label">Priority Calls</span><span class="value" id="metricPriorityCalls">0</span></div>
+        <div class="metric-row"><span class="label">Messages</span><span class="value" id="metricMessages">0</span></div>
+        <div class="metric-row"><span class="label">Flagged Emails</span><span class="value alert" id="metricFlaggedEmails">0</span></div>
+        <div class="metric-row"><span class="label">Active Crews</span><span class="value" id="metricActiveCrews">0</span></div>
       </div>
-    </div>
-    <div class="section">
-      <div class="section-title">Session Log</div>
-      <div class="operator-log" id="operatorLog">
-        <div class="log-entry">
-          <span class="log-time">BOOT</span>
-          <span class="log-text">JARVIS interface loaded. Awaiting input.</span>
+    </details>
+    <details class="section hud-fold">
+      <summary class="section-title">Execution Feed</summary>
+      <div class="hud-fold-body">
+        <div class="execution-feed-hint" id="executionFeedHint">Newest first · backend truth</div>
+        <div class="execution-feed" id="executionFeed">
+          <div class="execution-empty">Loading operator truth layer...</div>
         </div>
       </div>
-    </div>
+    </details>
+    <details class="section hud-fold">
+      <summary class="section-title">Session Log</summary>
+      <div class="hud-fold-body">
+        <div class="operator-log" id="operatorLog">
+          <div class="log-entry">
+            <span class="log-time">BOOT</span>
+            <span class="log-text">JARVIS interface loaded. Awaiting input.</span>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="section hud-fold" id="evolution-panel">
+      <summary class="section-title">
+        <span class="evolution-header-inner">
+          <span>SELF EVOLUTION</span>
+          <span class="evolution-pulse-dot hidden" id="evolutionPulseDot" aria-hidden="true"></span>
+        </span>
+      </summary>
+      <div class="hud-fold-body" id="evolutionPanelBody">
+        <div class="evolution-empty">Loading evolution state...</div>
+      </div>
+    </details>
   </aside>
 
   <!-- CENTER: HOLOGRAM -->
@@ -748,12 +1015,7 @@ body::after{
       <div class="holo-ring holo-ring-3"></div>
       <div class="holo-ring holo-ring-4"></div>
       <div class="holo-ring holo-ring-5"></div>
-      <div class="holo-core">
-        <svg viewBox="0 0 24 24" fill="none">
-          <path d="M12 15c1.66 0 3-1.34 3-3V6c0-1.66-1.34-3-3-3S9 4.34 9 6v6c0 1.66 1.34 3 3 3Z" fill="currentColor"/>
-          <path d="M17.3 12c0 2.93-2.38 5.3-5.3 5.3S6.7 14.93 6.7 12H5c0 3.53 2.61 6.43 6 6.92V22h2v-3.08c3.39-.49 6-3.39 6-6.92h-1.7Z" fill="currentColor"/>
-        </svg>
-      </div>
+      <div class="holo-core" aria-hidden="true"></div>
       <div class="holo-text">TAP CORE TO SPEAK</div>
       <div class="processing-indicator" id="processingIndicator" aria-hidden="true">
         <div class="pulse-bar"><span></span></div>
@@ -799,9 +1061,13 @@ body::after{
       <span class="doc-count-badge" id="docCountBadge">0</span>
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z" stroke="currentColor" stroke-width="1.5"/><path d="M14 2v6h6M12 18v-6M9 15l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
-    <input type="file" id="docFileInput" accept=".pdf,.txt,.md,.csv,.html,.htm" hidden />
+    <input type="file" id="docFileInput" accept=".pdf,.txt,.md,.csv,.html,.htm,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif,.mp3,.mp4,.mov,image/*,application/pdf" multiple hidden />
     <button class="mic-btn" id="micButton" aria-label="Speak to JARVIS">
       <svg viewBox="0 0 24 24" fill="none"><path d="M12 15c1.66 0 3-1.34 3-3V6c0-1.66-1.34-3-3-3S9 4.34 9 6v6c0 1.66 1.34 3 3 3Z" fill="currentColor"/><path d="M17.3 12c0 2.93-2.38 5.3-5.3 5.3S6.7 14.93 6.7 12H5c0 3.53 2.61 6.43 6 6.92V22h2v-3.08c3.39-.49 6-3.39 6-6.92h-1.7Z" fill="currentColor"/></svg>
+    </button>
+    <button class="rec-btn" id="recButton" type="button" aria-label="Record meeting" aria-pressed="false">
+      <span class="rec-dot" aria-hidden="true"></span>
+      <span>REC</span>
     </button>
     <span class="cmd-prefix">JARVIS://</span>
     <form id="commandForm" style="flex:1;display:flex">
@@ -958,53 +1224,60 @@ function triggerActivationSequence(){
   hudRoot.classList.add('activating');
   setTimeout(()=>hudRoot.classList.remove('activating'),1200);
 }
-function renderExecutionFeed(entries=[]){
+function renderExecutionFeed(entries=[],meta={}){
   if(!executionFeed)return;
+  const hint=document.getElementById('executionFeedHint');
+  if(hint){
+    const n=entries.length;
+    const total=meta.count!=null?meta.count:n;
+    hint.textContent=n
+      ? `Newest first · ${n} shown${total>n?` of ${total}`:''} (24h backend truth)`
+      : 'Newest first · backend truth';
+  }
   if(!entries.length){
     executionFeed.innerHTML='<div class="execution-empty">No backend execution entries in the last 24 hours.</div>';
     return;
   }
-  executionFeed.innerHTML=entries.slice(0,40).map((e,i)=>{
+  executionFeed.innerHTML=entries.slice(0,50).map((e,i)=>{
     const ok=/success|ok|complete/i.test(String(e.result||''));
     const cls=ok?'success':'failed';
     const ts=e.timestamp?new Date(e.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
+    const action=escapeHtml(e.action||'action');
+    const type=e.type?`<span class="exec-type">${escapeHtml(e.type)}</span> · `:'';
     return `<article class="execution-entry ${cls}" style="animation-delay:${Math.min(i,12)*40}ms">
-      <div class="exec-action">${escapeHtml(e.action||e.type||'action')}</div>
+      <div class="exec-action">${type}${action}</div>
       <div class="exec-summary">${escapeHtml(e.summary||'—')}</div>
       <div class="exec-meta">${escapeHtml(ts)} · ${escapeHtml(e.result||'unknown')}</div>
     </article>`;
   }).join('');
 }
-async function loadExecutionFeed(){
+async function loadExecutionFeed(force=false){
   if(!executionFeed)return;
   try{
-    const r=await fetch('/api/execution/log');
+    const r=await fetch(`/api/execution/log?t=${Date.now()}`);
     if(!r.ok){
       executionFeed.innerHTML='<div class="execution-empty">Execution feed unavailable.</div>';
       return;
     }
     const d=await r.json();
-    const sig=JSON.stringify((d.entries||[]).slice(0,3).map(e=>e.id));
-    if(sig!==lastExecutionFeedSig){
+    const entries=d.entries||[];
+    const newestId=entries[0]?.id??0;
+    const sig=`${entries.length}:${newestId}`;
+    if(force||sig!==lastExecutionFeedSig){
       lastExecutionFeedSig=sig;
-      renderExecutionFeed(d.entries||[]);
+      renderExecutionFeed(entries,{count:d.count,ordered:d.ordered});
     }
   }catch(e){
     executionFeed.innerHTML='<div class="execution-empty">Execution feed unavailable.</div>';
   }
 }
 async function playQuickTts(text){
-  return new Promise(resolve=>{
-    try{
-      const audio=new Audio(`/api/voice?text=${encodeURIComponent(text)}&t=${Date.now()}`);
-      audio.onended=()=>resolve();
-      audio.onerror=()=>resolve();
-      void audio.play().catch(()=>resolve());
-    }catch(_){resolve()}
-  });
+  await playSessionTts(text,{manageUi:false});
 }
 const docUploadBtn=document.getElementById('docUploadBtn');
 const docFileInput=document.getElementById('docFileInput');
+const recButton=document.getElementById('recButton');
+const recordingTimerEl=document.getElementById('recordingTimer');
 const docCountBadge=document.getElementById('docCountBadge');
 const docToast=document.getElementById('docToast');
 const memoryBtn=document.getElementById('memoryBtn');
@@ -1052,6 +1325,16 @@ const metricEls={
   activeCrews:document.getElementById('metricActiveCrews')
 };
 
+let sessionUploadCount=0;
+const IMAGE_GEN_INTENT=/\b(generate|create|finish(?:ed)?|make this look(?: like)?(?: done)?|what would this look like finished|render|visualize|show me finished|complete this lawn|complete the lawn|transform|make it look)\b/i;
+const RECORDING_MAX_MS=3*60*60*1000;
+let recordingModeActive=false;
+let recordingSegments=[];
+let recordingStartedAt=0;
+let recordingTimerInterval=null;
+let recordingReconnectTimer=null;
+let recordingWakeLock=null;
+let lastRecordingGapAt=0;
 let sessionId=localStorage.getItem('jarvis_session_id')||crypto.randomUUID();
 localStorage.setItem('jarvis_session_id',sessionId);
 
@@ -1083,6 +1366,9 @@ let audioContext=null;
 let audioSource=null;
 let audioProcessor=null;
 let sttReady=false;
+let sttSessionId=0;
+let sttFailureCount=0;
+let sttLastErrorAt=0;
 
 function setStatus(s){
   statusEl.textContent=s;
@@ -1125,69 +1411,242 @@ function addLog(message){
   }
 }
 
-let activeAudio=null;
+let activePlaybackSource=null;
 let speechToken=0;
 let conversationMode=false;
 let isListening=false;
 let listenRestartTimer=null;
+let audioUnlocked=false;
+/** Global playback context — unlocked synchronously on mic/tap; all TTS uses this. */
+let playbackAudioContext=null;
 
-function scheduleListeningRestart(){
-  if(!conversationMode)return;
-  if(statusEl.textContent==='PROCESSING'||statusEl.textContent==='RESPONDING')return;
+/** Minimal silent WAV — plays during user gesture to unlock iOS audio. */
+const SILENT_AUDIO_DATA_URI=
+  'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
 
-  clearTimeout(listenRestartTimer);
-  listenRestartTimer=setTimeout(()=>{
-    if(conversationMode&&statusEl.textContent!=='PROCESSING'&&statusEl.textContent!=='RESPONDING'){
-      startListening(false);
+function getPlaybackAudioContext(){
+  const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+  if(!AudioContextClass)return null;
+  if(!playbackAudioContext||playbackAudioContext.state==='closed'){
+    playbackAudioContext=new AudioContextClass();
+    window.playbackAudioContext=playbackAudioContext;
+  }
+  return playbackAudioContext;
+}
+
+function stopActivePlaybackSource(){
+  if(!activePlaybackSource)return;
+  try{activePlaybackSource.stop(0)}catch(_){/* already stopped */}
+  try{activePlaybackSource.disconnect()}catch(_){}
+  activePlaybackSource=null;
+}
+
+function haltPlayback(){
+  stopActivePlaybackSource();
+  if('speechSynthesis' in window)window.speechSynthesis.cancel();
+}
+
+/**
+ * Synchronous — call at the very start of mic/transmit tap, before any await.
+ * Unlocks Web Audio for delayed TTS (iOS/Android autoplay policy).
+ */
+function unlockAudioFromUserGesture(){
+  const ctx=getPlaybackAudioContext();
+  if(ctx){
+    if(ctx.state==='suspended')void ctx.resume();
+    const sampleRate=ctx.sampleRate;
+    const frameCount=Math.max(1,Math.ceil(sampleRate*0.1));
+    const buffer=ctx.createBuffer(1,frameCount,sampleRate);
+    const source=ctx.createBufferSource();
+    source.buffer=buffer;
+    source.connect(ctx.destination);
+    source.start(0);
+  }
+
+  const silent=new Audio(SILENT_AUDIO_DATA_URI);
+  silent.setAttribute('playsinline','');
+  silent.setAttribute('webkit-playsinline','');
+  silent.playsInline=true;
+  silent.volume=0.001;
+  void silent.play().catch(e=>console.warn('Silent unlock clip failed',e));
+
+  audioUnlocked=true;
+  window.audioUnlocked=true;
+}
+
+function playArrayBufferOnUnlockedContext(arrayBuffer){
+  const ctx=getPlaybackAudioContext();
+  if(!ctx)throw new Error('AudioContext unavailable');
+
+  const copy=arrayBuffer.slice(0);
+  return ctx.decodeAudioData(copy).then(decoded=>{
+    stopActivePlaybackSource();
+    if(ctx.state==='suspended'){
+      return ctx.resume().then(()=>decoded);
     }
-  },650);
+    return decoded;
+  }).then(decoded=>{
+    return new Promise((resolve,reject)=>{
+      const source=ctx.createBufferSource();
+      source.buffer=decoded;
+      source.connect(ctx.destination);
+      activePlaybackSource=source;
+      source.onended=()=>{
+        if(activePlaybackSource===source)activePlaybackSource=null;
+        resolve();
+      };
+      try{
+        source.start(0);
+      }catch(err){
+        activePlaybackSource=null;
+        reject(err);
+      }
+    });
+  });
+}
+
+async function playSessionTts(text,{manageUi=true,token=null}={}){
+  const trimmed=String(text||'').trim();
+  if(!trimmed){
+    if(manageUi){
+      waveformSpeaking=false;
+      setStatus('STANDBY');
+      scheduleListeningRestart();
+    }
+    return;
+  }
+
+  if(!audioUnlocked&&!window.audioUnlocked){
+    console.warn('TTS before unlock — tap mic or TRANSMIT first on mobile');
+  }
+
+  const ctx=getPlaybackAudioContext();
+  if(ctx?.state==='suspended'){
+    try{await ctx.resume()}catch(e){console.warn('Playback context resume',e)}
+  }
+
+  if(manageUi){
+    setStatus('RESPONDING');
+    waveformSpeaking=true;
+  }
+
+  try{
+    const r=await fetch('/api/voice',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:trimmed})
+    });
+    if(!r.ok)throw new Error(`TTS HTTP ${r.status}`);
+    const arrayBuffer=await r.arrayBuffer();
+    if(!arrayBuffer.byteLength)throw new Error('TTS empty audio');
+
+    await playArrayBufferOnUnlockedContext(arrayBuffer);
+
+    if(token!==null&&token!==speechToken)return;
+    if(manageUi){
+      waveformSpeaking=false;
+      setStatus('STANDBY');
+      scheduleListeningRestart();
+    }
+  }catch(e){
+    console.error('Web Audio TTS failed',e);
+    stopActivePlaybackSource();
+    await fallbackSpeak(trimmed,{token,manageUi});
+  }
 }
 
 async function speak(text){
   const token=++speechToken;
-  setStatus('RESPONDING');
-  waveformSpeaking=true;
-
-  if(activeAudio){
-    activeAudio.pause();
-    activeAudio.removeAttribute('src');
-    activeAudio.load();
-    activeAudio=null;
-  }
-
-  try{
-    const audio=new Audio(`/api/voice?text=${encodeURIComponent(text)}&t=${Date.now()}`);
-    audio.preload='auto';
-    activeAudio=audio;
-    audio.onended=()=>{
-      if(token!==speechToken)return;
-      activeAudio=null;
-      waveformSpeaking=false;
-      setStatus('STANDBY');
-      scheduleListeningRestart();
-    };
-    audio.onerror=()=>{
-      if(token!==speechToken)return;
-      activeAudio=null;
-      waveformSpeaking=false;
-      fallbackSpeak(text);
-    };
-    await audio.play();
-  }catch(e){
-    console.error(e);
-    waveformSpeaking=false;
-    fallbackSpeak(text);
-  }
+  haltPlayback();
+  await playSessionTts(text,{manageUi:true,token});
 }
 
-function fallbackSpeak(text){
-  if(!('speechSynthesis' in window)){setStatus('STANDBY');waveformSpeaking=false;scheduleListeningRestart();return}
-  window.speechSynthesis.cancel();
-  waveformSpeaking=true;
-  const u=new SpeechSynthesisUtterance(text);
-  u.rate=0.96;u.pitch=0.88;u.volume=1;
-  u.onend=()=>{waveformSpeaking=false;setStatus('STANDBY');scheduleListeningRestart()};
-  window.speechSynthesis.speak(u);
+function pickSpeechVoice(){
+  if(!('speechSynthesis' in window))return null;
+  const voices=window.speechSynthesis.getVoices();
+  if(!voices.length)return null;
+  return(
+    voices.find(v=>v.lang.startsWith('en')&&/google|natural|premium|samsung/i.test(v.name))||
+    voices.find(v=>v.lang.startsWith('en'))||
+    voices[0]
+  );
+}
+
+async function fallbackSpeak(text,{token=null,manageUi=true}={}){
+  if(!('speechSynthesis' in window)){
+    if(manageUi){
+      setStatus('STANDBY');
+      waveformSpeaking=false;
+      scheduleListeningRestart();
+    }
+    return;
+  }
+
+  if(manageUi){
+    setStatus('RESPONDING');
+    waveformSpeaking=true;
+  }
+
+  const speakNow=()=>{
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    const voice=pickSpeechVoice();
+    if(voice)u.voice=voice;
+    u.rate=0.96;
+    u.pitch=0.88;
+    u.volume=1;
+    u.onend=()=>{
+      if(token!==null&&token!==speechToken)return;
+      if(manageUi){
+        waveformSpeaking=false;
+        setStatus('STANDBY');
+        scheduleListeningRestart();
+      }
+    };
+    u.onerror=()=>{
+      if(token!==null&&token!==speechToken)return;
+      if(manageUi){
+        waveformSpeaking=false;
+        setStatus('STANDBY');
+        scheduleListeningRestart();
+      }
+    };
+    window.speechSynthesis.speak(u);
+  };
+
+  const voices=window.speechSynthesis.getVoices();
+  if(voices.length){
+    speakNow();
+    return;
+  }
+
+  await new Promise(resolve=>{
+    const onVoices=()=>{
+      window.speechSynthesis.removeEventListener('voiceschanged',onVoices);
+      speakNow();
+      resolve();
+    };
+    window.speechSynthesis.addEventListener('voiceschanged',onVoices);
+    setTimeout(()=>{
+      window.speechSynthesis.removeEventListener('voiceschanged',onVoices);
+      speakNow();
+      resolve();
+    },300);
+  });
+}
+
+function scheduleListeningRestart(){
+  if(!conversationMode)return;
+  if(statusEl.textContent==='PROCESSING'||statusEl.textContent==='RESPONDING')return;
+  if(sttFailureCount>=4)return;
+
+  clearTimeout(listenRestartTimer);
+  const delay=Math.min(4000,800+sttFailureCount*900);
+  listenRestartTimer=setTimeout(()=>{
+    if(conversationMode&&statusEl.textContent!=='PROCESSING'&&statusEl.textContent!=='RESPONDING'){
+      startListening(false);
+    }
+  },delay);
 }
 
 function closeDynamicPanel(){
@@ -1216,6 +1675,13 @@ function openDynamicPanel(panel,data=[]){
     dynamicPanelLayer.setAttribute('aria-hidden','false');
     return;
   }
+  if(panel==='photo'){
+    dynamicPanelTitle.textContent='Generated Preview';
+    dynamicPanelBody.innerHTML=renderPhotoPanel(data);
+    dynamicPanelLayer.classList.add('active');
+    dynamicPanelLayer.setAttribute('aria-hidden','false');
+    return;
+  }
   if(panel==='weather'){
     dynamicPanelTitle.textContent='Field Conditions';
     dynamicPanelBody.innerHTML=renderWeatherPanel(data);
@@ -1235,20 +1701,44 @@ function renderDocumentsPanel(data=[]){
     return '<div class="panel-section"><p class="panel-secondary">No documents ingested yet. Use the upload button to add contracts, estimates, and job files.</p></div>';
   }
   const rows=docs.map(doc=>{
-    const title=escapeHtml(doc.title||'Untitled');
+    const title=escapeHtml(doc.title||doc.originalFilename||'Untitled');
     const type=escapeHtml(String(doc.type||'text').toUpperCase());
+    const mime=escapeHtml(doc.mimeType||doc.mime_type||'');
     const uploaded=escapeHtml(doc.uploadedAt||doc.uploaded_at||'—');
     const chunks=escapeHtml(String(doc.chunkCount??doc.chunk_count??0));
+    const chars=escapeHtml(String(doc.charCount??doc.char_count??0));
     const id=escapeHtml(doc.id||'');
+    const mimeBit=mime?` · ${mime}`:'';
     return `<div class="panel-doc-row" data-doc-id="${id}">
       <div>
         <div class="panel-primary">${title}</div>
-        <div class="panel-doc-meta">${type} · ${chunks} chunks · ${uploaded}</div>
+        <div class="panel-doc-meta">${type}${mimeBit} · ${chunks} chunks · ${chars} chars · ${uploaded}</div>
       </div>
       <button class="panel-doc-delete" type="button" data-delete-doc="${id}">DELETE</button>
     </div>`;
   }).join('');
   return `<div class="panel-section"><div class="panel-section-title">Knowledge base</div>${rows}</div>`;
+}
+
+function renderPhotoPanel(data=[]){
+  const item=Array.isArray(data)&&data[0]&&typeof data[0]==='object'?data[0]:{};
+  const b64=item.base64||item.imageBase64||item.image_base64||'';
+  const mimeRaw=String(item.mimeType||item.mime_type||'image/png').split(';')[0];
+  const mime=escapeHtml(mimeRaw);
+  const label=escapeHtml(item.label||item.caption||item.sourceFilename||'Generated by JARVIS');
+  const isMobile=window.matchMedia('(max-width:767px)').matches;
+  const btnLabel=isMobile?'Save to Photos':'Download';
+  if(!b64){
+    return '<div class="panel-section"><p class="panel-secondary">No image available.</p></div>';
+  }
+  const dataUri=`data:${mimeRaw};base64,${b64}`;
+  return `<div class="panel-section generated-image-panel">
+    <div class="panel-section-title">${label}</div>
+    <img src="${dataUri}" alt="${label}" />
+    <div class="generated-image-actions">
+      <a class="generated-image-download" href="${dataUri}" download="jarvis-render.png">${btnLabel}</a>
+    </div>
+  </div>`;
 }
 
 function renderWeatherPanel(data=[]){
@@ -1438,7 +1928,10 @@ function handlePanelResponse(ui,intent=''){
 
 function isShutdownCommand(message){
   const text=message.toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
-  return /^(hey\s+)?jarvis\s+(shut\s+off|shutdown|shut\s+down|power\s+down|go\s+offline|stop\s+listening)$/.test(text);
+  if(/^(hey\s+)?jarvis\s+(shut\s+off|shutdown|shut\s+down|power\s+down|go\s+offline|stop\s+listening)$/.test(text)){
+    return true;
+  }
+  return /^(that s all|that will be all|thank you jarvis|thanks jarvis|goodbye jarvis|good night jarvis|stand down|go to sleep|we re done|i m done|go on standby)$/.test(text);
 }
 
 async function clearServerSessionState(sessionToClear){
@@ -1463,14 +1956,7 @@ async function shutdownJarvis(){
   clearTimeout(listenRestartTimer);
   listenRestartTimer=null;
   speechToken++;
-
-  if(activeAudio){
-    activeAudio.pause();
-    activeAudio.removeAttribute('src');
-    activeAudio.load();
-    activeAudio=null;
-  }
-  if('speechSynthesis' in window)window.speechSynthesis.cancel();
+  haltPlayback();
 
   cleanupDeepgramListening({restart:false});
   closeDynamicPanel();
@@ -1481,7 +1967,7 @@ async function shutdownJarvis(){
   localStorage.setItem('jarvis_session_id',sessionId);
 
   addLog('JARVIS shutdown command accepted. Conversation reset.');
-  addMessage('assistant','Offline, sir. Tap the mic when you need me.');
+  addMessage('assistant','Standing by, sir.');
 }
 
 async function jarvisActivateBriefing(){
@@ -1497,10 +1983,11 @@ async function jarvisActivateBriefing(){
     });
     if(!r.ok)return;
     const d=await r.json();
-    const t=d.speech||'Standing by, sir.';
+    const t=String(d.speech||'Standing by, sir.').trim();
     addLog('Auto briefing on activation');
     addMessage('assistant',t);
     handlePanelResponse(d.ui,d.intent);
+    if(t)conversationMode=true;
     speak(t);
   }catch(e){
     console.warn('Activation briefing failed',e);
@@ -1528,6 +2015,9 @@ async function sendCommand(message){
   }
 
   const shouldAck=needsAcknowledgment(cleanMessage);
+  if(IMAGE_GEN_INTENT.test(cleanMessage)&&sessionUploadCount>0){
+    void playQuickTts('Generating now sir, one moment.');
+  }
   if(shouldAck){
     const ack=pickAckPhrase();
     addMessage('assistant',ack);
@@ -1579,7 +2069,7 @@ async function deliverChatResponse(fetchPromise){
     addLog(`Intent: ${d.intent||'unknown'}${timing}`);
     addMessage('assistant',t);
     handlePanelResponse(d.ui,d.intent);
-    void loadExecutionFeed();
+    void loadExecutionFeed(true);
     speak(t);
   }catch(e){
     console.error(e);
@@ -1591,8 +2081,15 @@ async function deliverChatResponse(fetchPromise){
   }
 }
 
-form.addEventListener('submit',e=>{e.preventDefault();sendCommand(input.value)});
-sendBtn.addEventListener('click',()=>sendCommand(input.value));
+form.addEventListener('submit',e=>{
+  e.preventDefault();
+  unlockAudioFromUserGesture();
+  void sendCommand(input.value);
+});
+sendBtn.addEventListener('click',()=>{
+  unlockAudioFromUserGesture();
+  void sendCommand(input.value);
+});
 dynamicPanelClose.addEventListener('click',closeDynamicPanel);
 
 document.addEventListener('pointerdown',e=>{
@@ -1618,7 +2115,129 @@ async function getDeepgramConnection(){
   throw new Error('Deepgram connection details missing');
 }
 
-function cleanupDeepgramListening({restart=true}={}){
+function detachDeepgramSocketHandlers(socket){
+  if(!socket)return;
+  socket.onopen=null;
+  socket.onmessage=null;
+  socket.onerror=null;
+  socket.onclose=null;
+}
+
+function closeDeepgramSocket(){
+  const socket=deepgramSocket;
+  deepgramSocket=null;
+  sttReady=false;
+  if(!socket)return;
+  detachDeepgramSocketHandlers(socket);
+  if(socket.readyState===WebSocket.OPEN||socket.readyState===WebSocket.CONNECTING){
+    try{socket.close(1000,'client-stop')}catch(e){console.warn('Deepgram socket close skipped',e)}
+  }
+}
+
+function notifySttFailure(message){
+  const now=Date.now();
+  if(now-sttLastErrorAt<8000)return;
+  sttLastErrorAt=now;
+  addMessage('assistant',message);
+}
+
+function handleSttFailure(logMessage,userMessage){
+  if(logMessage)addLog(logMessage);
+  sttFailureCount+=1;
+  cleanupDeepgramListening({restart:false});
+  notifySttFailure(userMessage||'Deepgram connection dropped. Tap the mic to try again, sir.');
+  if(conversationMode&&sttFailureCount<4)scheduleListeningRestart();
+}
+
+function bindDeepgramSocketHandlers(socket,sessionId){
+  socket.onmessage=async event=>{
+    let payload=null;
+    try{
+      payload=await parseDeepgramEventData(event.data);
+      if(payload?.type==='ProxyReady')return;
+    }catch(e){
+      console.warn('Deepgram message parse failed',e,event.data);
+      return;
+    }
+    handleDeepgramMessage({data:JSON.stringify(payload)});
+  };
+  socket.onerror=()=>{
+    if(sessionId!==sttSessionId||!isListening)return;
+    handleSttFailure('Deepgram socket error');
+  };
+  socket.onclose=event=>{
+    if(sessionId!==sttSessionId)return;
+    if(recordingModeActive){
+      scheduleRecordingReconnect();
+      return;
+    }
+    if(isListening&&!deepgramFinalTranscript){
+      handleSttFailure(`Deepgram socket closed (${event.code||'unknown'})`);
+    }
+  };
+}
+
+function openDeepgramProxySocket(){
+  return getDeepgramConnection().then(connection=>{
+    if(connection.mode!=='proxy'||!connection.url){
+      throw new Error('Deepgram proxy unavailable');
+    }
+    const protocol=location.protocol==='https:'?'wss:':'ws:';
+    const wsUrl=`${protocol}//${location.host}${connection.url}`;
+    const sessionId=++sttSessionId;
+
+    return new Promise((resolve,reject)=>{
+      const socket=new WebSocket(wsUrl);
+      let settled=false;
+
+      const fail=reason=>{
+        if(settled)return;
+        settled=true;
+        clearTimeout(timer);
+        detachDeepgramSocketHandlers(socket);
+        if(socket.readyState===WebSocket.OPEN||socket.readyState===WebSocket.CONNECTING){
+          try{socket.close()}catch(_){}
+        }
+        reject(new Error(reason));
+      };
+
+      const timer=setTimeout(()=>fail('Deepgram proxy timeout'),15000);
+
+      socket.onopen=()=>{
+        addLog('STT websocket opened');
+      };
+
+      socket.onmessage=async event=>{
+        let payload=null;
+        try{
+          payload=await parseDeepgramEventData(event.data);
+          if(payload?.type==='ProxyReady'){
+            if(settled)return;
+            settled=true;
+            clearTimeout(timer);
+            sttReady=true;
+            sttFailureCount=0;
+            addLog('Deepgram proxy ready');
+            bindDeepgramSocketHandlers(socket,sessionId);
+            resolve(socket);
+            return;
+          }
+        }catch(e){
+          console.warn('Deepgram message parse failed',e,event.data);
+          return;
+        }
+        if(settled)handleDeepgramMessage({data:JSON.stringify(payload)});
+      };
+
+      socket.onerror=()=>fail('Deepgram socket error');
+      socket.onclose=event=>{
+        if(!settled)fail(`Deepgram socket closed (${event.code||'unknown'})`);
+      };
+    });
+  });
+}
+
+function cleanupDeepgramListening({restart=false}={}){
   clearTimeout(listenTimeout);
   listenTimeout=null;
   stopLocalVadMonitor();
@@ -1644,12 +2263,8 @@ function cleanupDeepgramListening({restart=true}={}){
     micStream=null;
   }
 
-  if(deepgramSocket&&deepgramSocket.readyState<=WebSocket.OPEN){
-    try{deepgramSocket.close()}catch(e){console.warn('Deepgram socket close skipped',e)}
-  }
-  deepgramSocket=null;
+  closeDeepgramSocket();
   isListening=false;
-  sttReady=false;
   clearInterimTranscript();
 
   if(statusEl.textContent==='LISTENING')setStatus('STANDBY');
@@ -1741,6 +2356,17 @@ function commitAccumulatedUtterance(){
   if(!full||statusEl.textContent==='PROCESSING'||statusEl.textContent==='RESPONDING')return;
   isUtteranceCommitting=true;
   utteranceInterim='';
+  if(recordingModeActive){
+    const segment=full.trim();
+    if(segment){
+      recordingSegments.push(segment);
+      addLog(`Recording segment: ${segment.slice(0,80)}`);
+    }
+    resetUtteranceBuffer();
+    clearInterimTranscript();
+    isUtteranceCommitting=false;
+    return;
+  }
   finishDeepgramTranscript(full);
   isUtteranceCommitting=false;
 }
@@ -1875,6 +2501,15 @@ async function handleDeepgramMessage(event){
   showInterimTranscript(transcript);
 }
 
+function handleMicTap(){
+  if(recordingModeActive){
+    void playQuickTts('Recording in progress sir');
+    return;
+  }
+  unlockAudioFromUserGesture();
+  void startListening(true);
+}
+
 async function startListening(enableConversation=true){
   if(enableConversation)conversationMode=true;
   if(isListening){
@@ -1897,53 +2532,7 @@ async function startListening(enableConversation=true){
     isListening=true;
     setStatus('LISTENING');
 
-    const connection=await getDeepgramConnection();
-    const params=new URLSearchParams({
-      model:'nova-2',
-      language:'en-US',
-      smart_format:'true',
-      interim_results:'true',
-      endpointing:'1000',
-      utterance_end_ms:'3000',
-      vad_events:'true',
-      encoding:'linear16',
-      sample_rate:'16000',
-      channels:'1'
-    });
-    if(connection.mode==='proxy'){
-      const protocol=location.protocol==='https:'?'wss:':'ws:';
-      deepgramSocket=new WebSocket(`${protocol}//${location.host}${connection.url}`);
-    }else{
-      deepgramSocket=new WebSocket(`wss://api.deepgram.com/v1/listen?${params}`,['token',connection.token]);
-    }
-
-    deepgramSocket.onmessage=async event=>{
-      let payload=null;
-      try{
-        payload=await parseDeepgramEventData(event.data);
-        if(payload.type==='ProxyReady'){
-          console.log('ProxyReady received');
-          addLog('Deepgram proxy ready');
-          sttReady=true;
-          return;
-        }
-      }catch(e){
-        console.warn('Deepgram message parse failed',e,event.data);
-        return;
-      }
-      handleDeepgramMessage({data:JSON.stringify(payload)});
-    };
-    deepgramSocket.onerror=event=>{
-      console.error('Deepgram socket error',event);
-      addLog('Deepgram socket error');
-      cleanupDeepgramListening();
-      addMessage('assistant','Deepgram mic input failed. Check permissions, sir.');
-    };
-    deepgramSocket.onclose=()=>{
-      if(isListening&&!deepgramFinalTranscript){
-        cleanupDeepgramListening();
-      }
-    };
+    deepgramSocket=await openDeepgramProxySocket();
 
     micStream=await navigator.mediaDevices.getUserMedia({
       audio:{
@@ -1954,8 +2543,15 @@ async function startListening(enableConversation=true){
       }
     });
 
+    if(playbackAudioContext?.state==='suspended'){
+      await playbackAudioContext.resume();
+    }
+
     const AudioContextClass=window.AudioContext||window.webkitAudioContext;
     audioContext=new AudioContextClass();
+    if(audioContext.state==='suspended'){
+      await audioContext.resume();
+    }
     audioSource=audioContext.createMediaStreamSource(micStream);
     vadAnalyser=audioContext.createAnalyser();
     vadAnalyser.fftSize=2048;
@@ -1965,26 +2561,188 @@ async function startListening(enableConversation=true){
     audioProcessor.onaudioprocess=event=>{
       streamPcmAudio(event.inputBuffer.getChannelData(0),audioContext.sampleRate);
     };
+    const sttMuteGain=audioContext.createGain();
+    sttMuteGain.gain.value=0;
     audioSource.connect(audioProcessor);
-    audioProcessor.connect(audioContext.destination);
+    audioProcessor.connect(sttMuteGain);
+    sttMuteGain.connect(audioContext.destination);
     startLocalVadMonitor();
     console.log(`PCM audio streaming initialized at browser sample rate ${audioContext.sampleRate}`);
     addLog(`STT listening at ${audioContext.sampleRate}Hz`);
-
-    deepgramSocket.onopen=()=>{
-      console.log('WebSocket opened');
-      addLog('STT websocket opened');
-      if(connection.mode==='token')sttReady=true;
-    };
   }catch(e){
     console.error(e);
-    cleanupDeepgramListening();
-    addMessage('assistant','Mic input failed. Check permissions, sir.');
+    const denied=e&&((e.name==='NotAllowedError')||(e.name==='PermissionDeniedError'));
+    handleSttFailure(
+      denied?'Mic permission denied':String(e.message||e),
+      denied?'Mic access blocked. Allow microphone permission for this site, sir.':'Deepgram STT failed to start. Tap the mic to try again, sir.'
+    );
   }
 }
 
-micButton.addEventListener('click',()=>startListening(true));
-hologram.addEventListener('click',()=>startListening(true));
+micButton.addEventListener('click',handleMicTap);
+hologram.addEventListener('click',handleMicTap);
+
+function formatRecordingElapsed(ms){
+  const sec=Math.floor(ms/1000);
+  const m=Math.floor(sec/60);
+  const s=sec%60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function updateRecordingTimer(){
+  if(!recordingTimerEl||!recordingModeActive)return;
+  const elapsed=Date.now()-recordingStartedAt;
+  recordingTimerEl.textContent=`REC ${formatRecordingElapsed(elapsed)}`;
+  if(elapsed>=RECORDING_MAX_MS)void stopRecordingMode(true);
+}
+
+async function requestRecordingWakeLock(){
+  try{
+    if('wakeLock' in navigator){
+      recordingWakeLock=await navigator.wakeLock.request('screen');
+    }else{
+      void playQuickTts('Sir, keep the screen active during recording');
+    }
+  }catch{
+    void playQuickTts('Sir, keep the screen active during recording');
+  }
+}
+
+async function releaseRecordingWakeLock(){
+  try{
+    if(recordingWakeLock){
+      await recordingWakeLock.release();
+      recordingWakeLock=null;
+    }
+  }catch(_){}
+}
+
+function scheduleRecordingReconnect(){
+  if(!recordingModeActive||recordingReconnectTimer)return;
+  const gapMin=Math.max(1,Math.round((Date.now()-lastRecordingGapAt)/60000));
+  lastRecordingGapAt=Date.now();
+  recordingSegments.push(`[connection gap ~${gapMin}min]`);
+  recordingReconnectTimer=setTimeout(async()=>{
+    recordingReconnectTimer=null;
+    if(!recordingModeActive)return;
+    try{
+      if(deepgramSocket?.readyState===WebSocket.OPEN)deepgramSocket.close();
+      deepgramSocket=await openDeepgramProxySocket();
+      addLog('Recording stream reconnected');
+    }catch(e){
+      scheduleRecordingReconnect();
+    }
+  },1200);
+}
+
+async function setupRecordingAudio(){
+  micStream=await navigator.mediaDevices.getUserMedia({
+    audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}
+  });
+  if(playbackAudioContext?.state==='suspended')await playbackAudioContext.resume();
+  const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+  audioContext=new AudioContextClass();
+  if(audioContext.state==='suspended')await audioContext.resume();
+  audioSource=audioContext.createMediaStreamSource(micStream);
+  vadAnalyser=audioContext.createAnalyser();
+  vadAnalyser.fftSize=2048;
+  vadAnalyser.smoothingTimeConstant=0.35;
+  audioSource.connect(vadAnalyser);
+  audioProcessor=audioContext.createScriptProcessor(4096,1,1);
+  audioProcessor.onaudioprocess=event=>{
+    streamPcmAudio(event.inputBuffer.getChannelData(0),audioContext.sampleRate);
+  };
+  const sttMuteGain=audioContext.createGain();
+  sttMuteGain.gain.value=0;
+  audioSource.connect(audioProcessor);
+  audioProcessor.connect(sttMuteGain);
+  sttMuteGain.connect(audioContext.destination);
+  startLocalVadMonitor();
+}
+
+async function startRecordingMode(){
+  if(recordingModeActive)return;
+  if(isListening)cleanupDeepgramListening({restart:false});
+  unlockAudioFromUserGesture();
+  if(!navigator.mediaDevices?.getUserMedia||!window.WebSocket){
+    void playQuickTts('Recording unavailable in this browser sir.');
+    return;
+  }
+  recordingModeActive=true;
+  recordingSegments=[];
+  recordingStartedAt=Date.now();
+  lastRecordingGapAt=recordingStartedAt;
+  if(recButton){recButton.classList.add('active');recButton.setAttribute('aria-pressed','true');}
+  if(recordingTimerEl){recordingTimerEl.classList.add('visible');updateRecordingTimer();}
+  recordingTimerInterval=setInterval(updateRecordingTimer,1000);
+  void requestRecordingWakeLock();
+  try{
+    conversationMode=false;
+    isListening=true;
+    setStatus('RECORDING');
+    deepgramFinalTranscript='';
+    resetUtteranceBuffer();
+    clearInterimTranscript();
+    deepgramSocket=await openDeepgramProxySocket();
+    await setupRecordingAudio();
+    void playQuickTts('Recording active sir.');
+  }catch(e){
+    console.error(e);
+    recordingModeActive=false;
+    if(recButton){recButton.classList.remove('active');recButton.setAttribute('aria-pressed','false');}
+    if(recordingTimerEl)recordingTimerEl.classList.remove('visible');
+    clearInterval(recordingTimerInterval);
+    cleanupDeepgramListening({restart:false});
+    void playQuickTts('Recording failed to start sir.');
+  }
+}
+
+async function stopRecordingMode(autoLimit=false){
+  if(!recordingModeActive)return;
+  recordingModeActive=false;
+  if(recButton){recButton.classList.remove('active');recButton.setAttribute('aria-pressed','false');}
+  if(recordingTimerEl)recordingTimerEl.classList.remove('visible');
+  clearInterval(recordingTimerInterval);
+  clearTimeout(recordingReconnectTimer);
+  recordingReconnectTimer=null;
+  cleanupDeepgramListening({restart:false});
+  await releaseRecordingWakeLock();
+  const raw=recordingSegments.join(' ').trim();
+  if(!raw){
+    setStatus('STANDBY');
+    void playQuickTts('No speech captured sir.');
+    return;
+  }
+  if(autoLimit)void playQuickTts('Sir, 3 hour limit reached. Saving now.');
+  setStatus('PROCESSING');
+  const durationSeconds=Math.round((Date.now()-recordingStartedAt)/1000);
+  try{
+    const r=await fetch('/api/transcripts/summarize',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-session-id':sessionId},
+      body:JSON.stringify({rawTranscript:raw,durationSeconds,date:new Date().toISOString().slice(0,10)})
+    });
+    const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(d.error||`HTTP ${r.status}`);
+    const speech=d.speech||(autoLimit?'Sir, 3 hour limit reached. Saving now.':'Stored sir.');
+    addMessage('assistant',speech);
+    speak(speech);
+  }catch(e){
+    console.error(e);
+    const fb='Stored sir. Summary unavailable but transcript was saved locally in session.';
+    addMessage('assistant',fb);
+    speak(fb);
+  }
+  setStatus('STANDBY');
+}
+
+if(recButton){
+  recButton.addEventListener('click',()=>{
+    unlockAudioFromUserGesture();
+    if(recordingModeActive)void stopRecordingMode(false);
+    else void startRecordingMode();
+  });
+}
 
 async function loadRundown(){
   try{
@@ -2038,9 +2796,8 @@ async function pollIntelligenceAlert(){
         lastIntelAlertSig=sig;
         try{
           const line='Sir, '+summary;
-          const a=new Audio(`/api/voice?text=${encodeURIComponent(line)}&t=${Date.now()}`);
-          void a.play();
-        }catch(_){/* autoplay may block until gesture */}
+          if(audioUnlocked)void playSessionTts(line,{manageUi:false});
+        }catch(_){/* alert TTS optional */}
       }
     }else{
       markAlertsHealed();
@@ -2128,29 +2885,68 @@ async function openDocumentsPanel(){
   }
 }
 
-async function uploadDocumentFile(file){
-  if(!file)return;
+async function uploadDocumentFiles(fileList){
+  const files=(fileList||[]).filter(f=>f&&f.size>0);
+  if(!files.length){
+    console.warn('[upload] no valid files',fileList);
+    return;
+  }
   showDocToast('Uploading...');
   const form=new FormData();
-  form.append('file',file);
-  form.append('title',file.name);
+  form.append('sessionId',sessionId);
+  const endpoint=files.length>1?'/api/documents/upload-batch':'/api/documents/upload';
+  if(files.length===1){
+    const f=files[0];
+    const name=f.name||`upload-${Date.now()}`;
+    form.append('file',f,name);
+    form.append('title',name);
+  }else{
+    files.forEach(f=>{
+      const name=f.name||`upload-${Date.now()}`;
+      form.append('files',f,name);
+    });
+  }
   try{
-    const r=await fetch('/api/documents/upload',{method:'POST',body:form});
+    const r=await fetch(endpoint,{
+      method:'POST',
+      headers:{'x-session-id':sessionId},
+      body:form
+    });
     const d=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error(d.error||d.detail||`HTTP ${r.status}`);
-    const msg='Document added to knowledge base, sir.';
-    showDocToast(msg);
-    addLog(`Document ingested: ${d.title||file.name} (${d.chunkCount||0} chunks)`);
-    addMessage('assistant',msg);
-    speak(msg);
+    const speech=d.speech||(
+      r.ok
+        ? buildUploadAckSpeechClient((d.files||[]).map(f=>f.originalFilename||f.title)||files.map(f=>f.name||'file'))
+        : null
+    );
+    if(!r.ok||!speech){
+      throw new Error(d.error||d.detail||speech||`HTTP ${r.status}`);
+    }
+    sessionUploadCount=(d.files||[]).length||files.length;
+    showDocToast(speech);
+    addLog(`Upload: ${sessionUploadCount} file(s) — ${files.map(f=>f.name||'file').join(', ')}`);
+    addMessage('assistant',speech);
+    speak(speech);
     await refreshDocumentCount();
   }catch(e){
-    console.error(e);
-    const fb='Document upload failed, sir.';
+    console.error('[upload] failed',e);
+    const fb=(e&&e.message&&String(e.message).includes('too large'))
+      ? 'That file is too large sir, fifty megabytes is the limit.'
+      :'Upload failed sir, please try again.';
     showDocToast(fb);
     addMessage('assistant',fb);
     speak(fb);
   }
+}
+
+function buildUploadAckSpeechClient(filenames){
+  if(filenames.length===1)return `Received ${filenames[0]}, sir. What would you like me to do with it?`;
+  const names=filenames.slice(0,4).join(', ');
+  return `Received ${filenames.length} files — ${names}. What would you like me to do with them?`;
+}
+
+async function uploadDocumentFile(file){
+  if(!file)return;
+  await uploadDocumentFiles([file]);
 }
 
 if(docUploadBtn&&docFileInput){
@@ -2162,9 +2958,9 @@ if(docUploadBtn&&docFileInput){
     docFileInput.click();
   });
   docFileInput.addEventListener('change',()=>{
-    const file=docFileInput.files&&docFileInput.files[0];
+    const files=docFileInput.files?[...docFileInput.files]:[];
     docFileInput.value='';
-    if(file)void uploadDocumentFile(file);
+    if(files.length)void uploadDocumentFiles(files);
   });
 }
 
@@ -2388,6 +3184,153 @@ async function runMemoryAudit(){
   }
 }
 
+const evolutionPanel=document.getElementById('evolution-panel');
+const evolutionPanelBody=document.getElementById('evolutionPanelBody');
+const evolutionPulseDot=document.getElementById('evolutionPulseDot');
+let evolutionPayload=null;
+
+function truncateEvolutionText(text,len){
+  const t=String(text||'').trim();
+  if(t.length<=len)return t;
+  return t.slice(0,len).trim()+'…';
+}
+
+function renderEvolutionPanel(data){
+  if(!evolutionPanelBody||!data)return;
+  const stats=data.stats||{};
+  const insights=Array.isArray(data.insights)?data.insights:[];
+  const top=stats.top_retrieved&&stats.top_retrieved[0];
+  const topLabel=top?`${top.key} (${top.category})`:'—';
+
+  if(evolutionPulseDot){
+    if(insights.length){
+      evolutionPulseDot.classList.remove('hidden');
+    }else{
+      evolutionPulseDot.classList.add('hidden');
+    }
+  }
+
+  let html=`
+    <div class="evolution-stats-grid">
+      <div class="evolution-stat"><div class="evolution-stat-lbl">Total Memories</div><div class="evolution-stat-val">${Number(stats.total_memories||0)}</div></div>
+      <div class="evolution-stat"><div class="evolution-stat-lbl">Entity Profiles</div><div class="evolution-stat-val">${Number(stats.total_entities||0)}</div></div>
+      <div class="evolution-stat"><div class="evolution-stat-lbl">Sessions Logged</div><div class="evolution-stat-val">${Number(stats.total_episodes||0)}</div></div>
+      <div class="evolution-stat"><div class="evolution-stat-lbl">Top Retrieved</div><div class="evolution-stat-val">${escapeHtml(topLabel)}</div></div>
+    </div>`;
+
+  const gaps=Array.isArray(stats.knowledge_gaps)?stats.knowledge_gaps:[];
+  if(gaps.length){
+    html+=`<div class="evolution-section-label">GAPS DETECTED</div><div class="evolution-gap-pills">`;
+    for(const g of gaps){
+      html+=`<span class="evolution-gap-pill">${escapeHtml(String(g).replace(/_/g,' '))}</span>`;
+    }
+    html+='</div>';
+  }
+
+  if(insights.length){
+    html+='<div class="evolution-section-label">PENDING INSIGHTS</div>';
+    for(const item of insights){
+      const cat=String(item.category||'memory').toLowerCase();
+      const conf=Math.max(0,Math.min(1,Number(item.confidence)||0));
+      const obsFull=String(item.observation||'');
+      const obsShort=truncateEvolutionText(obsFull,100);
+      html+=`
+        <article class="evolution-insight-card" data-evolution-id="${item.id}">
+          <span class="evolution-cat-badge ${escapeHtml(cat)}">${escapeHtml(cat.replace(/_/g,' '))}</span>
+          <div class="evolution-observation" data-expand-obs title="Click to expand">${escapeHtml(obsShort)}</div>
+          <div class="evolution-suggestion">${escapeHtml(item.suggested_improvement||'')}</div>
+          <div class="evolution-conf-bar"><div class="evolution-conf-fill" style="width:${Math.round(conf*100)}%"></div></div>
+          <div class="evolution-card-actions">
+            <button type="button" class="approve" data-evolution-approve="${item.id}">APPROVE</button>
+            <button type="button" data-evolution-dismiss="${item.id}">DISMISS</button>
+          </div>
+        </article>`;
+    }
+  }else{
+    html+='<div class="evolution-empty">Operating at full capacity, sir.</div>';
+  }
+
+  evolutionPanelBody.innerHTML=html;
+
+  evolutionPanelBody.querySelectorAll('[data-expand-obs]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const card=el.closest('.evolution-insight-card');
+      const id=card&&card.getAttribute('data-evolution-id');
+      const row=insights.find(i=>String(i.id)===String(id));
+      if(!row)return;
+      const expanded=card.classList.toggle('expanded');
+      el.textContent=expanded?String(row.observation||''):truncateEvolutionText(row.observation,100);
+    });
+  });
+}
+
+async function loadEvolutionPanel(){
+  try{
+    const r=await fetch('/api/memory/evolution');
+    if(!r.ok)throw new Error(`HTTP ${r.status}`);
+    evolutionPayload=await r.json();
+    renderEvolutionPanel(evolutionPayload);
+  }catch(e){
+    console.warn('Evolution panel load failed',e);
+    if(evolutionPanelBody){
+      evolutionPanelBody.innerHTML='<div class="evolution-empty">Evolution telemetry unavailable.</div>';
+    }
+    if(evolutionPulseDot)evolutionPulseDot.classList.add('hidden');
+  }
+}
+
+async function resolveEvolutionInsight(id,status){
+  const r=await fetch('/api/memory/audit-approve',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id:Number(id),status})
+  });
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(d.error||`HTTP ${r.status}`);
+  const card=evolutionPanelBody&&evolutionPanelBody.querySelector(`[data-evolution-id="${id}"]`);
+  if(card)card.remove();
+  if(evolutionPayload&&Array.isArray(evolutionPayload.insights)){
+    evolutionPayload.insights=evolutionPayload.insights.filter(i=>String(i.id)!==String(id));
+    if(!evolutionPayload.insights.length){
+      const pending=evolutionPanelBody&&evolutionPanelBody.querySelector('.evolution-insight-card');
+      if(!pending){
+        const label=evolutionPanelBody&&evolutionPanelBody.querySelector('.evolution-section-label');
+        if(label&&label.textContent==='PENDING INSIGHTS')label.remove();
+        const empty=document.createElement('div');
+        empty.className='evolution-empty';
+        empty.textContent='Operating at full capacity, sir.';
+        evolutionPanelBody.appendChild(empty);
+      }
+      if(evolutionPulseDot)evolutionPulseDot.classList.add('hidden');
+    }
+  }
+  await loadEvolutionPanel();
+}
+
+if(evolutionPanelBody){
+  evolutionPanelBody.addEventListener('click',async e=>{
+    const approve=e.target.closest('[data-evolution-approve]');
+    const dismiss=e.target.closest('[data-evolution-dismiss]');
+    const btn=approve||dismiss;
+    if(!btn)return;
+    const id=btn.getAttribute(approve?'data-evolution-approve':'data-evolution-dismiss');
+    if(!id)return;
+    try{
+      await resolveEvolutionInsight(id,approve?'approved':'rejected');
+    }catch(err){
+      addLog(`Evolution ${approve?'approve':'dismiss'} failed: ${err.message||err}`);
+    }
+  });
+}
+
+if(evolutionPanel){
+  evolutionPanel.addEventListener('toggle',()=>{
+    if(evolutionPanel.open)void loadEvolutionPanel();
+  });
+}
+void loadEvolutionPanel();
+setInterval(()=>void loadEvolutionPanel(),120000);
+
 if(memoryBtn)memoryBtn.addEventListener('click',()=>void openMemoryPanel());
 if(memoryCloseBtn)memoryCloseBtn.addEventListener('click',closeMemoryPanel);
 if(memoryRunAuditBtn)memoryRunAuditBtn.addEventListener('click',()=>void runMemoryAudit());
@@ -2459,16 +3402,25 @@ if(memoryPanelBody){
   });
 }
 
+function scheduleActivationOnLoad(){
+  void jarvisActivateBriefing();
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',scheduleActivationOnLoad);
+}else{
+  scheduleActivationOnLoad();
+}
+
 setStatus('STANDBY');
 updateClock();
 loadRundown();
-loadExecutionFeed();
+loadExecutionFeed(true);
 pollIntelligenceAlert();
 refreshDocumentCount();
 drawWaveform();
 setInterval(updateClock,1000);
 setInterval(loadRundown,15000);
-setInterval(loadExecutionFeed,20000);
+setInterval(()=>loadExecutionFeed(false),10000);
 setInterval(pollIntelligenceAlert,15000);
 setInterval(refreshDocumentCount,60000);
 </script>

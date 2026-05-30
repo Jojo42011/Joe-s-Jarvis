@@ -6,7 +6,7 @@
   "main": "server/dist/index.js",
   "scripts": {
     "dev": "tsx watch server/src/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node -e \"const fs=require('fs');const p='server/dist/routes/chat.js';try{fs.unlinkSync(p);console.log('Removed stale',p)}catch(e){if(e.code!=='ENOENT')throw e}\"",
     "start": "node server/dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

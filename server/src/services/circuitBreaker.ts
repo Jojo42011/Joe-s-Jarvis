@@ -1,5 +1,7 @@
 import { logExecution } from "../db/queries";
+import { isRateLimitError } from "../utils/rateLimit";
 import { logServiceError } from "../utils/logError";
+import { circuitLog } from "../utils/requestLog";
 
 export type CircuitState = "CLOSED" | "OPEN" | "HALF_OPEN";
 
@@ -21,6 +23,7 @@ class ServiceCircuit {
   private consecutiveFailures = 0;
   private openedAt = 0;
   private openLogged = false;
+  private rejectLogged = false;
 
   constructor(private readonly serviceName: string) {}
 
@@ -36,6 +39,15 @@ class ServiceCircuit {
     return this.state === "OPEN";
   }
 
+  /** After confirmed recovery (e.g. fresh OAuth token), allow requests immediately. */
+  reset(): void {
+    this.state = "CLOSED";
+    this.consecutiveFailures = 0;
+    this.openedAt = 0;
+    this.openLogged = false;
+    this.rejectLogged = false;
+  }
+
   graceMessage(): string {
     const label =
       this.serviceName === "Gmail"
@@ -46,9 +58,23 @@ class ServiceCircuit {
     return `Having trouble reaching ${label} sir, operating on what I have.`;
   }
 
+  private markOpen(reason: string, operation: string) {
+    this.state = "OPEN";
+    this.openedAt = Date.now();
+    this.rejectLogged = false;
+    if (!this.openLogged) {
+      this.openLogged = true;
+      circuitLog(`${this.serviceName} circuit OPEN — ${reason} (${operation})`);
+    }
+  }
+
   async execute<T>(operation: string, fn: () => Promise<T>): Promise<T> {
     const state = this.getState();
     if (state === "OPEN") {
+      if (!this.rejectLogged) {
+        this.rejectLogged = true;
+        circuitLog(`${this.serviceName} rejected call — circuit OPEN (${operation})`);
+      }
       throw new CircuitOpenError(this.serviceName);
     }
 
@@ -59,7 +85,9 @@ class ServiceCircuit {
         this.state = "CLOSED";
         this.consecutiveFailures = 0;
         this.openLogged = false;
+        this.rejectLogged = false;
         if (wasOpen) {
+          circuitLog(`${this.serviceName} circuit CLOSED — recovered (${operation})`);
           logExecution({
             type: "system",
             action: `circuit.${this.serviceName.toLowerCase()}.closed`,
@@ -72,21 +100,32 @@ class ServiceCircuit {
     } catch (error) {
       if (error instanceof CircuitOpenError) throw error;
 
+      if (isRateLimitError(error)) {
+        this.consecutiveFailures = FAILURE_THRESHOLD;
+        if (!this.openLogged) {
+          console.error(`[${this.serviceName}] Rate limited, backing off 60s`);
+          logExecution({
+            type: "system",
+            action: `circuit.${this.serviceName.toLowerCase()}.rate_limit`,
+            summary: `[${this.serviceName}] Rate limited, backing off 60s (${operation})`,
+            result: "failed"
+          });
+        }
+        this.markOpen("rate limited, backing off 60s", operation);
+        throw error;
+      }
+
       this.consecutiveFailures += 1;
       logServiceError(this.serviceName, operation, error);
 
       if (this.consecutiveFailures >= FAILURE_THRESHOLD && this.state !== "OPEN") {
-        this.state = "OPEN";
-        this.openedAt = Date.now();
-        if (!this.openLogged) {
-          this.openLogged = true;
-          logExecution({
-            type: "system",
-            action: `circuit.${this.serviceName.toLowerCase()}.open`,
-            summary: `[${this.serviceName}] Circuit opened after ${FAILURE_THRESHOLD} failures (${operation})`,
-            result: "failed"
-          });
-        }
+        this.markOpen(`${FAILURE_THRESHOLD} failures`, operation);
+        logExecution({
+          type: "system",
+          action: `circuit.${this.serviceName.toLowerCase()}.open`,
+          summary: `[${this.serviceName}] Circuit opened after ${FAILURE_THRESHOLD} failures (${operation})`,
+          result: "failed"
+        });
       }
       throw error;
     }
