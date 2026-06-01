@@ -28,8 +28,9 @@ import { stateForResponse } from "./tools";
 import { ACTIVATION_MESSAGE, getSessionId, sanitizeSpeechForClient } from "./utils";
 import type { JarvisUiPayload } from "./types";
 import { clearSpokenSession, recordSpokenFromResponse } from "./spokenSessionTracker";
-import { buildLeanChatContext, detectSpeakerIdentity } from "../../chat/context";
+import { buildSmartContext } from "../../chat/context";
 import { runChatLoop } from "../../chat/runChatLoop";
+import { scheduleMemoryExtraction } from "../../memory/extractionEngine";
 
 export type ChatApiPayload = {
   speech: string;
@@ -192,14 +193,13 @@ export async function processChatRequest(req: Request): Promise<ProcessChatResul
     reqLog("brain: chat_tool_loop");
 
     const tPromptStart = Date.now();
-    const leanContext = buildLeanChatContext(sessionId);
-    leanContext.speaker = detectSpeakerIdentity(message, sessionId);
+    const smartContext = await buildSmartContext(message, sessionId);
     const tPromptBuilt = Date.now();
 
     let loopResult;
     try {
       loopResult = await claudeCircuit.execute("chat_tool_loop", () =>
-        runChatLoop(message, sessionId, leanContext)
+        runChatLoop(message, sessionId, smartContext)
       );
     } catch (error) {
       logServiceError("chat", "runChatLoop", error);
@@ -226,6 +226,7 @@ export async function processChatRequest(req: Request): Promise<ProcessChatResul
     trackSpokenResponse(sessionId, speech, loopResult.intent, loopResult.ui.data);
 
     schedulePostChatMemoryIfNeeded(message, speech, loopResult.intent);
+    scheduleMemoryExtraction(message, speech, sessionId);
     scheduleEpisodicMemoryWrite(sessionId, loopResult.intent, loopResult.tool || null);
 
     const tDone = Date.now();

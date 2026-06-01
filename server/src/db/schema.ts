@@ -135,6 +135,47 @@ function applyMigrations(db: Database.Database) {
     db.exec(`ALTER TABLE notes ADD COLUMN seen_in_rundown INTEGER DEFAULT 0`);
   }
 
+  if (tableExists(db, "jarvis_memory") && !columnExists(db, "jarvis_memory", "is_synthesized")) {
+    db.exec(`ALTER TABLE jarvis_memory ADD COLUMN is_synthesized INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (tableExists(db, "jarvis_memory") && !columnExists(db, "jarvis_memory", "synthesized_from")) {
+    db.exec(`ALTER TABLE jarvis_memory ADD COLUMN synthesized_from TEXT`);
+  }
+  if (tableExists(db, "jarvis_memory") && !columnExists(db, "jarvis_memory", "importance")) {
+    db.exec(`ALTER TABLE jarvis_memory ADD COLUMN importance REAL NOT NULL DEFAULT 0.5`);
+  }
+
+  if (!tableExists(db, "memory_synthesis_log")) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS memory_synthesis_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ran_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        ohio_time TEXT,
+        category TEXT,
+        memories_read INTEGER DEFAULT 0,
+        memories_created INTEGER DEFAULT 0,
+        memories_updated INTEGER DEFAULT 0,
+        memories_pruned INTEGER DEFAULT 0,
+        synthesis_summary TEXT
+      );
+      CREATE INDEX IF NOT EXISTS memory_synthesis_log_ran_at ON memory_synthesis_log(ran_at DESC);
+    `);
+  }
+
+  if (!tableExists(db, "memory_extraction_log")) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS memory_extraction_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT,
+        extracted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        turn_summary TEXT,
+        memories_extracted INTEGER DEFAULT 0,
+        categories_hit TEXT
+      );
+      CREATE INDEX IF NOT EXISTS memory_extraction_log_session ON memory_extraction_log(session_id, extracted_at DESC);
+    `);
+  }
+
   if (!tableExists(db, "transcripts")) {
     db.exec(`
       CREATE TABLE IF NOT EXISTS transcripts (
@@ -264,7 +305,10 @@ export function applySchema(db: Database.Database) {
       flag_reason TEXT,
       retrieval_count INTEGER NOT NULL DEFAULT 0,
       last_retrieved_at DATETIME,
-      source TEXT
+      source TEXT,
+      is_synthesized INTEGER NOT NULL DEFAULT 0,
+      synthesized_from TEXT,
+      importance REAL NOT NULL DEFAULT 0.5
     );
 
     CREATE UNIQUE INDEX IF NOT EXISTS jarvis_memory_category_key

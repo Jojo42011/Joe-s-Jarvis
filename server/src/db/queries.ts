@@ -1079,6 +1079,7 @@ export type JarvisMemory = {
   key: string;
   value: string;
   confidence: number;
+  importance: number;
   occurrenceCount: number;
   lastSeen: string;
   createdAt: string;
@@ -1087,6 +1088,8 @@ export type JarvisMemory = {
   retrievalCount: number;
   lastRetrievedAt: string | null;
   source: string | null;
+  isSynthesized: number;
+  synthesizedFrom: string | null;
 };
 
 type JarvisMemoryRow = {
@@ -1095,6 +1098,7 @@ type JarvisMemoryRow = {
   key: string;
   value: string;
   confidence: number;
+  importance?: number | null;
   occurrence_count: number;
   last_seen: string;
   created_at: string;
@@ -1103,6 +1107,8 @@ type JarvisMemoryRow = {
   retrieval_count?: number | null;
   last_retrieved_at?: string | null;
   source?: string | null;
+  is_synthesized?: number | null;
+  synthesized_from?: string | null;
 };
 
 function mapJarvisMemoryRow(row: JarvisMemoryRow): JarvisMemory {
@@ -1112,6 +1118,7 @@ function mapJarvisMemoryRow(row: JarvisMemoryRow): JarvisMemory {
     key: row.key,
     value: row.value,
     confidence: row.confidence,
+    importance: row.importance ?? 0.5,
     occurrenceCount: row.occurrence_count,
     lastSeen: row.last_seen,
     createdAt: row.created_at,
@@ -1119,7 +1126,9 @@ function mapJarvisMemoryRow(row: JarvisMemoryRow): JarvisMemory {
     flagReason: row.flag_reason ?? null,
     retrievalCount: row.retrieval_count ?? 0,
     lastRetrievedAt: row.last_retrieved_at ?? null,
-    source: row.source ?? null
+    source: row.source ?? null,
+    isSynthesized: row.is_synthesized ?? 0,
+    synthesizedFrom: row.synthesized_from ?? null
   };
 }
 
@@ -1144,27 +1153,48 @@ export function saveMemory(input: {
   key: string;
   value: string;
   confidence?: number;
+  importance?: number;
   source?: string | null;
+  isSynthesized?: number;
+  synthesizedFrom?: string | null;
 }) {
   const confidence = input.confidence ?? 1.0;
+  const importance = input.importance ?? 0.5;
   const source = input.source?.slice(0, 40) || null;
+  const isSynthesized = input.isSynthesized ?? 0;
+  const synthesizedFrom = input.synthesizedFrom ?? null;
   db.prepare(
     `
-    INSERT INTO jarvis_memory (category, key, value, confidence, occurrence_count, last_seen, created_at, source)
-    VALUES (@category, @key, @value, @confidence, 1, datetime('now'), datetime('now'), @source)
+    INSERT INTO jarvis_memory (
+      category, key, value, confidence, importance, occurrence_count,
+      last_seen, created_at, source, is_synthesized, synthesized_from
+    )
+    VALUES (
+      @category, @key, @value, @confidence, @importance, 1,
+      datetime('now'), datetime('now'), @source, @is_synthesized, @synthesized_from
+    )
     ON CONFLICT(category, key) DO UPDATE SET
       value = excluded.value,
       occurrence_count = jarvis_memory.occurrence_count + 1,
       last_seen = datetime('now'),
       confidence = MIN(1.0, MAX(jarvis_memory.confidence, excluded.confidence)),
-      source = COALESCE(excluded.source, jarvis_memory.source)
+      importance = MAX(jarvis_memory.importance, excluded.importance),
+      source = COALESCE(excluded.source, jarvis_memory.source),
+      is_synthesized = CASE
+        WHEN excluded.is_synthesized != 0 THEN excluded.is_synthesized
+        ELSE jarvis_memory.is_synthesized
+      END,
+      synthesized_from = COALESCE(excluded.synthesized_from, jarvis_memory.synthesized_from)
   `
   ).run({
     category: input.category.slice(0, 120),
     key: input.key.slice(0, 200),
     value: input.value.slice(0, 8000),
     confidence,
-    source
+    importance,
+    source,
+    is_synthesized: isSynthesized,
+    synthesized_from: synthesizedFrom
   });
 }
 
@@ -1235,6 +1265,18 @@ export function getTopMemories(limit = 20): JarvisMemory[] {
   return rows.map(mapJarvisMemoryRow);
 }
 
+export function getEligibleMemoriesForFeed(): JarvisMemory[] {
+  const rows = db
+    .prepare(
+      `
+    SELECT * FROM jarvis_memory
+    WHERE flagged = 0 AND confidence >= 0.2 AND (is_synthesized IS NULL OR is_synthesized >= 0)
+  `
+    )
+    .all() as JarvisMemoryRow[];
+  return rows.map(mapJarvisMemoryRow);
+}
+
 /** Eligible for prompt: not flagged, confidence >= 0.3 */
 export function getEligibleMemories(limit = 20): JarvisMemory[] {
   const rows = db
@@ -1242,6 +1284,7 @@ export function getEligibleMemories(limit = 20): JarvisMemory[] {
       `
     SELECT * FROM jarvis_memory
     WHERE flagged = 0 AND confidence >= 0.3
+      AND (is_synthesized IS NULL OR is_synthesized >= 0)
     ORDER BY confidence DESC, occurrence_count DESC, last_seen DESC
     LIMIT @limit
   `
@@ -1249,6 +1292,292 @@ export function getEligibleMemories(limit = 20): JarvisMemory[] {
     .all({ limit }) as JarvisMemoryRow[];
 
   return rows.map(mapJarvisMemoryRow);
+}
+
+export function getTopMemoriesForExtraction(limit = 20): JarvisMemory[] {
+  const rows = db
+    .prepare(
+      `
+    SELECT * FROM jarvis_memory
+    WHERE flagged = 0 AND confidence >= 0.3
+      AND (is_synthesized IS NULL OR is_synthesized >= 0)
+    ORDER BY importance DESC, confidence DESC, retrieval_count DESC, last_seen DESC
+    LIMIT @limit
+  `
+    )
+    .all({ limit }) as JarvisMemoryRow[];
+  return rows.map(mapJarvisMemoryRow);
+}
+
+export function getMemoriesByCategory(category: string, minConfidence = 0.2): JarvisMemory[] {
+  const rows = db
+    .prepare(
+      `
+    SELECT * FROM jarvis_memory
+    WHERE category = @category AND confidence >= @minConfidence
+      AND (is_synthesized IS NULL OR is_synthesized >= 0)
+    ORDER BY importance DESC, confidence DESC, last_seen DESC
+  `
+    )
+    .all({ category, minConfidence }) as JarvisMemoryRow[];
+  return rows.map(mapJarvisMemoryRow);
+}
+
+export function getLatestSynthesizedPerCategory(): JarvisMemory[] {
+  const rows = db
+    .prepare(
+      `
+    SELECT m.* FROM jarvis_memory m
+    INNER JOIN (
+      SELECT category, MAX(id) AS max_id
+      FROM jarvis_memory
+      WHERE is_synthesized = 1 AND confidence >= 0.3
+      GROUP BY category
+    ) latest ON m.id = latest.max_id
+  `
+    )
+    .all() as JarvisMemoryRow[];
+  return rows.map(mapJarvisMemoryRow);
+}
+
+export function getRecentFinancialMemories(limit = 2): JarvisMemory[] {
+  const rows = db
+    .prepare(
+      `
+    SELECT * FROM jarvis_memory
+    WHERE category = 'financial_operations' AND confidence >= 0.3
+      AND (is_synthesized IS NULL OR is_synthesized >= 0)
+    ORDER BY last_seen DESC
+    LIMIT @limit
+  `
+    )
+    .all({ limit }) as JarvisMemoryRow[];
+  return rows.map(mapJarvisMemoryRow);
+}
+
+export function getNeverDecayHighConfidenceMemories(): JarvisMemory[] {
+  const placeholders = MEMORY_NEVER_DECAY.map(() => "?").join(", ");
+  const rows = db
+    .prepare(
+      `
+    SELECT * FROM jarvis_memory
+    WHERE category IN (${placeholders})
+      AND confidence > 0.7
+      AND flagged = 0
+      AND (is_synthesized IS NULL OR is_synthesized >= 0)
+  `
+    )
+    .all(...MEMORY_NEVER_DECAY) as JarvisMemoryRow[];
+  return rows.map(mapJarvisMemoryRow);
+}
+
+export function upsertExtractedMemory(input: {
+  category: string;
+  key: string;
+  value: string;
+  confidence: number;
+  importance: number;
+  source: string;
+}): "inserted" | "updated" {
+  const existing = getMemoryByCategoryKey(input.category, input.key);
+  saveMemory({
+    category: input.category,
+    key: input.key,
+    value: input.value,
+    confidence: input.confidence,
+    importance: input.importance,
+    source: input.source
+  });
+  return existing ? "updated" : "inserted";
+}
+
+export function insertMemoryExtractionLog(input: {
+  sessionId: string;
+  turnSummary: string;
+  memoriesExtracted: number;
+  categoriesHit: string[];
+}) {
+  db.prepare(
+    `
+    INSERT INTO memory_extraction_log (session_id, turn_summary, memories_extracted, categories_hit)
+    VALUES (@session_id, @turn_summary, @memories_extracted, @categories_hit)
+  `
+  ).run({
+    session_id: input.sessionId,
+    turn_summary: input.turnSummary.slice(0, 500),
+    memories_extracted: input.memoriesExtracted,
+    categories_hit: JSON.stringify(input.categoriesHit)
+  });
+}
+
+export type MemorySynthesisLogRow = {
+  id: number;
+  ranAt: string;
+  ohioTime: string | null;
+  category: string | null;
+  memoriesRead: number;
+  memoriesCreated: number;
+  memoriesUpdated: number;
+  memoriesPruned: number;
+  synthesisSummary: string | null;
+  knowledgeGaps: string[];
+};
+
+type MemorySynthesisLogDbRow = {
+  id: number;
+  ran_at: string;
+  ohio_time: string | null;
+  category: string | null;
+  memories_read: number;
+  memories_created: number;
+  memories_updated: number;
+  memories_pruned: number;
+  synthesis_summary: string | null;
+};
+
+function parseKnowledgeGapsFromSummary(summary: string | null): string[] {
+  if (!summary) return [];
+  try {
+    const parsed = JSON.parse(summary) as { knowledge_gaps?: string[] };
+    if (Array.isArray(parsed.knowledge_gaps)) {
+      return parsed.knowledge_gaps.map((g) => String(g)).filter(Boolean);
+    }
+  } catch {
+    /* legacy text summary */
+  }
+  return [];
+}
+
+function mapSynthesisLogRow(row: MemorySynthesisLogDbRow): MemorySynthesisLogRow {
+  return {
+    id: row.id,
+    ranAt: row.ran_at,
+    ohioTime: row.ohio_time,
+    category: row.category,
+    memoriesRead: row.memories_read,
+    memoriesCreated: row.memories_created,
+    memoriesUpdated: row.memories_updated,
+    memoriesPruned: row.memories_pruned,
+    synthesisSummary: row.synthesis_summary,
+    knowledgeGaps: parseKnowledgeGapsFromSummary(row.synthesis_summary)
+  };
+}
+
+export function insertMemorySynthesisLog(input: {
+  ohioTime: string;
+  category: string | null;
+  memoriesRead: number;
+  memoriesCreated: number;
+  memoriesUpdated: number;
+  memoriesPruned: number;
+  synthesisSummary: string;
+}) {
+  db.prepare(
+    `
+    INSERT INTO memory_synthesis_log (
+      ohio_time, category, memories_read, memories_created,
+      memories_updated, memories_pruned, synthesis_summary
+    )
+    VALUES (
+      @ohio_time, @category, @memories_read, @memories_created,
+      @memories_updated, @memories_pruned, @synthesis_summary
+    )
+  `
+  ).run({
+    ohio_time: input.ohioTime,
+    category: input.category,
+    memories_read: input.memoriesRead,
+    memories_created: input.memoriesCreated,
+    memories_updated: input.memoriesUpdated,
+    memories_pruned: input.memoriesPruned,
+    synthesis_summary: input.synthesisSummary.slice(0, 12000)
+  });
+}
+
+export function getMemorySynthesisLogs(limit = 10): MemorySynthesisLogRow[] {
+  const rows = db
+    .prepare(
+      `
+    SELECT * FROM memory_synthesis_log ORDER BY ran_at DESC LIMIT @limit
+  `
+    )
+    .all({ limit }) as MemorySynthesisLogDbRow[];
+  return rows.map(mapSynthesisLogRow);
+}
+
+export function getAggregatedKnowledgeGaps(limit = 20): string[] {
+  const logs = getMemorySynthesisLogs(7);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const log of logs) {
+    for (const gap of log.knowledgeGaps) {
+      const key = gap.toLowerCase().trim();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(gap);
+      if (out.length >= limit) return out;
+    }
+  }
+  return out;
+}
+
+export function getMemoriesFedTodayCount(): number {
+  const today = ohioDateKey();
+  const row = db
+    .prepare(
+      `
+    SELECT COUNT(*) AS c FROM jarvis_memory
+    WHERE last_retrieved_at IS NOT NULL
+      AND substr(last_retrieved_at, 1, 10) = @today
+  `
+    )
+    .get({ today }) as { c: number };
+  return row.c ?? 0;
+}
+
+export function softDeleteMemoryById(id: number): JarvisMemory | null {
+  const existing = getMemoryById(id);
+  if (!existing) return null;
+  db.prepare(
+    `
+    UPDATE jarvis_memory
+    SET confidence = 0.0, last_seen = datetime('now')
+    WHERE id = @id
+  `
+  ).run({ id });
+  return getMemoryById(id);
+}
+
+export function boostMemoryImportance(id: number, importance = 0.9): JarvisMemory | null {
+  const existing = getMemoryById(id);
+  if (!existing) return null;
+  db.prepare(
+    `
+    UPDATE jarvis_memory SET importance = @importance, last_seen = datetime('now')
+    WHERE id = @id
+  `
+  ).run({ id, importance: Math.min(1, Math.max(0, importance)) });
+  return getMemoryById(id);
+}
+
+export function decayMemoryConfidence(id: number, delta: number) {
+  updateMemoryConfidence(id, delta);
+}
+
+export function markMemorySoftDeleted(id: number) {
+  db.prepare(
+    `
+    UPDATE jarvis_memory SET is_synthesized = -1, confidence = MIN(confidence, 0.15)
+    WHERE id = @id
+  `
+  ).run({ id });
+}
+
+export function getAllEntityProfiles(): EntityProfile[] {
+  const rows = db
+    .prepare(`SELECT * FROM entity_profiles ORDER BY name ASC`)
+    .all() as EntityProfileRow[];
+  return rows.map(mapEntityProfileRow);
 }
 
 type IntentMemorySignal = {
@@ -1908,7 +2237,13 @@ export function deleteMemoryById(id: number): JarvisMemory | null {
 
 export function updateMemoryById(
   id: number,
-  patch: { value?: string; confidence?: number; flagged?: boolean; flagReason?: string | null }
+  patch: {
+    value?: string;
+    confidence?: number;
+    importance?: number;
+    flagged?: boolean;
+    flagReason?: string | null;
+  }
 ): JarvisMemory | null {
   const existing = getMemoryById(id);
   if (!existing) return null;
@@ -1916,8 +2251,12 @@ export function updateMemoryById(
   const value = patch.value !== undefined ? patch.value.slice(0, 8000) : existing.value;
   const confidence =
     patch.confidence !== undefined
-      ? Math.min(1, Math.max(0.05, patch.confidence))
+      ? Math.min(1, Math.max(0, patch.confidence))
       : existing.confidence;
+  const importance =
+    patch.importance !== undefined
+      ? Math.min(1, Math.max(0, patch.importance))
+      : existing.importance;
   const flagged = patch.flagged !== undefined ? (patch.flagged ? 1 : 0) : existing.flagged ? 1 : 0;
   const flagReason =
     patch.flagReason !== undefined ? patch.flagReason : existing.flagReason;
@@ -1927,12 +2266,13 @@ export function updateMemoryById(
     UPDATE jarvis_memory
     SET value = @value,
         confidence = @confidence,
+        importance = @importance,
         flagged = @flagged,
         flag_reason = @flagReason,
         last_seen = datetime('now')
     WHERE id = @id
   `
-  ).run({ id, value, confidence, flagged, flagReason: flagReason ?? null });
+  ).run({ id, value, confidence, importance, flagged, flagReason: flagReason ?? null });
 
   return getMemoryById(id);
 }
@@ -2016,6 +2356,10 @@ export function getMemoryStats() {
   const flaggedRow = db
     .prepare(`SELECT COUNT(*) AS c FROM jarvis_memory WHERE flagged = 1`)
     .get() as { c: number };
+  const synthesizedRow = db
+    .prepare(`SELECT COUNT(*) AS c FROM jarvis_memory WHERE is_synthesized = 1`)
+    .get() as { c: number };
+  const fedToday = getMemoriesFedTodayCount();
   const oldest = db
     .prepare(`SELECT MIN(created_at) AS t FROM jarvis_memory`)
     .get() as { t: string | null };
@@ -2038,6 +2382,8 @@ export function getMemoryStats() {
     avgConfidence: avgRow.avg ?? 0,
     staleCount: staleRow.c,
     flaggedCount: flaggedRow.c,
+    synthesizedCount: synthesizedRow.c,
+    fedTodayCount: fedToday,
     oldestMemory: oldest.t,
     newestMemory: newest.t,
     lastDecayRun: getSystemState("last_memory_decay_run"),

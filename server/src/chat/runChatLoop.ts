@@ -6,10 +6,10 @@ import { enforceTruthfulSpeech } from "../routes/chat/truthGuard";
 import type { JarvisUiPayload } from "../routes/chat/types";
 import { sanitizeSpeechForClient } from "../routes/chat/utils";
 import {
-  buildLeanChatContext,
+  buildSmartContext,
   detectSpeakerIdentity,
-  formatLeanContextNote,
-  type LeanChatContext
+  formatSmartContextNote,
+  type SmartContext
 } from "./context";
 import { buildChatSystemPrompt } from "./systemPrompt";
 import {
@@ -114,9 +114,9 @@ function inferIntent(toolsCalled: string[]): string {
 export async function runChatLoop(
   message: string,
   sessionId: string,
-  leanContext?: LeanChatContext
+  smartContext?: SmartContext
 ): Promise<ChatLoopResult> {
-  const context = leanContext || buildLeanChatContext(sessionId);
+  const context = smartContext || (await buildSmartContext(message, sessionId));
   context.speaker = detectSpeakerIdentity(message, sessionId);
 
   const fallbackSpeech = "Standing by, sir. I need Claude online to run that properly.";
@@ -144,7 +144,7 @@ export async function runChatLoop(
     };
   }
 
-  const system = `${buildChatSystemPrompt(context.speaker)}\n\n${formatLeanContextNote(context)}`;
+  const system = `${buildChatSystemPrompt(context.speaker)}\n\n${formatSmartContextNote(context)}`;
   const messages: Anthropic.MessageParam[] = [
     ...historyToMessages(context.recent_conversation),
     { role: "user", content: message }

@@ -1,18 +1,22 @@
 import { Router } from "express";
 import {
-  deleteMemoryById,
+  boostMemoryImportance,
+  getAggregatedKnowledgeGaps,
   getAllMemoriesGrouped,
   getEvolutionHudStats,
+  getMemorySynthesisLogs,
   getMemoryStats,
   getSelfEvolutionInsights,
   getSystemState,
   logExecution,
   resolveSelfEvolutionInsight,
+  softDeleteMemoryById,
   updateMemoryById
 } from "../db/queries";
 import { invalidateDynamicPromptCache } from "../config/systemPrompt";
 import { approveMemoryAuditActions, auditMemory } from "../services/memory";
 import { getPendingMemoryAuditQueue } from "../db/queries";
+import { runDailySynthesis } from "../memory/synthesisEngine";
 
 export const memoryRouter = Router();
 
@@ -22,10 +26,16 @@ function toApiMemory(m: {
   key: string;
   value: string;
   confidence: number;
+  importance?: number;
   occurrenceCount: number;
   lastSeen: string;
   flagged: boolean;
   flagReason: string | null;
+  retrievalCount?: number;
+  lastRetrievedAt?: string | null;
+  isSynthesized?: number;
+  synthesizedFrom?: string | null;
+  source?: string | null;
 }) {
   return {
     id: m.id,
@@ -33,10 +43,16 @@ function toApiMemory(m: {
     key: m.key,
     value: m.value,
     confidence: m.confidence,
+    importance: m.importance ?? 0.5,
     occurrence_count: m.occurrenceCount,
     last_seen: m.lastSeen,
     flagged: m.flagged ? 1 : 0,
-    flag_reason: m.flagReason
+    flag_reason: m.flagReason,
+    retrieval_count: m.retrievalCount ?? 0,
+    last_retrieved_at: m.lastRetrievedAt ?? null,
+    is_synthesized: m.isSynthesized ?? 0,
+    synthesized_from: m.synthesizedFrom ?? null,
+    source: m.source ?? null
   };
 }
 
@@ -46,19 +62,40 @@ memoryRouter.get("/memory", (_req, res) => {
 
   let totalCount = 0;
   for (const [cat, rows] of Object.entries(grouped)) {
-    categories[cat] = rows.map(toApiMemory);
-    totalCount += rows.length;
+    categories[cat] = rows
+      .filter((m) => m.confidence > 0 && m.isSynthesized >= 0)
+      .map(toApiMemory);
+    totalCount += categories[cat].length;
   }
 
   res.json({
     categories,
     totalCount,
-    lastAudit: getSystemState("last_memory_audit_run")
+    lastAudit: getSystemState("last_memory_audit_run"),
+    lastSynthesis: getSystemState("last_daily_synthesis_run")
   });
 });
 
 memoryRouter.get("/memory/stats", (_req, res) => {
   res.json(getMemoryStats());
+});
+
+memoryRouter.get("/memory/synthesis-log", (_req, res) => {
+  res.json({ items: getMemorySynthesisLogs(10) });
+});
+
+memoryRouter.get("/memory/gaps", (_req, res) => {
+  res.json({ gaps: getAggregatedKnowledgeGaps(20) });
+});
+
+memoryRouter.post("/memory/synthesize", async (_req, res, next) => {
+  try {
+    const summary = await runDailySynthesis();
+    const logs = getMemorySynthesisLogs(1);
+    res.json({ summary, latest: logs[0] || null });
+  } catch (error) {
+    next(error);
+  }
 });
 
 memoryRouter.get("/memory/evolution", (_req, res) => {
@@ -84,21 +121,47 @@ memoryRouter.delete("/memory/:id", (req, res) => {
     return;
   }
 
-  const removed = deleteMemoryById(id);
+  const removed = softDeleteMemoryById(id);
   if (!removed) {
     res.status(404).json({ error: "Memory not found" });
     return;
   }
 
+  invalidateDynamicPromptCache();
   logExecution({
     type: "memory",
-    action: "manual.delete",
+    action: "manual.soft_delete",
     item_id: String(id),
-    summary: `Memory manually deleted: ${removed.key} (${removed.category})`,
+    summary: `Memory soft-deleted: ${removed.key} (${removed.category})`,
     result: "success"
   });
 
-  res.json({ ok: true });
+  res.json({ ok: true, memory: toApiMemory(removed) });
+});
+
+memoryRouter.post("/memory/:id/boost", (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) {
+    res.status(400).json({ error: "Invalid memory id" });
+    return;
+  }
+
+  const updated = boostMemoryImportance(id, 0.9);
+  if (!updated) {
+    res.status(404).json({ error: "Memory not found" });
+    return;
+  }
+
+  invalidateDynamicPromptCache();
+  logExecution({
+    type: "memory",
+    action: "manual.boost",
+    item_id: String(id),
+    summary: `Memory importance boosted: ${updated.key}`,
+    result: "success"
+  });
+
+  res.json({ memory: toApiMemory(updated) });
 });
 
 memoryRouter.patch("/memory/:id", (req, res) => {
@@ -111,12 +174,14 @@ memoryRouter.patch("/memory/:id", (req, res) => {
   const body = req.body as {
     value?: string;
     confidence?: number;
+    importance?: number;
     flagged?: boolean | number;
   };
 
   const existing = updateMemoryById(id, {
     value: typeof body.value === "string" ? body.value : undefined,
     confidence: typeof body.confidence === "number" ? body.confidence : undefined,
+    importance: typeof body.importance === "number" ? body.importance : undefined,
     flagged:
       body.flagged === 0 || body.flagged === false
         ? false
@@ -131,6 +196,7 @@ memoryRouter.patch("/memory/:id", (req, res) => {
     return;
   }
 
+  invalidateDynamicPromptCache();
   logExecution({
     type: "memory",
     action: "manual.edit",

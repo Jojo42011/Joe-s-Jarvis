@@ -7,6 +7,11 @@ import {
 } from "../db/queries";
 import { getOhioDateTimeString } from "../routes/chat/utils";
 import { humanizeLogSummary } from "../utils/executionSummary";
+import {
+  formatMemoryFeedForPrompt,
+  getMemoryFeedForMessage,
+  type MemoryFeed
+} from "../memory/memoryFeed";
 
 export type SpeakerIdentity = "joe_operator" | "jahan_developer";
 
@@ -30,6 +35,11 @@ export type LeanChatContext = {
   recent_conversation: ConversationMessage[];
 };
 
+export type SmartContext = LeanChatContext & {
+  memory_feed: MemoryFeed;
+  memory_feed_text: string;
+};
+
 function summarizeLastExecution(entries: ExecutionLogEntry[]): string | null {
   const row = entries.find((e) => e.result === "success" && e.summary?.trim());
   if (!row?.summary) return null;
@@ -47,6 +57,20 @@ export function buildLeanChatContext(sessionId: string): LeanChatContext {
   };
 }
 
+export async function buildSmartContext(
+  message: string,
+  sessionId: string
+): Promise<SmartContext> {
+  const lean = buildLeanChatContext(sessionId);
+  lean.speaker = detectSpeakerIdentity(message, sessionId);
+  const memory_feed = await getMemoryFeedForMessage(message, sessionId);
+  return {
+    ...lean,
+    memory_feed,
+    memory_feed_text: formatMemoryFeedForPrompt(memory_feed)
+  };
+}
+
 export function formatLeanContextNote(ctx: LeanChatContext): string {
   const last = ctx.last_execution || "none logged yet";
   const speakerLabel =
@@ -56,4 +80,8 @@ export function formatLeanContextNote(ctx: LeanChatContext): string {
   return `Current state: Ohio time ${ctx.ohio_time}. Queue: ${ctx.queue_count} open item${
     ctx.queue_count === 1 ? "" : "s"
   }. Speaker: ${speakerLabel}. Last autonomous action: ${last}.`;
+}
+
+export function formatSmartContextNote(ctx: SmartContext): string {
+  return `${ctx.memory_feed_text}\n${formatLeanContextNote(ctx)}`;
 }

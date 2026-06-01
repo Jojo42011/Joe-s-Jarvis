@@ -18,6 +18,7 @@ import { transcriptsRouter } from "./routes/transcripts";
 import { notesRouter } from "./routes/notes";
 import { attachDeepgramSttProxy } from "./services/deepgramSttProxy";
 import { brainCycle } from "./brain/cycle";
+import { startDailySynthesisScheduler } from "./memory/synthesisEngine";
 import { requestContextMiddleware } from "./middleware/requestContext";
 import "./db";
 
@@ -70,6 +71,7 @@ server.listen(port, "0.0.0.0", () => {
   console.log(`JARVIS core online at http://localhost:${port}`);
   console.log(`LAN access: use http://<this-machine-ip>:${port} from your phone`);
   void brainCycle();
+  startDailySynthesisScheduler();
   setInterval(() => {
     void brainCycle();
   }, 5 * 60 * 1000);

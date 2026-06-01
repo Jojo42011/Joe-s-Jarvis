@@ -618,6 +618,20 @@ body::after{
 }
 .memory-card.flagged{border-color:rgba(255,180,60,.45);background:rgba(80,50,10,.12)}
 .memory-card.stale{border-color:rgba(255,56,72,.4);background:rgba(60,10,16,.15)}
+.memory-card.high-importance::after{
+  content:'●';position:absolute;top:10px;right:10px;color:var(--maroon);font-size:10px
+}
+.memory-card.synthesized::before{
+  content:'◈';position:absolute;top:10px;left:10px;color:var(--red-hot);font-size:12px
+}
+.memory-card.recent-retrieved{box-shadow:0 0 0 1px rgba(224,32,48,.25),0 0 12px rgba(224,32,48,.08)}
+.memory-card{position:relative}
+.memory-card.low-importance .memory-value{color:rgba(255,255,255,.45)}
+.memory-synthesis-card{
+  border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 14px;margin-bottom:10px;
+  background:rgba(0,0,0,.22)
+}
+.memory-gap-item{font-size:12px;color:var(--white);padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
 .memory-card.high-conf::before{
   content:'';position:absolute;top:10px;right:10px;width:7px;height:7px;border-radius:50%;
   background:var(--white);box-shadow:0 0 10px rgba(255,255,255,.55);
@@ -1271,8 +1285,10 @@ body::after{
       <div class="memory-stats-bar" id="memoryStatsBar">
         <div class="memory-stat"><div class="memory-stat-val" id="memStatTotal">0</div><div class="memory-stat-lbl">Total</div></div>
         <div class="memory-stat"><div class="memory-stat-val" id="memStatAvg">0</div><div class="memory-stat-lbl">Avg Conf</div></div>
+        <div class="memory-stat"><div class="memory-stat-val" id="memStatSynth">0</div><div class="memory-stat-lbl">Synthesized</div></div>
         <div class="memory-stat"><div class="memory-stat-val" id="memStatStale">0</div><div class="memory-stat-lbl">Stale</div></div>
         <div class="memory-stat"><div class="memory-stat-val" id="memStatFlagged">0</div><div class="memory-stat-lbl">Flagged</div></div>
+        <div class="memory-stat"><div class="memory-stat-val" id="memStatFed">0</div><div class="memory-stat-lbl">Fed Today</div></div>
       </div>
       <div class="memory-tabs" id="memoryTabs"></div>
       <div class="memory-panel-body" id="memoryPanelBody"></div>
@@ -1496,15 +1512,18 @@ const memStatTotal=document.getElementById('memStatTotal');
 const memStatAvg=document.getElementById('memStatAvg');
 const memStatStale=document.getElementById('memStatStale');
 const memStatFlagged=document.getElementById('memStatFlagged');
+const memStatSynth=document.getElementById('memStatSynth');
+const memStatFed=document.getElementById('memStatFed');
 
 const MEMORY_CATEGORIES=[
-  'business_context','client_relations','operator_preferences','world_intel',
+  'business_context','client_relations','operator_preferences','financial_operations','world_intel',
   'crew_labor','vendor_supplier','drone_faa','industry','document_facts'
 ];
 const MEMORY_CATEGORY_LABELS={
   business_context:'Business',
   client_relations:'Clients',
   operator_preferences:'Preferences',
+  financial_operations:'Financial',
   world_intel:'World Intel',
   crew_labor:'Crew',
   vendor_supplier:'Vendors',
@@ -1516,6 +1535,8 @@ let memoryPayload={categories:{},totalCount:0,lastAudit:null};
 let memoryStats=null;
 let memoryAuditQueue=[];
 let memoryWorldIntel=[];
+let memorySynthesisLogs=[];
+let memoryGaps=[];
 let memoryActiveCategory='business_context';
 
 const metricEls={
@@ -3387,6 +3408,12 @@ function formatMemoryAgo(iso){
   return `${days} days ago`;
 }
 
+function isRecentRetrieved(iso){
+  if(!iso)return false;
+  const ms=Date.now()-Date.parse(iso);
+  return Number.isFinite(ms)&&ms<24*60*60*1000;
+}
+
 function renderMemoryTabs(){
   if(!memoryTabs)return;
   memoryTabs.innerHTML='';
@@ -3404,10 +3431,25 @@ function renderMemoryTabs(){
     });
     memoryTabs.appendChild(btn);
   }
+  const synthBtn=document.createElement('button');
+  synthBtn.type='button';
+  synthBtn.className='memory-tab'+(memoryActiveCategory==='__synthesis__'?' active':'');
+  synthBtn.dataset.category='__synthesis__';
+  synthBtn.innerHTML=`Synthesis<span class="tab-count">${memorySynthesisLogs.length||0}</span>`;
+  synthBtn.addEventListener('click',()=>{
+    memoryActiveCategory='__synthesis__';
+    renderMemoryTabs();
+    renderMemorySynthesis();
+  });
+  memoryTabs.appendChild(synthBtn);
 }
 
 function renderMemoryList(){
   if(!memoryPanelBody)return;
+  if(memoryActiveCategory==='__synthesis__'){
+    renderMemorySynthesis();
+    return;
+  }
   const rows=memoryPayload.categories[memoryActiveCategory]||[];
   if(!rows.length){
     memoryPanelBody.innerHTML='<div class="memory-empty">No memories in this category yet, sir.</div>';
@@ -3418,22 +3460,68 @@ function renderMemoryList(){
     const card=document.createElement('article');
     const stale=m.confidence<0.3;
     const flagged=!!m.flagged;
-    const high=m.confidence>0.8;
-    card.className='memory-card'+(stale?' stale':'')+(flagged?' flagged':'')+(high?' high-conf':'');
+    const highConf=m.confidence>0.8;
+    const highImportance=(m.importance||0)>=0.8;
+    const synthesized=m.is_synthesized===1;
+    const recent=isRecentRetrieved(m.last_retrieved_at);
+    const lowImportance=(m.importance||0)<=0.3;
+    card.className='memory-card'
+      +(stale?' stale':'')
+      +(flagged?' flagged':'')
+      +(highConf?' high-conf':'')
+      +(highImportance?' high-importance':'')
+      +(synthesized?' synthesized':'')
+      +(recent?' recent-retrieved':'')
+      +(lowImportance?' low-importance':'');
     const pct=Math.round(Math.max(0,Math.min(1,m.confidence))*100);
     const fillClass=pct>=80?'high':pct>=45?'mid':'low';
+    const synthIcon=synthesized?' ◈':'';
     card.innerHTML=`
-      <div class="memory-key">KEY: ${escapeHtml(m.key)}</div>
+      <div class="memory-key">${synthIcon}KEY: ${escapeHtml(m.key)}</div>
       <div class="memory-value" data-value>${escapeHtml(m.value)}</div>
       <div class="memory-conf-row">
         <div class="conf-bar"><div class="conf-bar-fill ${fillClass}" style="width:${pct}%"></div></div>
         <span class="memory-conf-pct">${pct}%</span>
       </div>
-      <div class="memory-meta">Confidence: ${m.confidence.toFixed(2)} | Seen: ${m.occurrence_count||1}x | Last: ${formatMemoryAgo(m.last_seen)}</div>
+      <div class="memory-meta">Importance: ${(m.importance||0.5).toFixed(2)} | Retrievals: ${m.retrieval_count||0} | Seen: ${m.occurrence_count||1}x | Last: ${formatMemoryAgo(m.last_seen)}</div>
       <div class="memory-card-actions">
-        <button type="button" data-edit-memory="${m.id}">Edit</button>
-        <button type="button" data-delete-memory="${m.id}">Delete</button>
+        <button type="button" data-boost-memory="${m.id}">↑ Boost</button>
+        <button type="button" data-edit-memory="${m.id}">✎ Edit</button>
+        <button type="button" data-delete-memory="${m.id}">✕ Remove</button>
       </div>`;
+    memoryPanelBody.appendChild(card);
+  }
+}
+
+function renderMemorySynthesis(){
+  if(!memoryPanelBody)return;
+  memoryTabs.querySelectorAll('.memory-tab').forEach(b=>{
+    b.classList.toggle('active',b.dataset.category==='__synthesis__');
+  });
+  memoryPanelBody.innerHTML='';
+  if(!memorySynthesisLogs.length){
+    memoryPanelBody.innerHTML='<div class="memory-empty">No synthesis runs logged yet. Nightly synthesis runs at 2am Ohio time.</div>';
+    return;
+  }
+  if(memoryGaps.length){
+    const gapWrap=document.createElement('section');
+    gapWrap.innerHTML='<div class="memory-panel-sub" style="margin-bottom:8px">Knowledge gaps — tell JARVIS what it should know:</div>';
+    for(const gap of memoryGaps){
+      const row=document.createElement('div');
+      row.className='memory-gap-item';
+      row.textContent=gap;
+      gapWrap.appendChild(row);
+    }
+    memoryPanelBody.appendChild(gapWrap);
+  }
+  for(const log of memorySynthesisLogs){
+    const card=document.createElement('article');
+    card.className='memory-synthesis-card';
+    const when=log.ranAt?new Date(log.ranAt).toLocaleString():'—';
+    card.innerHTML=`
+      <div class="memory-key">${escapeHtml(log.category||'all')} · ${escapeHtml(when)}</div>
+      <div class="memory-value">Read ${log.memoriesRead||0} · Created ${log.memoriesCreated||0} · Updated ${log.memoriesUpdated||0} · Pruned ${log.memoriesPruned||0}</div>
+      <div class="memory-meta">${escapeHtml(log.synthesisSummary||'Synthesis complete')}</div>`;
     memoryPanelBody.appendChild(card);
   }
 }
@@ -3453,17 +3541,21 @@ function updateMemoryStatsUi(){
   if(memoryStats){
     setTextIfPresent(memStatTotal,String(memoryStats.totalMemories||0));
     setTextIfPresent(memStatAvg,(memoryStats.avgConfidence||0).toFixed(2));
+    setTextIfPresent(memStatSynth,String(memoryStats.synthesizedCount||0));
     setTextIfPresent(memStatStale,String(memoryStats.staleCount||0));
     setTextIfPresent(memStatFlagged,String(memoryStats.flaggedCount||0));
+    setTextIfPresent(memStatFed,String(memoryStats.fedTodayCount||0));
   }
 }
 
 async function loadMemoryPanelData(){
-  const [memRes,statsRes,queueRes,worldRes]=await Promise.all([
+  const [memRes,statsRes,queueRes,worldRes,synthRes,gapsRes]=await Promise.all([
     fetch('/api/memory'),
     fetch('/api/memory/stats'),
     fetch('/api/memory/audit-queue'),
-    fetch('/api/intelligence/world')
+    fetch('/api/intelligence/world'),
+    fetch('/api/memory/synthesis-log'),
+    fetch('/api/memory/gaps')
   ]);
   if(!memRes.ok)throw new Error('Failed to load memories');
   memoryPayload=await memRes.json();
@@ -3476,9 +3568,18 @@ async function loadMemoryPanelData(){
     const w=await worldRes.json().catch(()=>({items:[]}));
     memoryWorldIntel=Array.isArray(w.items)?w.items:[];
   }
+  if(synthRes.ok){
+    const s=await synthRes.json().catch(()=>({items:[]}));
+    memorySynthesisLogs=Array.isArray(s.items)?s.items:[];
+  }
+  if(gapsRes.ok){
+    const g=await gapsRes.json().catch(()=>({gaps:[]}));
+    memoryGaps=Array.isArray(g.gaps)?g.gaps:[];
+  }
   updateMemoryStatsUi();
   renderMemoryTabs();
-  renderMemoryList();
+  if(memoryActiveCategory==='__synthesis__')renderMemorySynthesis();
+  else renderMemoryList();
 }
 
 function renderMemoryWorldIntel(){
@@ -3956,13 +4057,26 @@ if(memoryPanelBody){
     const del=e.target.closest('[data-delete-memory]');
     if(del){
       const id=del.getAttribute('data-delete-memory');
-      if(!id||!confirm('Remove this memory?'))return;
+      if(!id||!confirm('Remove this memory (soft delete)?'))return;
       try{
         const r=await fetch(`/api/memory/${encodeURIComponent(id)}`,{method:'DELETE'});
         if(!r.ok)throw new Error(`HTTP ${r.status}`);
         await loadMemoryPanelData();
       }catch(err){
-        addLog(`Memory delete failed: ${err.message||err}`);
+        addLog(`Memory remove failed: ${err.message||err}`);
+      }
+      return;
+    }
+    const boost=e.target.closest('[data-boost-memory]');
+    if(boost){
+      const id=boost.getAttribute('data-boost-memory');
+      if(!id)return;
+      try{
+        const r=await fetch(`/api/memory/${encodeURIComponent(id)}/boost`,{method:'POST'});
+        if(!r.ok)throw new Error(`HTTP ${r.status}`);
+        await loadMemoryPanelData();
+      }catch(err){
+        addLog(`Memory boost failed: ${err.message||err}`);
       }
       return;
     }

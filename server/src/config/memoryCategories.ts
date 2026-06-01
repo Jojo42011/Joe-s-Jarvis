@@ -5,6 +5,7 @@ export const MEMORY_CATEGORIES = {
   WORLD_INTEL: "world_intel",
   CREW_LABOR: "crew_labor",
   VENDOR_SUPPLIER: "vendor_supplier",
+  FINANCIAL_OPERATIONS: "financial_operations",
   DRONE_FAA: "drone_faa",
   INDUSTRY: "industry",
   DOCUMENT_FACTS: "document_facts"
@@ -16,7 +17,9 @@ export const MEMORY_CATEGORY_LIST: MemoryCategory[] = Object.values(MEMORY_CATEG
 
 export const MEMORY_NEVER_DECAY: MemoryCategory[] = [
   MEMORY_CATEGORIES.OPERATOR_PREFERENCES,
-  MEMORY_CATEGORIES.CLIENT_RELATIONS
+  MEMORY_CATEGORIES.CLIENT_RELATIONS,
+  MEMORY_CATEGORIES.CREW_LABOR,
+  MEMORY_CATEGORIES.VENDOR_SUPPLIER
 ];
 
 /** ReAct / legacy domain slugs → unified category */
@@ -34,6 +37,7 @@ export const REACT_DOMAIN_TO_CATEGORY: Record<string, MemoryCategory> = {
   world_intel: MEMORY_CATEGORIES.WORLD_INTEL,
   vendor_supplier: MEMORY_CATEGORIES.VENDOR_SUPPLIER,
   document_facts: MEMORY_CATEGORIES.DOCUMENT_FACTS,
+  financial_operations: MEMORY_CATEGORIES.FINANCIAL_OPERATIONS,
   preferences: MEMORY_CATEGORIES.OPERATOR_PREFERENCES,
   contact_priority: MEMORY_CATEGORIES.CLIENT_RELATIONS,
   communication_style: MEMORY_CATEGORIES.OPERATOR_PREFERENCES,
