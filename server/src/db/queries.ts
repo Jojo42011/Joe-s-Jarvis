@@ -804,6 +804,109 @@ export function markQueueItemHandled(id: number) {
   db.prepare(`UPDATE priority_queue SET handled = 1 WHERE id = @id`).run({ id });
 }
 
+/** Open queue rows older than minAgeHours for backlog maintenance. */
+export function getQueueMaintenanceCandidates(limit = 10, minAgeHours = 1): PriorityQueueItem[] {
+  const rows = db
+    .prepare(
+      `
+    SELECT id, type, source_id, summary, action_needed, urgency, handled, raw_data, timestamp
+    FROM priority_queue
+    WHERE handled = 0
+      AND datetime(timestamp) <= datetime('now', '-' || @minAgeHours || ' hours')
+    ORDER BY timestamp ASC
+    LIMIT @limit
+  `
+    )
+    .all({ minAgeHours, limit }) as PriorityQueueRow[];
+
+  return rows.map(mapPriorityQueueRow);
+}
+
+export function hasSuccessfulExecutionForItem(sourceId: string): boolean {
+  if (!sourceId.trim()) return false;
+  const bare = sourceId.replace(/^gmail:/i, "");
+  const row = db
+    .prepare(
+      `
+    SELECT COUNT(*) as c FROM execution_log
+    WHERE result = 'success'
+      AND (
+        item_id = @sourceId
+        OR item_id = @bare
+        OR item_id = @gmailPrefixed
+        OR replace(item_id, 'gmail:', '') = @bare
+      )
+  `
+    )
+    .get({
+      sourceId,
+      bare,
+      gmailPrefixed: bare ? `gmail:${bare}` : sourceId
+    }) as { c: number };
+  return row.c > 0;
+}
+
+export function markQueueItemHandledWithNote(id: number, note: string) {
+  const item = getQueueItemById(id);
+  if (!item) return;
+
+  let raw: Record<string, unknown> = {};
+  if (item.rawData) {
+    try {
+      const parsed = JSON.parse(item.rawData) as Record<string, unknown>;
+      if (parsed && typeof parsed === "object") raw = parsed;
+    } catch {
+      raw = {};
+    }
+  }
+
+  raw.maintenanceNote = note;
+  raw.autoClosedAt = new Date().toISOString();
+
+  db.prepare(
+    `
+    UPDATE priority_queue
+    SET handled = 1, action_needed = @note, raw_data = @raw_data
+    WHERE id = @id
+  `
+  ).run({ id, note: note.slice(0, 500), raw_data: JSON.stringify(raw) });
+}
+
+export function escalateQueueItem(id: number, urgency: string, note: string) {
+  const item = getQueueItemById(id);
+  if (!item) return;
+
+  let raw: Record<string, unknown> = {};
+  if (item.rawData) {
+    try {
+      const parsed = JSON.parse(item.rawData) as Record<string, unknown>;
+      if (parsed && typeof parsed === "object") raw = parsed;
+    } catch {
+      raw = {};
+    }
+  }
+
+  raw.escalatedAt = new Date().toISOString();
+  raw.escalationNote = note;
+
+  const actionNeeded = item.actionNeeded?.includes(note)
+    ? item.actionNeeded
+    : [item.actionNeeded, note].filter(Boolean).join(" — ").slice(0, 500);
+
+  db.prepare(
+    `
+    UPDATE priority_queue
+    SET urgency = @urgency, action_needed = @action_needed, raw_data = @raw_data
+    WHERE id = @id
+  `
+  ).run({
+    id,
+    urgency,
+    action_needed: actionNeeded,
+    raw_data: JSON.stringify(raw)
+  });
+}
+
 function queueRetriageWasAttempted(rawData: string | null): boolean {
   if (!rawData) return false;
   try {
@@ -2153,4 +2256,153 @@ export function getTextsSince(internalDateAfterMs: number, limit = 40): TextLogI
     time: new Date(row.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     timestamp: row.timestamp
   }));
+}
+
+export type NoteSource = "voice" | "manual";
+
+export type Note = {
+  id: number;
+  content: string;
+  ohioTime: string;
+  createdAt: string;
+  source: NoteSource;
+  category: string | null;
+  linkedEntities: string | null;
+  promotedToMemory: number;
+  seenInRundown: number;
+};
+
+type NoteRow = {
+  id: number;
+  content: string;
+  ohio_time: string;
+  created_at: string;
+  source: string;
+  category: string | null;
+  linked_entities: string | null;
+  promoted_to_memory: number;
+  seen_in_rundown: number;
+};
+
+function mapNoteRow(row: NoteRow): Note {
+  const source = row.source === "voice" ? "voice" : "manual";
+  return {
+    id: row.id,
+    content: row.content,
+    ohioTime: row.ohio_time,
+    createdAt: row.created_at,
+    source,
+    category: row.category,
+    linkedEntities: row.linked_entities,
+    promotedToMemory: row.promoted_to_memory ?? 0,
+    seenInRundown: row.seen_in_rundown ?? 0
+  };
+}
+
+export function saveNote(
+  content: string,
+  source: NoteSource,
+  ohioTime: string
+): Note {
+  const trimmed = content.trim();
+  if (!trimmed) {
+    throw new Error("Note content is required");
+  }
+  const result = db
+    .prepare(
+      `
+    INSERT INTO notes (content, ohio_time, source)
+    VALUES (@content, @ohioTime, @source)
+  `
+    )
+    .run({
+      content: trimmed.slice(0, 8000),
+      ohioTime: ohioTime.slice(0, 200),
+      source
+    });
+  const row = db
+    .prepare(`SELECT * FROM notes WHERE id = @id`)
+    .get({ id: Number(result.lastInsertRowid) }) as NoteRow;
+  return mapNoteRow(row);
+}
+
+export function updateNoteMetadata(
+  id: number,
+  patch: {
+    category?: string | null;
+    linkedEntities?: string | null;
+    promotedToMemory?: number;
+  }
+): Note {
+  if (patch.category !== undefined) {
+    db.prepare(`UPDATE notes SET category = @category WHERE id = @id`).run({
+      id,
+      category: patch.category?.slice(0, 120) ?? null
+    });
+  }
+  if (patch.linkedEntities !== undefined) {
+    db.prepare(`UPDATE notes SET linked_entities = @linkedEntities WHERE id = @id`).run({
+      id,
+      linkedEntities: patch.linkedEntities
+    });
+  }
+  if (patch.promotedToMemory !== undefined) {
+    db.prepare(`UPDATE notes SET promoted_to_memory = @promoted WHERE id = @id`).run({
+      id,
+      promoted: patch.promotedToMemory ? 1 : 0
+    });
+  }
+  const row = db.prepare(`SELECT * FROM notes WHERE id = @id`).get({ id }) as NoteRow;
+  return mapNoteRow(row);
+}
+
+export function getRecentNotes(limit = 20): Note[] {
+  const rows = db
+    .prepare(
+      `
+    SELECT * FROM notes ORDER BY created_at DESC LIMIT @limit
+  `
+    )
+    .all({ limit: Math.min(Math.max(1, limit), 100) }) as NoteRow[];
+  return rows.map(mapNoteRow);
+}
+
+export function searchNotes(query: string, limit = 20): Note[] {
+  const q = query.trim();
+  if (!q) return [];
+  const rows = db
+    .prepare(
+      `
+    SELECT * FROM notes
+    WHERE content LIKE '%' || @q || '%'
+    ORDER BY created_at DESC
+    LIMIT @limit
+  `
+    )
+    .all({ q: q.slice(0, 200), limit: Math.min(Math.max(1, limit), 50) }) as NoteRow[];
+  return rows.map(mapNoteRow);
+}
+
+export function getUnacknowledgedNotes(sinceHours = 24): Note[] {
+  const hours = Math.min(Math.max(1, sinceHours), 168);
+  const rows = db
+    .prepare(
+      `
+    SELECT * FROM notes
+    WHERE seen_in_rundown = 0
+      AND datetime(created_at) >= datetime('now', @offset)
+    ORDER BY created_at DESC
+  `
+    )
+    .all({ offset: `-${hours} hours` }) as NoteRow[];
+  return rows.map(mapNoteRow);
+}
+
+export function markNotesSeenInRundown(ids: number[]): void {
+  const unique = [...new Set(ids.filter((id) => Number.isFinite(id) && id > 0))];
+  if (!unique.length) return;
+  const stmt = db.prepare(`UPDATE notes SET seen_in_rundown = 1 WHERE id = @id`);
+  for (const id of unique) {
+    stmt.run({ id });
+  }
 }

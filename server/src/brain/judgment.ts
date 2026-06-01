@@ -3,6 +3,10 @@ import { evaluateInboundItems, findWorkingModel } from "../services/claude";
 import { invalidateDynamicPromptCache } from "../config/systemPrompt";
 import {
   getStaleQueueItemsForRetriage,
+  getQueueMaintenanceCandidates,
+  hasSuccessfulExecutionForItem,
+  markQueueItemHandledWithNote,
+  escalateQueueItem,
   isWorldIntelReferencedInConversation,
   logExecution,
   setSystemState,
@@ -60,6 +64,10 @@ LOW — Noise. Not relevant to Joe or his business.
 Return JSON array only: [{ "id": number, "relevance": "HIGH"|"MEDIUM"|"LOW", "one_line_summary": string }]`;
 
 const MAX_MEMORY_PROMOTIONS_PER_CYCLE = 3;
+const QUEUE_MAINTENANCE_LIMIT = 10;
+const QUEUE_MAINTENANCE_MIN_AGE_HOURS = 1;
+const QUEUE_ESCALATE_AFTER_MS = 24 * 60 * 60 * 1000;
+const QUEUE_AUTO_CLOSE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 
 const MEMORY_PROMOTION_SYSTEM = `You are JARVIS, chief of staff to Joe Stewart, owner of Totally Outdoors LLC, a multimillion dollar landscaping business in Holmes County Ohio.
 
@@ -499,7 +507,60 @@ async function applyEmptyEmailBodyGuard(
 
 export class Judgment {
 
+  /** Drain stale queue backlog — auto-close, escalate, or mark handled from execution_log. */
+  maintainQueueBacklog(): void {
+    const candidates = getQueueMaintenanceCandidates(
+      QUEUE_MAINTENANCE_LIMIT,
+      QUEUE_MAINTENANCE_MIN_AGE_HOURS
+    );
+    const now = Date.now();
+
+    for (const item of candidates) {
+      const created = new Date(item.timestamp);
+      const ageMs = Number.isNaN(created.getTime()) ? 0 : now - created.getTime();
+
+      if (item.sourceId && hasSuccessfulExecutionForItem(item.sourceId)) {
+        markQueueItemHandledWithNote(
+          item.id,
+          "Auto-closed — completed action found in execution_log"
+        );
+        logExecution({
+          type: "system",
+          action: "queue.maintenance",
+          item_id: item.sourceId,
+          summary: `Queue #${item.id} auto-handled — execution_log match`,
+          result: "success"
+        });
+        continue;
+      }
+
+      if (ageMs >= QUEUE_AUTO_CLOSE_AFTER_MS) {
+        markQueueItemHandledWithNote(item.id, "Auto-closed after 7 days");
+        logExecution({
+          type: "system",
+          action: "queue.maintenance",
+          item_id: item.sourceId || String(item.id),
+          summary: `Queue #${item.id} auto-closed after 7 days`,
+          result: "success"
+        });
+        continue;
+      }
+
+      if (ageMs >= QUEUE_ESCALATE_AFTER_MS && item.urgency !== "NOW") {
+        escalateQueueItem(item.id, "NOW", "Unresolved 24h — needs Joe's attention");
+        logExecution({
+          type: "system",
+          action: "queue.escalate",
+          item_id: item.sourceId || String(item.id),
+          summary: `Queue #${item.id} escalated — unresolved 24h`,
+          result: "success"
+        });
+      }
+    }
+  }
+
   async evaluate(payload: PerceptionPayload): Promise<JudgmentDecision[]> {
+    this.maintainQueueBacklog();
 
     const items: Array<{ itemId: string; itemType: "email" | "call" | "text"; content: string }> = [];
     const staleMeta = new Map<string, number>();

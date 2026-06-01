@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { addAppointment, logExecution } from "../db/queries";
-import { checkAvailability, createCalendarEvent, type CalendarEventResult } from "./googleCalendar";
+import { checkAvailability, createCalendarEvent, enforceBusinessHours, type CalendarEventResult } from "./googleCalendar";
 import { findWorkingModel } from "./claude";
 import { claudeCircuit } from "./circuitBreaker";
 import { logServiceError } from "../utils/logError";
@@ -64,7 +64,7 @@ function ohioParts(date: Date) {
   };
 }
 
-/** Next weekday at 10:00am Ohio Eastern. */
+/** Next weekday at 9:00am Ohio Eastern. */
 export function defaultNextWeekdaySlot(from = new Date()): { start: string; end: string } {
   let cursor = new Date(from.getTime() + 24 * 60 * 60 * 1000);
   for (let i = 0; i < 14; i++) {
@@ -72,18 +72,16 @@ export function defaultNextWeekdaySlot(from = new Date()): { start: string; end:
     const wd = weekday.toLowerCase();
     if (wd !== "sat" && wd !== "sun") {
       const pad = (n: number) => String(n).padStart(2, "0");
-      const start = `${year}-${pad(month)}-${pad(day)}T10:00:00`;
-      const end = `${year}-${pad(month)}-${pad(day)}T11:00:00`;
+      const start = enforceBusinessHours(`${year}-${pad(month)}-${pad(day)}T09:00:00`);
+      const end = `${year}-${pad(month)}-${pad(day)}T10:00:00`;
       return { start, end };
     }
     cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
   }
   const fallback = ohioParts(new Date(from.getTime() + 24 * 60 * 60 * 1000));
   const pad = (n: number) => String(n).padStart(2, "0");
-  return {
-    start: `${fallback.year}-${pad(fallback.month)}-${pad(fallback.day)}T10:00:00`,
-    end: `${fallback.year}-${pad(fallback.month)}-${pad(fallback.day)}T11:00:00`
-  };
+  const start = enforceBusinessHours(`${fallback.year}-${pad(fallback.month)}-${pad(fallback.day)}T09:00:00`);
+  return { start, end: `${fallback.year}-${pad(fallback.month)}-${pad(fallback.day)}T10:00:00` };
 }
 
 function isFlexible(value: string) {
@@ -150,7 +148,9 @@ export async function parseAppointmentFromCall(input: {
       preferredDate: String(parsed.preferredDate || "flexible").trim(),
       preferredTime: String(parsed.preferredTime || "flexible").trim(),
       notes: String(parsed.notes || "").trim(),
-      startDateTime: parsed.startDateTime ? String(parsed.startDateTime) : null,
+      startDateTime: parsed.startDateTime
+        ? enforceBusinessHours(String(parsed.startDateTime))
+        : null,
       endDateTime: parsed.endDateTime ? String(parsed.endDateTime) : null
     };
   } catch (error) {
@@ -161,10 +161,10 @@ export async function parseAppointmentFromCall(input: {
 
 async function resolveSlot(extraction: AppointmentExtraction): Promise<{ start: string; end: string }> {
   if (extraction.startDateTime && !isFlexible(extraction.preferredDate)) {
-    const start = extraction.startDateTime;
+    const start = enforceBusinessHours(extraction.startDateTime);
     let end = extraction.endDateTime || "";
     if (!end) {
-      const ms = Date.parse(start);
+      const ms = Date.parse(start.includes("T") && !/[zZ]|[+-]\d{2}:\d{2}$/.test(start) ? `${start}-05:00` : start);
       end = Number.isFinite(ms)
         ? new Date(ms + 60 * 60 * 1000).toISOString()
         : defaultNextWeekdaySlot().end;
@@ -173,8 +173,8 @@ async function resolveSlot(extraction: AppointmentExtraction): Promise<{ start: 
   }
 
   if (extraction.startDateTime) {
-    const start = extraction.startDateTime;
-    const ms = Date.parse(start);
+    const start = enforceBusinessHours(extraction.startDateTime);
+    const ms = Date.parse(start.includes("T") && !/[zZ]|[+-]\d{2}:\d{2}$/.test(start) ? `${start}-05:00` : start);
     const end =
       extraction.endDateTime ||
       (Number.isFinite(ms) ? new Date(ms + 3600000).toISOString() : defaultNextWeekdaySlot().end);

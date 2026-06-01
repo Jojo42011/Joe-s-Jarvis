@@ -1,11 +1,16 @@
-import { getActiveAlertPayload, getQueue, type ConversationState } from "../../db/queries";
+import { getActiveAlertPayload, type ConversationState } from "../../db/queries";
 import {
   buildFallbackBriefingSpeech,
-  compileBriefingData,
+  compileBriefingDataForSession,
   sanitizeSpeech
 } from "../../brain/communication";
 import { briefLog, reqLog, routeLog } from "../../utils/requestLog";
 import { normalizeText, sanitizeSpeechForClient } from "./utils";
+import {
+  recordBriefingKeys,
+  recordSpokenFromResponse,
+  topicSpokenKey
+} from "./spokenSessionTracker";
 import type { IntentResponse } from "./types";
 
 export function isOperationalBriefQuery(message: string): boolean {
@@ -24,15 +29,16 @@ export function isOperationalBriefQuery(message: string): boolean {
 
 export function tryOperationalBriefRoute(
   message: string,
-  _state: ConversationState
+  _state: ConversationState,
+  sessionId: string
 ): IntentResponse | null {
   if (!isOperationalBriefQuery(message)) return null;
 
   routeLog("matched: tryOperationalBriefRoute");
   briefLog("judgment: operational brief — execution_log + memory + queue");
 
-  const data = compileBriefingData();
-  const queueOpen = getQueue(false).length;
+  const { data, includedKeys } = compileBriefingDataForSession(sessionId);
+  const queueOpen = data.queueCount;
   const alertPayload = getActiveAlertPayload();
 
   reqLog(
@@ -51,6 +57,14 @@ export function tryOperationalBriefRoute(
     parts.length > 0
       ? parts.join(" ").replace(/\s+/g, " ").trim()
       : "All quiet on my side, sir. Queue is clear. Say the word if you want email or weather.";
+
+  recordBriefingKeys(sessionId, includedKeys);
+  recordBriefingKeys(sessionId, [topicSpokenKey("morning_brief"), topicSpokenKey("rundown")]);
+  recordSpokenFromResponse(sessionId, {
+    speech,
+    intent: "morning_brief",
+    uiData: queueOpen > 0 ? [{ queueOpenCount: queueOpen }] : []
+  });
 
   return {
     speech: sanitizeSpeechForClient(speech),

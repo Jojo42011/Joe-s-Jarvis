@@ -1,7 +1,7 @@
 export type JarvisUiPayload = {
-  panel: "emails" | "texts" | "calls" | "rundown" | "photo" | "weather" | null;
+  panel: "emails" | "texts" | "calls" | "rundown" | "photo" | "weather" | "notes" | "calendar" | null;
   data: unknown[];
-  action?: "open" | "close" | "update" | "keep_open" | "show" | null;
+  action?: "open" | "close" | "update" | "keep_open" | "show" | "flash" | null;
 };
 
 export type WeatherPanelData = {

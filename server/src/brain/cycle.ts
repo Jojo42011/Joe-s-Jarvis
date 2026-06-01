@@ -7,6 +7,7 @@ import {
   setSystemState
 } from "../db/queries";
 import { brainLog } from "../utils/requestLog";
+import { prewarmRundownCacheIfStale } from "../routes/rundown";
 import { Communication } from "./communication";
 import { Execution } from "./execution";
 import { Judgment } from "./judgment";
@@ -119,6 +120,9 @@ export async function brainCycle() {
     console.error("[brain] cycle error:", error);
   } finally {
     cycleRunning = false;
+    setImmediate(() => {
+      void prewarmRundownCacheIfStale();
+    });
   }
 }
 

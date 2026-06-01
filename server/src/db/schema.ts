@@ -114,6 +114,27 @@ function applyMigrations(db: Database.Database) {
     `);
   }
 
+  if (!tableExists(db, "notes")) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        content TEXT NOT NULL,
+        ohio_time TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        source TEXT NOT NULL DEFAULT 'manual',
+        category TEXT,
+        linked_entities TEXT,
+        promoted_to_memory INTEGER DEFAULT 0,
+        seen_in_rundown INTEGER DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS notes_created_at ON notes(created_at DESC);
+    `);
+  }
+
+  if (tableExists(db, "notes") && !columnExists(db, "notes", "seen_in_rundown")) {
+    db.exec(`ALTER TABLE notes ADD COLUMN seen_in_rundown INTEGER DEFAULT 0`);
+  }
+
   if (!tableExists(db, "transcripts")) {
     db.exec(`
       CREATE TABLE IF NOT EXISTS transcripts (

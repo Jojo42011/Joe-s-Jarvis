@@ -22,7 +22,7 @@ import {
 import { humanizeLogSummary, isOperatorFacingLog } from "../utils/executionSummary";
 
 const SILENCE_WINDOW_MS = 5 * 60 * 1000;
-const ALL_CLEAR = "All clear sir. What do you need?";
+export const ALL_CLEAR = "All clear sir. What do you need?";
 
 export type ActivationBriefItem = {
   briefId: string;

@@ -228,10 +228,20 @@ export async function generateJarvisIntentResponse(input: {
   }
   messages.push({ role: "user", content: input.message });
 
+  const stateObj = input.state as Record<string, unknown> | null;
+  const alreadyCovered = stateObj?.alreadyCoveredThisSession;
+  const coveredList = Array.isArray(alreadyCovered)
+    ? alreadyCovered.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+    : [];
+  const coveredBlock =
+    coveredList.length > 0
+      ? `\n\nAlready covered this session (do NOT repeat unless Joe explicitly asks for a recap): ${coveredList.join(", ")}`
+      : "";
+
   const stateBlock = `\n\nOPERATOR STATE (authoritative for tools, inbox, execution log, last actions):\n${JSON.stringify(input.state, null, 2)}`;
 
   try {
-    const system = `${await buildDynamicSystemPrompt(input.message)}${stateBlock}`;
+    const system = `${await buildDynamicSystemPrompt(input.message)}${coveredBlock}${stateBlock}`;
     const response = await claudeCircuit.execute("intent-chat", () =>
       withTimeout(
         anthropic.messages.create({

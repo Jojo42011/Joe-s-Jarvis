@@ -14,6 +14,7 @@ import { memoryLog, reqLog } from "../../utils/requestLog";
 import { formatExecutionLogLine, formatRelativeAge } from "../../utils/temporal";
 import { humanizeLogSummary } from "../../utils/executionSummary";
 import { getSessionUploads } from "../../services/uploadSession";
+import { getSpokenListForPrompt } from "./spokenSessionTracker";
 
 export function detectPreferenceSignal(message: string): boolean {
   const t = message.toLowerCase();
@@ -76,7 +77,8 @@ export function memoryOutcomeLabel(intent: string) {
 
 export function buildChatStateForClaude(
   state: ConversationState,
-  alertPayload: ReturnType<typeof getActiveAlertPayload>
+  alertPayload: ReturnType<typeof getActiveAlertPayload>,
+  sessionId?: string
 ) {
   const todayLog = getExecutionLogToday(40);
   const recentExecutionLog = todayLog.slice(0, 3);
@@ -146,6 +148,7 @@ export function buildChatStateForClaude(
       documentId: u.documentId
     })),
     operatorContext: state.operatorContext,
+    alreadyCoveredThisSession: sessionId ? getSpokenListForPrompt(sessionId) : [],
     conversationNote:
       "Use executionLogToday as source of truth for what was actually done. Never claim you sent an email unless executionLogToday or a successful gmail.send_reply on this turn confirms it. Live weather/news/world questions are answered via automatic Brave ReAct before this response — use world.intel and weather panel when applicable. Follow up questions refer to the conversation above."
   };

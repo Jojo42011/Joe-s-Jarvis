@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#080608" />
 <meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="JARVIS" />
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22JARVIS%22%2C%22short_name%22%3A%22JARVIS%22%2C%22start_url%22%3A%22%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23000000%22%2C%22theme_color%22%3A%22%238B0000%22%2C%22orientation%22%3A%22portrait%22%7D" />
 <title>JARVIS | Joe Stewart</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap');
@@ -331,6 +335,67 @@ body::after{
 
 .hint-text{font-size:10px;color:var(--muted);letter-spacing:.05em;opacity:.45;flex-shrink:0}
 
+.bar-tip-wrap{position:relative;display:inline-flex;flex-shrink:0}
+.bar-tooltip{
+  position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);
+  background:rgba(0,0,0,.88);color:var(--white);padding:4px 8px;border-radius:4px;
+  font-size:11px;white-space:nowrap;pointer-events:none;opacity:0;
+  transition:opacity .2s;border:1px solid rgba(160,16,32,.35);z-index:90;
+}
+.bar-tip-wrap:hover .bar-tooltip,.bar-tip-wrap:focus-within .bar-tooltip{opacity:1}
+.hud-menu-btn{
+  flex-shrink:0;height:40px;padding:0 14px;border-radius:6px;
+  border:1.5px solid rgba(160,16,32,.45);background:rgba(160,16,32,.12);
+  color:var(--white);cursor:pointer;font-family:'Orbitron',sans-serif;
+  font-size:9px;font-weight:800;letter-spacing:.14em;
+}
+.hud-menu-btn:hover{border-color:var(--red);background:rgba(224,32,48,.18)}
+.rundown-quick-btn{
+  flex-shrink:0;height:40px;padding:0 14px;border-radius:6px;
+  border:1.5px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);
+  color:var(--white);cursor:pointer;font-family:'Orbitron',sans-serif;
+  font-size:9px;font-weight:800;letter-spacing:.12em;
+}
+.rundown-quick-btn:hover{border-color:var(--red);background:rgba(224,32,48,.12)}
+.hud-menu-sheet{
+  position:fixed;left:12px;right:12px;bottom:72px;z-index:85;
+  max-width:320px;margin:0 auto;
+  display:flex;flex-direction:column;gap:4px;padding:8px;
+  background:rgba(0,0,0,.92);border:1px solid rgba(160,16,32,.35);
+  border-left:3px solid var(--maroon);border-radius:8px;
+  box-shadow:0 -8px 40px rgba(0,0,0,.55);
+  transform:translateY(12px);opacity:0;pointer-events:none;
+  transition:transform .2s ease-out,opacity .2s ease-out;
+}
+.hud-menu-sheet.open{
+  transform:translateY(0);opacity:1;pointer-events:auto;
+}
+.hud-menu-item{
+  display:flex;align-items:center;gap:10px;width:100%;
+  padding:12px 14px;border:none;border-radius:4px;cursor:pointer;
+  background:transparent;color:var(--white);text-align:left;
+  font-family:'Orbitron',sans-serif;font-size:9px;font-weight:800;letter-spacing:.14em;
+}
+.hud-menu-item:hover,.hud-menu-item:focus{background:rgba(160,16,32,.28);outline:none}
+.hud-menu-item .menu-glyph{
+  width:18px;text-align:center;color:var(--maroon);font-size:12px;flex-shrink:0;
+}
+.bar-legacy-hidden{display:none!important}
+
+.listening-stop-btn{
+  position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0));
+  transform:translateX(-50%);z-index:82;
+  padding:12px 22px;border:1.5px solid var(--red-hot);border-radius:6px;
+  background:rgba(160,16,32,.35);color:var(--white);cursor:pointer;
+  font-family:'Orbitron',sans-serif;font-size:10px;font-weight:800;letter-spacing:.16em;
+  box-shadow:0 0 24px rgba(224,32,48,.35);
+  display:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.listening-stop-btn.visible{display:block;animation:noteIn .25s ease}
+.listening-stop-btn:hover,.listening-stop-btn:focus{
+  background:rgba(224,32,48,.45);outline:none;border-color:var(--white);
+}
+
 .doc-upload-btn{
   position:relative;width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(255,255,255,.12);
   background:rgba(255,255,255,.03);color:var(--muted);cursor:pointer;
@@ -351,6 +416,68 @@ body::after{
 }
 .memory-btn:hover{border-color:var(--red);color:var(--white);background:rgba(224,32,48,.1)}
 .memory-btn svg{width:17px;height:17px}
+.notes-btn{
+  position:relative;width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(160,16,32,.45);
+  background:rgba(160,16,32,.08);color:var(--maroon);cursor:pointer;
+  display:grid;place-items:center;transition:all .25s;flex-shrink:0;
+}
+.notes-btn:hover{border-color:var(--red);color:var(--white);background:rgba(224,32,48,.14)}
+.notes-btn svg{width:17px;height:17px}
+.notes-panel-layer{
+  position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);z-index:36;
+  pointer-events:none;transform:translateX(100%);transition:transform .32s cubic-bezier(.22,1,.36,1);
+}
+.notes-panel-layer.open{pointer-events:auto;transform:translateX(0)}
+.notes-panel-shell{
+  height:100%;display:flex;flex-direction:column;overflow:hidden;
+  border-left:1px solid rgba(224,32,48,.28);
+  background:linear-gradient(165deg,rgba(14,5,8,.97),rgba(4,3,5,.95));
+  box-shadow:-24px 0 80px rgba(0,0,0,.55),0 0 60px rgba(160,16,32,.15);
+}
+.notes-panel-header{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  padding:16px 18px 12px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(160,16,32,.12);
+}
+.notes-panel-title{font-family:'Orbitron',sans-serif;font-size:11px;font-weight:800;letter-spacing:.22em;color:var(--white)}
+.notes-panel-close{
+  border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--white);
+  width:32px;height:32px;border-radius:4px;cursor:pointer;font-size:18px;line-height:1;
+}
+.notes-panel-close:hover{border-color:var(--red);background:rgba(224,32,48,.15)}
+.notes-panel-list{flex:1;min-height:0;overflow-y:auto;padding:14px 16px;-webkit-overflow-scrolling:touch}
+.notes-empty{text-align:center;color:var(--muted);font-size:12px;padding:40px 16px;letter-spacing:.06em}
+.notes-item{
+  border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:12px 12px 10px;margin-bottom:10px;
+  background:rgba(255,255,255,.02);animation:noteIn .35s ease;
+}
+@keyframes noteIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.notes-item-time{font-size:9px;color:var(--muted);letter-spacing:.08em;margin-bottom:6px}
+.notes-item-body{font-size:12px;color:var(--text);line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.notes-item-meta{display:flex;align-items:center;gap:6px;margin-top:8px}
+.notes-badge{
+  display:inline-flex;align-items:center;gap:4px;font-family:'Orbitron',sans-serif;
+  font-size:7px;font-weight:800;letter-spacing:.1em;padding:3px 7px;border-radius:4px;
+}
+.notes-badge.voice{border:1px solid rgba(160,16,32,.5);color:var(--maroon);background:rgba(160,16,32,.12)}
+.notes-badge.manual{border:1px solid rgba(255,255,255,.12);color:var(--muted);background:rgba(255,255,255,.04)}
+.notes-badge svg{width:10px;height:10px}
+.notes-compose{
+  border-top:1px solid rgba(255,255,255,.08);padding:14px 16px 18px;background:rgba(0,0,0,.25);
+}
+.notes-textarea{
+  width:100%;min-height:72px;resize:vertical;border:1px solid rgba(255,255,255,.12);
+  border-radius:6px;background:rgba(255,255,255,.03);color:var(--white);
+  font-family:'Share Tech Mono',monospace;font-size:12px;padding:10px 12px;margin-bottom:10px;
+}
+.notes-textarea::placeholder{color:var(--muted)}
+.notes-textarea:focus{outline:none;border-color:rgba(224,32,48,.45)}
+.notes-save-btn{
+  width:100%;border:1px solid rgba(224,32,48,.45);background:rgba(160,16,32,.2);color:var(--white);
+  font-family:'Orbitron',sans-serif;font-size:9px;font-weight:800;letter-spacing:.14em;
+  padding:10px 14px;border-radius:6px;cursor:pointer;
+}
+.notes-save-btn:hover{background:rgba(224,32,48,.28)}
+.notes-save-btn:disabled{opacity:.45;cursor:not-allowed}
 
 .rec-btn{
   display:flex;align-items:center;justify-content:center;gap:5px;
@@ -810,10 +937,13 @@ body::after{
   }
   .topbar-left{gap:10px;flex:1;min-width:0}
   .logo{font-size:16px;letter-spacing:.14em}
-  .status-badge{padding:6px 12px;font-size:9px;flex-shrink:0}
-  .topbar-right{gap:8px;flex-shrink:0;width:auto}
+  .topbar-right{
+    gap:0;flex-shrink:0;margin-left:auto;
+    justify-content:flex-end;align-items:center;
+  }
+  .status-badge{padding:6px 12px;font-size:9px;flex-shrink:0;margin-left:0}
   .user-tag{display:none}
-  .clock{font-size:12px}
+  .clock{display:none!important}
 
   .center-stage{
     flex:1 1 auto;min-height:0;width:100%;
@@ -863,6 +993,23 @@ body::after{
     touch-action:manipulation;-webkit-tap-highlight-color:transparent;
   }
   .memory-btn svg{width:20px;height:20px}
+  .notes-btn{
+    flex-shrink:0;width:48px;height:48px;min-width:48px;min-height:48px;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  }
+  .notes-btn svg{width:20px;height:20px}
+  .notes-panel-layer{width:100%;max-width:100vw}
+  .notes-panel-list{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .hud-menu-btn,.rundown-quick-btn{
+    min-height:48px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  }
+  .hud-menu-sheet{
+    left:8px;right:8px;bottom:calc(68px + env(safe-area-inset-bottom,0));max-width:none;
+  }
+  .listening-stop-btn{
+    bottom:calc(76px + env(safe-area-inset-bottom,0));
+    padding:14px 24px;font-size:11px;min-height:48px;
+  }
 
   .dynamic-panel-layer{
     top:0;right:0;bottom:0;left:0;width:100%;max-width:100vw;
@@ -943,9 +1090,9 @@ body::after{
   <header class="topbar">
     <div class="topbar-left">
       <div class="logo">J<span>.</span>A<span>.</span>R<span>.</span>V<span>.</span>I<span>.</span>S</div>
-      <div class="status-badge" id="status">STANDBY</div>
     </div>
     <div class="topbar-right">
+      <div class="status-badge" id="status">STANDBY</div>
       <span class="user-tag">J. Stewart // Owner // Ohio, USA</span>
       <span class="clock" id="clock">--:--:--</span>
     </div>
@@ -1022,6 +1169,7 @@ body::after{
         <span class="pulse-label">PROCESSING</span>
       </div>
     </div>
+    <button class="listening-stop-btn" id="listeningStopBtn" type="button" aria-hidden="true" title="Stop listening">STOP LISTENING</button>
   </section>
 
   <!-- RIGHT PANEL -->
@@ -1053,19 +1201,45 @@ body::after{
   </aside>
 
   <!-- BOTTOM COMMAND BAR -->
+  <div class="hud-menu-sheet" id="hudMenuSheet" aria-hidden="true">
+    <button type="button" class="hud-menu-item" data-menu="emails"><span class="menu-glyph">◆</span>EMAILS</button>
+    <button type="button" class="hud-menu-item" data-menu="calls"><span class="menu-glyph">◆</span>CALLS</button>
+    <button type="button" class="hud-menu-item" data-menu="queue"><span class="menu-glyph">◆</span>QUEUE</button>
+    <button type="button" class="hud-menu-item" data-menu="notes"><span class="menu-glyph">◆</span>NOTES</button>
+    <button type="button" class="hud-menu-item" data-menu="weather"><span class="menu-glyph">◆</span>WEATHER</button>
+    <button type="button" class="hud-menu-item" data-menu="listen"><span class="menu-glyph">◆</span>LISTENING MODE</button>
+    <button type="button" class="hud-menu-item" data-menu="documents"><span class="menu-glyph">◆</span>DOCUMENTS</button>
+    <button type="button" class="hud-menu-item" data-menu="memory"><span class="menu-glyph">◆</span>MEMORY</button>
+    <button type="button" class="hud-menu-item" data-menu="upload"><span class="menu-glyph">◆</span>UPLOAD FILE</button>
+  </div>
+
   <footer class="bottombar">
-    <button class="memory-btn" id="memoryBtn" type="button" title="JARVIS Memory" aria-label="JARVIS Memory">
+    <div class="bar-tip-wrap">
+      <button class="hud-menu-btn" id="hudMenuBtn" type="button" aria-label="Menu" aria-expanded="false" title="Menu">≡ MENU</button>
+      <span class="bar-tooltip">Menu</span>
+    </div>
+    <div class="bar-tip-wrap">
+      <button class="mic-btn" id="micButton" type="button" aria-label="Listen" title="Listen">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 15c1.66 0 3-1.34 3-3V6c0-1.66-1.34-3-3-3S9 4.34 9 6v6c0 1.66 1.34 3 3 3Z" fill="currentColor"/><path d="M17.3 12c0 2.93-2.38 5.3-5.3 5.3S6.7 14.93 6.7 12H5c0 3.53 2.61 6.43 6 6.92V22h2v-3.08c3.39-.49 6-3.39 6-6.92h-1.7Z" fill="currentColor"/></svg>
+      </button>
+      <span class="bar-tooltip">Listen</span>
+    </div>
+    <div class="bar-tip-wrap">
+      <button class="rundown-quick-btn" id="rundownQuickBtn" type="button" aria-label="Rundown" title="Rundown">RUNDOWN</button>
+      <span class="bar-tooltip">Rundown</span>
+    </div>
+    <button class="memory-btn bar-legacy-hidden" id="memoryBtn" type="button" title="JARVIS Memory" aria-label="JARVIS Memory">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3a7 7 0 0 0-7 7c0 2.8 1.6 5.2 4 6.4V19a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-2.6A7 7 0 0 0 19 10a7 7 0 0 0-7-7Z" stroke="currentColor" stroke-width="1.4"/><path d="M9 21h6M10 14h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
     </button>
-    <button class="doc-upload-btn hidden-badge" id="docUploadBtn" type="button" title="Upload document to JARVIS" aria-label="Upload document">
+    <button class="notes-btn bar-legacy-hidden" id="notesBtn" type="button" title="Notes" aria-label="Notes">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z" stroke="currentColor" stroke-width="1.4"/><path d="M14 2v6h6M8 13h8M8 17h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M16 2l4 4" stroke="currentColor" stroke-width="1.4"/></svg>
+    </button>
+    <button class="doc-upload-btn hidden-badge bar-legacy-hidden" id="docUploadBtn" type="button" title="Upload document" aria-label="Upload document">
       <span class="doc-count-badge" id="docCountBadge">0</span>
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z" stroke="currentColor" stroke-width="1.5"/><path d="M14 2v6h6M12 18v-6M9 15l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
     <input type="file" id="docFileInput" accept=".pdf,.txt,.md,.csv,.html,.htm,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif,.mp3,.mp4,.mov,image/*,application/pdf" multiple hidden />
-    <button class="mic-btn" id="micButton" aria-label="Speak to JARVIS">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M12 15c1.66 0 3-1.34 3-3V6c0-1.66-1.34-3-3-3S9 4.34 9 6v6c0 1.66 1.34 3 3 3Z" fill="currentColor"/><path d="M17.3 12c0 2.93-2.38 5.3-5.3 5.3S6.7 14.93 6.7 12H5c0 3.53 2.61 6.43 6 6.92V22h2v-3.08c3.39-.49 6-3.39 6-6.92h-1.7Z" fill="currentColor"/></svg>
-    </button>
-    <button class="rec-btn" id="recButton" type="button" aria-label="Record meeting" aria-pressed="false">
+    <button class="rec-btn bar-legacy-hidden" id="recButton" type="button" aria-label="Record meeting" aria-pressed="false" title="Record">
       <span class="rec-dot" aria-hidden="true"></span>
       <span>REC</span>
     </button>
@@ -1073,8 +1247,11 @@ body::after{
     <form id="commandForm" style="flex:1;display:flex">
       <input class="cmd-input" id="commandInput" type="text" autocomplete="off" placeholder="Enter command..."/>
     </form>
-    <button class="send-btn" id="sendBtn" type="button">TRANSMIT</button>
-    <span class="hint-text">Tap mic once — continuous conversation</span>
+    <div class="bar-tip-wrap">
+      <button class="send-btn" id="sendBtn" type="button" title="Transmit">TRANSMIT</button>
+      <span class="bar-tooltip">Transmit</span>
+    </div>
+    <span class="hint-text bar-legacy-hidden">Tap mic once — continuous conversation</span>
   </footer>
 
   <div class="doc-toast" id="docToast" role="status" aria-live="polite"></div>
@@ -1099,6 +1276,22 @@ body::after{
       </div>
       <div class="memory-tabs" id="memoryTabs"></div>
       <div class="memory-panel-body" id="memoryPanelBody"></div>
+    </section>
+  </div>
+
+  <div class="notes-panel-layer" id="notesPanelLayer" aria-hidden="true">
+    <section class="notes-panel-shell">
+      <div class="notes-panel-header">
+        <div class="notes-panel-title">◈ NOTES</div>
+        <button class="notes-panel-close" id="notesPanelClose" type="button" aria-label="Close notes">×</button>
+      </div>
+      <div class="notes-panel-list" id="notesPanelList">
+        <p class="notes-empty">No notes yet, sir.</p>
+      </div>
+      <div class="notes-compose">
+        <textarea class="notes-textarea" id="notesTextarea" placeholder="Type a note..." rows="3"></textarea>
+        <button class="notes-save-btn" id="notesSaveBtn" type="button">+ SAVE NOTE</button>
+      </div>
     </section>
   </div>
 
@@ -1282,6 +1475,13 @@ const docCountBadge=document.getElementById('docCountBadge');
 const docToast=document.getElementById('docToast');
 const memoryBtn=document.getElementById('memoryBtn');
 const memoryPanelLayer=document.getElementById('memoryPanelLayer');
+const notesBtn=document.getElementById('notesBtn');
+const notesPanelLayer=document.getElementById('notesPanelLayer');
+const notesPanelList=document.getElementById('notesPanelList');
+const notesPanelClose=document.getElementById('notesPanelClose');
+const notesTextarea=document.getElementById('notesTextarea');
+const notesSaveBtn=document.getElementById('notesSaveBtn');
+let notesFlashTimer=null;
 const memoryPanelBody=document.getElementById('memoryPanelBody');
 const memoryTabs=document.getElementById('memoryTabs');
 const memoryCloseBtn=document.getElementById('memoryCloseBtn');
@@ -1334,6 +1534,7 @@ let recordingStartedAt=0;
 let recordingTimerInterval=null;
 let recordingReconnectTimer=null;
 let recordingWakeLock=null;
+let appWakeLock=null;
 let lastRecordingGapAt=0;
 let sessionId=localStorage.getItem('jarvis_session_id')||crypto.randomUUID();
 localStorage.setItem('jarvis_session_id',sessionId);
@@ -1369,6 +1570,79 @@ let sttReady=false;
 let sttSessionId=0;
 let sttFailureCount=0;
 let sttLastErrorAt=0;
+let sttIntentionalClose=false;
+const STT_MAX_FAILURES=8;
+
+async function requestAppWakeLock(){
+  try{
+    if(!('wakeLock' in navigator))return;
+    if(appWakeLock&&!appWakeLock.released)return;
+    appWakeLock=await navigator.wakeLock.request('screen');
+    appWakeLock.addEventListener('release',()=>{
+      appWakeLock=null;
+    });
+  }catch(_){/* unsupported or denied — silent */}
+}
+
+async function releaseAppWakeLock(){
+  try{
+    if(appWakeLock&&!appWakeLock.released){
+      await appWakeLock.release();
+    }
+  }catch(_){}
+  appWakeLock=null;
+}
+
+function setConversationMode(enabled){
+  conversationMode=enabled;
+  if(enabled){
+    void requestAppWakeLock();
+  }
+  const stopBtn=document.getElementById('listeningStopBtn');
+  if(stopBtn){
+    stopBtn.classList.toggle('visible',enabled);
+    stopBtn.setAttribute('aria-hidden',enabled?'false':'true');
+  }
+}
+
+async function resumeSuspendedAudioContexts(){
+  try{
+    if(playbackAudioContext?.state==='suspended'){
+      await playbackAudioContext.resume();
+    }
+    if(audioContext?.state==='suspended'){
+      await audioContext.resume();
+    }
+  }catch(e){
+    console.warn('[visibility] audio resume skipped',e);
+  }
+}
+
+function isDeepgramSocketDead(){
+  return !deepgramSocket||deepgramSocket.readyState===WebSocket.CLOSED||deepgramSocket.readyState===WebSocket.CLOSING;
+}
+
+function handleVisibilityRestore(){
+  void requestAppWakeLock();
+  void resumeSuspendedAudioContexts();
+  if(!conversationMode||recordingModeActive)return;
+  if(statusEl.textContent==='PROCESSING'||statusEl.textContent==='RESPONDING')return;
+
+  setTimeout(()=>{
+    if(!conversationMode||recordingModeActive)return;
+    if(statusEl.textContent==='PROCESSING'||statusEl.textContent==='RESPONDING')return;
+
+    if(isListening&&isDeepgramSocketDead()){
+      cleanupDeepgramListening({restart:false,intentional:true});
+    }
+
+    if(!isListening){
+      void startListening(false);
+    }else if(isDeepgramSocketDead()){
+      scheduleListeningRestart(400);
+    }
+  },800);
+}
 
 function setStatus(s){
   statusEl.textContent=s;
@@ -1505,13 +1779,13 @@ function playArrayBufferOnUnlockedContext(arrayBuffer){
   });
 }
 
-async function playSessionTts(text,{manageUi=true,token=null}={}){
+async function playSessionTts(text,{manageUi=true,token=null,skipRestart=false}={}){
   const trimmed=String(text||'').trim();
   if(!trimmed){
     if(manageUi){
       waveformSpeaking=false;
       setStatus('STANDBY');
-      scheduleListeningRestart();
+      if(!skipRestart)scheduleListeningRestart();
     }
     return;
   }
@@ -1546,19 +1820,19 @@ async function playSessionTts(text,{manageUi=true,token=null}={}){
     if(manageUi){
       waveformSpeaking=false;
       setStatus('STANDBY');
-      scheduleListeningRestart();
+      if(!skipRestart)scheduleListeningRestart();
     }
   }catch(e){
     console.error('Web Audio TTS failed',e);
     stopActivePlaybackSource();
-    await fallbackSpeak(trimmed,{token,manageUi});
+    await fallbackSpeak(trimmed,{token,manageUi,skipRestart});
   }
 }
 
-async function speak(text){
+async function speak(text,{skipRestart=false}={}){
   const token=++speechToken;
   haltPlayback();
-  await playSessionTts(text,{manageUi:true,token});
+  await playSessionTts(text,{manageUi:true,token,skipRestart});
 }
 
 function pickSpeechVoice(){
@@ -1572,12 +1846,12 @@ function pickSpeechVoice(){
   );
 }
 
-async function fallbackSpeak(text,{token=null,manageUi=true}={}){
+async function fallbackSpeak(text,{token=null,manageUi=true,skipRestart=false}={}){
   if(!('speechSynthesis' in window)){
     if(manageUi){
       setStatus('STANDBY');
       waveformSpeaking=false;
-      scheduleListeningRestart();
+      if(!skipRestart)scheduleListeningRestart();
     }
     return;
   }
@@ -1600,7 +1874,7 @@ async function fallbackSpeak(text,{token=null,manageUi=true}={}){
       if(manageUi){
         waveformSpeaking=false;
         setStatus('STANDBY');
-        scheduleListeningRestart();
+        if(!skipRestart)scheduleListeningRestart();
       }
     };
     u.onerror=()=>{
@@ -1608,7 +1882,7 @@ async function fallbackSpeak(text,{token=null,manageUi=true}={}){
       if(manageUi){
         waveformSpeaking=false;
         setStatus('STANDBY');
-        scheduleListeningRestart();
+        if(!skipRestart)scheduleListeningRestart();
       }
     };
     window.speechSynthesis.speak(u);
@@ -1635,16 +1909,21 @@ async function fallbackSpeak(text,{token=null,manageUi=true}={}){
   });
 }
 
-function scheduleListeningRestart(){
+function sttRetryDelayMs(){
+  const exp=Math.min(16000,1000*Math.pow(2,Math.max(0,sttFailureCount-1)));
+  return exp;
+}
+
+function scheduleListeningRestart(overrideDelay=null){
   if(!conversationMode)return;
   if(statusEl.textContent==='PROCESSING'||statusEl.textContent==='RESPONDING')return;
-  if(sttFailureCount>=4)return;
+  if(sttFailureCount>=STT_MAX_FAILURES)return;
 
   clearTimeout(listenRestartTimer);
-  const delay=Math.min(4000,800+sttFailureCount*900);
+  const delay=overrideDelay!=null?overrideDelay:sttRetryDelayMs();
   listenRestartTimer=setTimeout(()=>{
     if(conversationMode&&statusEl.textContent!=='PROCESSING'&&statusEl.textContent!=='RESPONDING'){
-      startListening(false);
+      void startListening(false);
     }
   },delay);
 }
@@ -1918,7 +2197,21 @@ function renderRundownPanel(data=[]){
 function handlePanelResponse(ui,intent=''){
   if(/close|cancel/i.test(intent)||ui?.action==='close'){
     closeDynamicPanel();
+    closeNotesPanel();
     return;
+  }
+
+  if(ui?.panel==='notes'){
+    if(ui.action==='flash'){
+      void openNotesPanel(ui.data||[]);
+      clearTimeout(notesFlashTimer);
+      notesFlashTimer=setTimeout(()=>closeNotesPanel(),2000);
+      return;
+    }
+    if(['open','update','keep_open','show',null,undefined].includes(ui.action)){
+      void openNotesPanel(ui.data||[]);
+      return;
+    }
   }
 
   if(ui?.panel&&['open','update','keep_open','show',null,undefined].includes(ui.action)){
@@ -1926,12 +2219,64 @@ function handlePanelResponse(ui,intent=''){
   }
 }
 
-function isShutdownCommand(message){
-  const text=message.toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
-  if(/^(hey\s+)?jarvis\s+(shut\s+off|shutdown|shut\s+down|power\s+down|go\s+offline|stop\s+listening)$/.test(text)){
-    return true;
+function parseListeningControlCommand(message){
+  const text=message.toLowerCase().replace(/[^a-z0-9\s']/g,' ').replace(/\s+/g,' ').trim();
+  if(!text)return null;
+
+  if(/^(that s all|that will be all|thank you jarvis|thanks jarvis|goodbye jarvis|good night jarvis|we re done|i m done)$/.test(text)){
+    return 'shutdown';
   }
-  return /^(that s all|that will be all|thank you jarvis|thanks jarvis|goodbye jarvis|good night jarvis|stand down|go to sleep|we re done|i m done|go on standby)$/.test(text);
+  if(/^(hey\s+)?jarvis\s+(shut\s+off|shutdown|shut\s+down|power\s+down|go\s+offline)$/.test(text)){
+    return 'shutdown';
+  }
+
+  const stopExact=[
+    /^(hey\s+)?jarvis\s+stop(\s+listening|\s+right\s+now|\s+now)?$/,
+    /^stop(\s+listening|\s+right\s+now|\s+now)?$/,
+    /^stop\s+listening$/,
+    /^quit\s+listening$/,
+    /^end\s+listening$/,
+    /^turn\s+off(\s+listening)?$/,
+    /^(go\s+on\s+)?standby$/,
+    /^stand\s+down$/,
+    /^go\s+to\s+sleep$/,
+    /^stop\s+jarvis$/,
+    /^(hey\s+)?jarvis\s+(stand\s+down|go\s+on\s+standby|standby|stop\s+listening)$/
+  ];
+  if(stopExact.some((pattern)=>pattern.test(text)))return 'stop';
+
+  const stopLoose=[
+    /\bstop\s+listening\b/,
+    /\bstop\s+right\s+now\b/,
+    /\bquit\s+listening\b/,
+    /\bend\s+listening\b/,
+    /\bturn\s+off\s+listening\b/,
+    /\bgo\s+on\s+standby\b/,
+    /\bstand\s+down\b/
+  ];
+  if(text.length<=48&&stopLoose.some((pattern)=>pattern.test(text)))return 'stop';
+  if(text.length<=24&&/^stop(\s+now)?$/.test(text))return 'stop';
+
+  return null;
+}
+
+function isShutdownCommand(message){
+  return parseListeningControlCommand(message)==='shutdown';
+}
+
+async function stopListeningMode({speakConfirmation=true,message='Standing by, sir.',addAssistantMessage=true}={}){
+  setConversationMode(false);
+  clearTimeout(listenRestartTimer);
+  listenRestartTimer=null;
+  showProcessingIndicator(false);
+  cleanupDeepgramListening({restart:false,intentional:true});
+  closeHudMenu();
+  setStatus('STANDBY');
+  addLog('Listening mode stopped.');
+  if(addAssistantMessage)addMessage('assistant',message);
+  if(speakConfirmation){
+    await speak(message,{skipRestart:true});
+  }
 }
 
 async function clearServerSessionState(sessionToClear){
@@ -1952,15 +2297,17 @@ async function clearServerSessionState(sessionToClear){
 
 async function shutdownJarvis(){
   const oldSessionId=sessionId;
-  conversationMode=false;
   clearTimeout(listenRestartTimer);
   listenRestartTimer=null;
   speechToken++;
   haltPlayback();
-
-  cleanupDeepgramListening({restart:false});
+  setConversationMode(false);
+  cleanupDeepgramListening({restart:false,intentional:true});
   closeDynamicPanel();
+  closeHudMenu();
   setStatus('STANDBY');
+  showProcessingIndicator(false);
+  await releaseAppWakeLock();
 
   await clearServerSessionState(oldSessionId);
   sessionId=crypto.randomUUID();
@@ -1971,6 +2318,7 @@ async function shutdownJarvis(){
 }
 
 async function jarvisActivateBriefing(){
+  void requestAppWakeLock();
   triggerActivationSequence();
   try{
     const r=await fetch('/api/chat',{
@@ -1987,7 +2335,7 @@ async function jarvisActivateBriefing(){
     addLog('Auto briefing on activation');
     addMessage('assistant',t);
     handlePanelResponse(d.ui,d.intent);
-    if(t)conversationMode=true;
+    if(t)setConversationMode(true);
     speak(t);
   }catch(e){
     console.warn('Activation briefing failed',e);
@@ -2009,7 +2357,12 @@ async function sendCommand(message){
   addMessage('user',cleanMessage);
   input.value='';
 
-  if(isShutdownCommand(cleanMessage)){
+  const listenControl=parseListeningControlCommand(cleanMessage);
+  if(listenControl==='stop'){
+    await stopListeningMode();
+    return;
+  }
+  if(listenControl==='shutdown'){
     await shutdownJarvis();
     return;
   }
@@ -2123,7 +2476,8 @@ function detachDeepgramSocketHandlers(socket){
   socket.onclose=null;
 }
 
-function closeDeepgramSocket(){
+function closeDeepgramSocket({intentional=false}={}){
+  sttIntentionalClose=intentional;
   const socket=deepgramSocket;
   deepgramSocket=null;
   sttReady=false;
@@ -2141,12 +2495,23 @@ function notifySttFailure(message){
   addMessage('assistant',message);
 }
 
-function handleSttFailure(logMessage,userMessage){
+function handleSttFailure(logMessage,userMessage,{connectionDrop=false}={}){
   if(logMessage)addLog(logMessage);
+  if(!connectionDrop)return;
+
   sttFailureCount+=1;
-  cleanupDeepgramListening({restart:false});
+  cleanupDeepgramListening({restart:false,intentional:true});
+
+  if(sttFailureCount>=STT_MAX_FAILURES){
+    setConversationMode(false);
+    const msg='Lost connection sir. Tap mic when ready.';
+    notifySttFailure(msg);
+    void speak(msg);
+    return;
+  }
+
   notifySttFailure(userMessage||'Deepgram connection dropped. Tap the mic to try again, sir.');
-  if(conversationMode&&sttFailureCount<4)scheduleListeningRestart();
+  if(conversationMode)scheduleListeningRestart();
 }
 
 function bindDeepgramSocketHandlers(socket,sessionId){
@@ -2163,16 +2528,20 @@ function bindDeepgramSocketHandlers(socket,sessionId){
   };
   socket.onerror=()=>{
     if(sessionId!==sttSessionId||!isListening)return;
-    handleSttFailure('Deepgram socket error');
+    handleSttFailure('Deepgram socket error',null,{connectionDrop:true});
   };
   socket.onclose=event=>{
     if(sessionId!==sttSessionId)return;
+    if(sttIntentionalClose){
+      sttIntentionalClose=false;
+      return;
+    }
     if(recordingModeActive){
       scheduleRecordingReconnect();
       return;
     }
     if(isListening&&!deepgramFinalTranscript){
-      handleSttFailure(`Deepgram socket closed (${event.code||'unknown'})`);
+      handleSttFailure(`Deepgram socket closed (${event.code||'unknown'})`,null,{connectionDrop:true});
     }
   };
 }
@@ -2237,7 +2606,7 @@ function openDeepgramProxySocket(){
   });
 }
 
-function cleanupDeepgramListening({restart=false}={}){
+function cleanupDeepgramListening({restart=false,intentional=true}={}){
   clearTimeout(listenTimeout);
   listenTimeout=null;
   stopLocalVadMonitor();
@@ -2263,7 +2632,7 @@ function cleanupDeepgramListening({restart=false}={}){
     micStream=null;
   }
 
-  closeDeepgramSocket();
+  closeDeepgramSocket({intentional});
   isListening=false;
   clearInterimTranscript();
 
@@ -2400,21 +2769,37 @@ function showInterimTranscript(text){
 function finishDeepgramTranscript(transcript){
   const clean=transcript.trim();
   if(!clean)return;
-  conversationMode=true;
   console.log(`Transcript: ${clean}`);
   deepgramFinalTranscript=clean;
   clearInterimTranscript();
-  cleanupDeepgramListening({restart:false});
+  cleanupDeepgramListening({restart:false,intentional:true});
 
   void (async()=>{
     const rest=hasJarvisWake(clean)?stripJarvisWake(clean):clean;
+    const text=(rest||clean).trim();
+    if(!text)return;
+
+    const listenControl=parseListeningControlCommand(text);
+    if(listenControl==='stop'){
+      addLog(`User command: ${text}`);
+      addMessage('user',text);
+      await stopListeningMode();
+      return;
+    }
+    if(listenControl==='shutdown'){
+      addLog(`User command: ${text}`);
+      addMessage('user',text);
+      await shutdownJarvis();
+      return;
+    }
+
+    setConversationMode(true);
     if(hasJarvisWake(clean)&&!rest){
-      conversationMode=true;
       triggerActivationSequence();
       await jarvisActivateBriefing();
       return;
     }
-    await sendCommand(rest||clean);
+    await sendCommand(text);
   })();
 }
 
@@ -2511,12 +2896,11 @@ function handleMicTap(){
 }
 
 async function startListening(enableConversation=true){
-  if(enableConversation)conversationMode=true;
   if(isListening){
-    conversationMode=false;
-    cleanupDeepgramListening({restart:false});
+    await stopListeningMode({speakConfirmation:false,addAssistantMessage:false});
     return;
   }
+  if(enableConversation)setConversationMode(true);
   if(statusEl.textContent==='PROCESSING'||statusEl.textContent==='RESPONDING')return;
 
   if(!navigator.mediaDevices?.getUserMedia||!window.AudioContext&&!window.webkitAudioContext||!window.WebSocket){
@@ -2572,15 +2956,26 @@ async function startListening(enableConversation=true){
   }catch(e){
     console.error(e);
     const denied=e&&((e.name==='NotAllowedError')||(e.name==='PermissionDeniedError'));
-    handleSttFailure(
-      denied?'Mic permission denied':String(e.message||e),
-      denied?'Mic access blocked. Allow microphone permission for this site, sir.':'Deepgram STT failed to start. Tap the mic to try again, sir.'
-    );
+    cleanupDeepgramListening({restart:false,intentional:true});
+    if(denied){
+      addLog('Mic permission denied');
+      addMessage('assistant','Mic access blocked. Allow microphone permission for this site, sir.');
+    }else{
+      addLog(String(e.message||e));
+      addMessage('assistant','Deepgram STT failed to start. Tap the mic to try again, sir.');
+    }
   }
 }
 
 micButton.addEventListener('click',handleMicTap);
 hologram.addEventListener('click',handleMicTap);
+const listeningStopBtn=document.getElementById('listeningStopBtn');
+if(listeningStopBtn){
+  listeningStopBtn.addEventListener('click',()=>{
+    unlockAudioFromUserGesture();
+    void stopListeningMode();
+  });
+}
 
 function formatRecordingElapsed(ms){
   const sec=Math.floor(ms/1000);
@@ -3331,7 +3726,226 @@ if(evolutionPanel){
 void loadEvolutionPanel();
 setInterval(()=>void loadEvolutionPanel(),120000);
 
+const hudMenuBtn=document.getElementById('hudMenuBtn');
+const hudMenuSheet=document.getElementById('hudMenuSheet');
+const rundownQuickBtn=document.getElementById('rundownQuickBtn');
+
+function closeHudMenu(){
+  if(!hudMenuSheet)return;
+  hudMenuSheet.classList.remove('open');
+  hudMenuSheet.setAttribute('aria-hidden','true');
+  if(hudMenuBtn)hudMenuBtn.setAttribute('aria-expanded','false');
+}
+
+function openHudMenu(){
+  if(!hudMenuSheet)return;
+  hudMenuSheet.classList.add('open');
+  hudMenuSheet.setAttribute('aria-hidden','false');
+  if(hudMenuBtn)hudMenuBtn.setAttribute('aria-expanded','true');
+}
+
+function toggleHudMenu(){
+  if(hudMenuSheet?.classList.contains('open'))closeHudMenu();
+  else openHudMenu();
+}
+
+async function openHudPanelFromMenu(panel){
+  if(panel==='notes'){void openNotesPanel();return;}
+  if(panel==='memory'){void openMemoryPanel();return;}
+  if(panel==='upload'){
+    docFileInput?.click();
+    return;
+  }
+  if(panel==='listen'){
+    unlockAudioFromUserGesture();
+    void startListening(true);
+    return;
+  }
+  if(panel==='documents'){
+    showPanelLoading('Documents');
+    try{
+      const r=await fetch('/api/documents');
+      const d=await r.json();
+      openDynamicPanel('documents',d.documents||d||[]);
+    }catch{
+      openDynamicPanel('documents',[]);
+    }
+    return;
+  }
+  if(panel==='weather'){
+    void sendCommand('What is the weather for our Ohio job sites right now?');
+    return;
+  }
+  if(panel==='queue'||panel==='rundown'){
+    showPanelLoading('Operational Rundown');
+    try{
+      const r=await fetch('/api/rundown');
+      const d=await r.json();
+      openDynamicPanel('rundown',[d]);
+    }catch(e){
+      console.warn('Rundown panel failed',e);
+    }
+    return;
+  }
+  showPanelLoading(panel==='emails'?'Emails':'Calls');
+  try{
+    const r=await fetch('/api/rundown');
+    const d=await r.json();
+    const items=panel==='emails'?(d.emails||[]):(d.calls||[]);
+    openDynamicPanel(panel,items);
+  }catch(e){
+    console.warn('Panel load failed',e);
+    openDynamicPanel(panel,[]);
+  }
+}
+
+async function openRundownQuick(){
+  showPanelLoading('Operational Rundown');
+  try{
+    const r=await fetch('/api/rundown');
+    const d=await r.json();
+    openDynamicPanel('rundown',[d]);
+  }catch(e){
+    console.warn('Rundown quick open failed',e);
+  }
+}
+
+if(hudMenuBtn)hudMenuBtn.addEventListener('click',(e)=>{
+  e.stopPropagation();
+  toggleHudMenu();
+});
+if(rundownQuickBtn)rundownQuickBtn.addEventListener('click',()=>void openRundownQuick());
+if(hudMenuSheet){
+  hudMenuSheet.addEventListener('click',(e)=>{
+    const btn=e.target.closest('[data-menu]');
+    if(!btn)return;
+    const panel=btn.getAttribute('data-menu');
+    closeHudMenu();
+    if(panel)void openHudPanelFromMenu(panel);
+  });
+}
+document.addEventListener('click',(e)=>{
+  if(!hudMenuSheet?.classList.contains('open'))return;
+  if(hudMenuSheet.contains(e.target)||hudMenuBtn?.contains(e.target))return;
+  closeHudMenu();
+});
+
 if(memoryBtn)memoryBtn.addEventListener('click',()=>void openMemoryPanel());
+
+function formatNoteOhioFriendly(isoOrOhio){
+  const d=new Date(isoOrOhio);
+  if(Number.isNaN(d.getTime())) return String(isoOrOhio||'—');
+  const now=new Date();
+  const dayKey=(x)=>x.toLocaleDateString('en-CA',{timeZone:'America/New_York'});
+  const timeLabel=d.toLocaleString('en-US',{
+    timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true
+  }).replace(/\s/g,'').toLowerCase();
+  const noteDay=dayKey(d);
+  if(noteDay===dayKey(now)) return `Today · ${timeLabel}`;
+  const yesterday=new Date(now.getTime()-86400000);
+  if(noteDay===dayKey(yesterday)) return `Yesterday · ${timeLabel}`;
+  const dateLabel=d.toLocaleString('en-US',{
+    timeZone:'America/New_York',month:'short',day:'numeric'
+  });
+  return `${dateLabel} · ${timeLabel}`;
+}
+
+function extractNotesFromPanelData(data=[]){
+  if(!Array.isArray(data)||!data.length) return [];
+  const first=data[0];
+  if(first&&Array.isArray(first.notes)) return first.notes;
+  if(first&&first.note) return [first.note];
+  if(first&&first.id&&first.content) return data;
+  return [];
+}
+
+function renderNotesList(notes=[]){
+  if(!notesPanelList) return;
+  if(!notes.length){
+    notesPanelList.innerHTML='<p class="notes-empty">No notes yet, sir.</p>';
+    return;
+  }
+  const rows=notes.map(note=>{
+    const src=(note.source||'manual')==='voice'?'voice':'manual';
+    const badge=src==='voice'
+      ? '<span class="notes-badge voice"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 15c1.66 0 3-1.34 3-3V6c0-1.66-1.34-3-3-3S9 4.34 9 6v6c0 1.66 1.34 3 3 3Z" fill="currentColor"/></svg>VOICE</span>'
+      : '<span class="notes-badge manual"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0-3-3L5 17v3Z" stroke="currentColor" stroke-width="1.4"/></svg>NOTE</span>';
+    const when=formatNoteOhioFriendly(note.createdAt||note.created_at||note.ohioTime||note.ohio_time);
+    return `<article class="notes-item" data-note-id="${escapeHtml(String(note.id||''))}">
+      <div class="notes-item-time">${escapeHtml(when)}</div>
+      <div class="notes-item-body">${escapeHtml(note.content||'')}</div>
+      <div class="notes-item-meta">${badge}</div>
+    </article>`;
+  }).join('');
+  notesPanelList.innerHTML=rows;
+}
+
+function closeNotesPanel(){
+  if(!notesPanelLayer) return;
+  notesPanelLayer.classList.remove('open');
+  notesPanelLayer.setAttribute('aria-hidden','true');
+}
+
+async function openNotesPanel(data=[]){
+  if(!notesPanelLayer) return;
+  notesPanelLayer.classList.add('open');
+  notesPanelLayer.setAttribute('aria-hidden','false');
+  let notes=[];
+  try{
+    const res=await fetch('/api/notes?limit=30');
+    if(res.ok){
+      const json=await res.json();
+      notes=Array.isArray(json.notes)?json.notes:[];
+    }
+  }catch(e){
+    console.warn('Notes fetch failed',e);
+  }
+  const injected=extractNotesFromPanelData(data);
+  for(const note of injected){
+    if(note?.id&&!notes.some(n=>n.id===note.id)) notes.unshift(note);
+  }
+  renderNotesList(notes);
+}
+
+async function saveManualNote(){
+  if(!notesTextarea||!notesSaveBtn) return;
+  const content=notesTextarea.value.trim();
+  if(!content) return;
+  notesSaveBtn.disabled=true;
+  try{
+    const res=await fetch('/api/notes',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({content,source:'manual'})
+    });
+    if(!res.ok) throw new Error('save failed');
+    const json=await res.json();
+    notesTextarea.value='';
+    const existing=[];
+    try{
+      const listRes=await fetch('/api/notes?limit=30');
+      if(listRes.ok){
+        const listJson=await listRes.json();
+        existing.push(...(listJson.notes||[]));
+      }
+    }catch(_e){}
+    if(json.note&&!existing.some(n=>n.id===json.note.id)) existing.unshift(json.note);
+    renderNotesList(existing.length?existing:(json.note?[json.note]:[]));
+    if(!notesPanelLayer?.classList.contains('open')){
+      notesPanelLayer?.classList.add('open');
+      notesPanelLayer?.setAttribute('aria-hidden','false');
+    }
+  }catch(e){
+    console.warn('Note save failed',e);
+    addLog('Could not save note');
+  }finally{
+    notesSaveBtn.disabled=false;
+  }
+}
+
+if(notesBtn) notesBtn.addEventListener('click',()=>void openNotesPanel());
+if(notesPanelClose) notesPanelClose.addEventListener('click',()=>closeNotesPanel());
+if(notesSaveBtn) notesSaveBtn.addEventListener('click',()=>void saveManualNote());
 if(memoryCloseBtn)memoryCloseBtn.addEventListener('click',closeMemoryPanel);
 if(memoryRunAuditBtn)memoryRunAuditBtn.addEventListener('click',()=>void runMemoryAudit());
 if(memoryWorldIntelBtn)memoryWorldIntelBtn.addEventListener('click',()=>renderMemoryWorldIntel());
@@ -3403,6 +4017,7 @@ if(memoryPanelBody){
 }
 
 function scheduleActivationOnLoad(){
+  void requestAppWakeLock();
   void jarvisActivateBriefing();
 }
 if(document.readyState==='loading'){
@@ -3410,6 +4025,18 @@ if(document.readyState==='loading'){
 }else{
   scheduleActivationOnLoad();
 }
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){
+    console.log('[visibility] app hidden');
+    return;
+  }
+  handleVisibilityRestore();
+});
+
+window.addEventListener('pagehide',()=>{
+  void releaseAppWakeLock();
+});
 
 setStatus('STANDBY');
 updateClock();

@@ -15,6 +15,7 @@ import { intelligenceRouter } from "./routes/intelligence";
 import { documentsRouter } from "./routes/documents";
 import { memoryRouter } from "./routes/memory";
 import { transcriptsRouter } from "./routes/transcripts";
+import { notesRouter } from "./routes/notes";
 import { attachDeepgramSttProxy } from "./services/deepgramSttProxy";
 import { brainCycle } from "./brain/cycle";
 import { requestContextMiddleware } from "./middleware/requestContext";
@@ -41,6 +42,7 @@ app.use("/api", intelligenceRouter);
 app.use("/api", documentsRouter);
 app.use("/api", memoryRouter);
 app.use("/api", transcriptsRouter);
+app.use("/api", notesRouter);
 
 app.get("*", (_req, res) => {
   res.sendFile(path.join(clientPath, "index.html"));

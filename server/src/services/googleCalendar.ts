@@ -4,6 +4,123 @@ import { logServiceError } from "../utils/logError";
 const CALENDAR_BASE = "https://www.googleapis.com/calendar/v3";
 const DEFAULT_TZ = "America/New_York";
 
+const APPOINTMENT_EARLIEST_MINUTES = 8 * 60 + 45;
+const APPOINTMENT_LATEST_MINUTES = 17 * 60;
+const DEFAULT_APPOINTMENT_HOUR = 9;
+const DEFAULT_APPOINTMENT_MINUTE = 0;
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function ohioWallParts(date: Date) {
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: DEFAULT_TZ,
+    weekday: "short",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  });
+  const parts = fmt.formatToParts(date);
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value || "";
+  return {
+    weekday: get("weekday"),
+    year: Number(get("year")),
+    month: Number(get("month")),
+    day: Number(get("day")),
+    hour: Number(get("hour")),
+    minute: Number(get("minute"))
+  };
+}
+
+function formatOhioLocal(year: number, month: number, day: number, hour: number, minute: number): string {
+  return `${year}-${pad2(month)}-${pad2(day)}T${pad2(hour)}:${pad2(minute)}:00`;
+}
+
+function isWeekendWeekday(weekday: string): boolean {
+  const wd = weekday.toLowerCase();
+  return wd === "sat" || wd === "sun";
+}
+
+function addOhioDays(from: Date, days: number): Date {
+  return new Date(from.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
+function nextBusinessDay9amFrom(from: Date): string {
+  let cursor = addOhioDays(from, 1);
+  for (let i = 0; i < 14; i++) {
+    const parts = ohioWallParts(cursor);
+    if (!isWeekendWeekday(parts.weekday)) {
+      return formatOhioLocal(parts.year, parts.month, parts.day, DEFAULT_APPOINTMENT_HOUR, DEFAULT_APPOINTMENT_MINUTE);
+    }
+    cursor = addOhioDays(cursor, 1);
+  }
+  const fallback = ohioWallParts(cursor);
+  return formatOhioLocal(
+    fallback.year,
+    fallback.month,
+    fallback.day,
+    DEFAULT_APPOINTMENT_HOUR,
+    DEFAULT_APPOINTMENT_MINUTE
+  );
+}
+
+function monday9amFromWeekend(from: Date): string {
+  let cursor = addOhioDays(from, 1);
+  for (let i = 0; i < 7; i++) {
+    const parts = ohioWallParts(cursor);
+    if (parts.weekday.toLowerCase() === "mon") {
+      return formatOhioLocal(parts.year, parts.month, parts.day, DEFAULT_APPOINTMENT_HOUR, DEFAULT_APPOINTMENT_MINUTE);
+    }
+    cursor = addOhioDays(cursor, 1);
+  }
+  return nextBusinessDay9amFrom(from);
+}
+
+/** Enforce Joe's appointment window: weekdays 8:45am–5pm Ohio; default slot 9am. */
+export function enforceBusinessHours(startDateTime: string): string {
+  const trimmed = startDateTime.trim();
+  if (!trimmed) {
+    return nextBusinessDay9amFrom(new Date());
+  }
+
+  let parsed = Date.parse(toRfc3339(trimmed));
+  if (!Number.isFinite(parsed)) {
+    return nextBusinessDay9amFrom(new Date());
+  }
+
+  for (let attempt = 0; attempt < 14; attempt++) {
+    const parts = ohioWallParts(new Date(parsed));
+
+    if (isWeekendWeekday(parts.weekday)) {
+      return monday9amFromWeekend(new Date(parsed));
+    }
+
+    const minutes = parts.hour * 60 + parts.minute;
+
+    if (minutes < APPOINTMENT_EARLIEST_MINUTES) {
+      return formatOhioLocal(parts.year, parts.month, parts.day, DEFAULT_APPOINTMENT_HOUR, DEFAULT_APPOINTMENT_MINUTE);
+    }
+
+    if (minutes >= APPOINTMENT_LATEST_MINUTES) {
+      parsed = Date.parse(nextBusinessDay9amFrom(new Date(parsed)));
+      continue;
+    }
+
+    return formatOhioLocal(parts.year, parts.month, parts.day, parts.hour, parts.minute);
+  }
+
+  return nextBusinessDay9amFrom(new Date());
+}
+
+export function defaultFlexibleAppointmentSlot(from = new Date()): string {
+  return enforceBusinessHours(nextBusinessDay9amFrom(from));
+}
+
 export type CalendarEventResult = {
   eventId: string;
   htmlLink: string;
@@ -78,13 +195,24 @@ export async function createCalendarEvent(input: {
   calendarId?: string;
 }): Promise<CalendarEventResult | null> {
   const calendarId = encodeURIComponent(input.calendarId || "primary");
-  const start = toRfc3339(input.startDateTime);
+  const adjustedStart = enforceBusinessHours(input.startDateTime);
+  const start = toRfc3339(adjustedStart);
   let end = toRfc3339(input.endDateTime);
 
   if (!end && start) {
     const startMs = Date.parse(start);
     if (Number.isFinite(startMs)) {
       end = new Date(startMs + 60 * 60 * 1000).toISOString();
+    }
+  } else if (start) {
+    const startMs = Date.parse(start.includes("T") && !/[zZ]|[+-]\d{2}:\d{2}$/.test(start) ? `${start}-05:00` : start);
+    const endMs = Date.parse(end);
+    const durationMs =
+      Number.isFinite(startMs) && Number.isFinite(endMs) && endMs > startMs
+        ? endMs - startMs
+        : 60 * 60 * 1000;
+    if (Number.isFinite(startMs)) {
+      end = new Date(startMs + durationMs).toISOString();
     }
   }
 

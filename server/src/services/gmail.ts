@@ -478,12 +478,13 @@ export async function sendGmailReply(input: {
   const to = sanitizeHeader(toAddress);
   const from = sanitizeHeader(profile.emailAddress);
 
+  const headerLines = [`From: ${from}`, `To: ${to}`, `Subject: ${sanitizeHeader(subject)}`];
+  if (input.messageId && !input.messageId.startsWith("<jarvis-")) {
+    headerLines.push(`In-Reply-To: ${sanitizeHeader(input.messageId)}`);
+    headerLines.push(`References: ${sanitizeHeader(input.messageId)}`);
+  }
   const rawMessage = [
-    `From: ${from}`,
-    `To: ${to}`,
-    `Subject: ${sanitizeHeader(subject)}`,
-    `In-Reply-To: ${sanitizeHeader(input.messageId)}`,
-    `References: ${sanitizeHeader(input.messageId)}`,
+    ...headerLines,
     "Content-Type: text/plain; charset=utf-8",
     "MIME-Version: 1.0",
     "",

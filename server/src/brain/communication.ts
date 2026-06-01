@@ -6,7 +6,9 @@ import {
   getMemoriesCreatedSince,
   getQueue,
   getSystemState,
+  getUnacknowledgedNotes,
   logExecution,
+  markNotesSeenInRundown,
   setLastBriefingTime,
   setSystemState,
   type ExecutionLogEntry,
@@ -30,6 +32,8 @@ import {
   markWorldIntelBriefed,
   type WorldIntelRow
 } from "./worldIntelStore";
+import { filterBriefingDataForSession } from "../routes/chat/spokenSessionTracker";
+import { formatNotesBriefingSnippet } from "../services/notes";
 
 const BRIEFING_HOURS = 24;
 const DATA_WINDOW_MS = BRIEFING_HOURS * 60 * 60 * 1000;
@@ -130,11 +134,12 @@ export type BriefingData = {
   queueCount: number;
   queueItems: BriefingQueueItem[];
   callsCount: number;
-  priorityCalls: Array<{ from: string; reason: string; outcome: string }>;
+  priorityCalls: Array<{ id: number; from: string; reason: string; outcome: string }>;
   worldIntel: Array<{ query: string; summary: string }>;
   worldIntelCount: number;
   weather: { summary: string; query: string } | null;
   memoryPromotions: Array<{ category: string; key: string; value: string }>;
+  recentNotes: Array<{ id: number; content: string; source: string }>;
   executionSummary: string;
   isEmpty: boolean;
 };
@@ -215,6 +220,10 @@ export function buildFallbackBriefingSpeech(data: BriefingData): string {
     parts.push(`I stored ${data.memoryPromotions.length} new operational fact${data.memoryPromotions.length === 1 ? "" : "s"}.`);
   }
 
+  if (data.recentNotes.length) {
+    parts.push(formatNotesBriefingSnippet(data.recentNotes));
+  }
+
   if (data.queueCount > 0) {
     parts.push(`${data.queueCount} item${data.queueCount === 1 ? "" : "s"} need your attention sir.`);
   } else {
@@ -231,7 +240,20 @@ export function shouldDeliverBriefing(): boolean {
   return hoursElapsed >= BRIEFING_HOURS;
 }
 
-export function compileBriefingData(): BriefingData {
+export function compileBriefingData(sessionId?: string): BriefingData {
+  const base = compileBriefingDataBase();
+  if (!sessionId) return base;
+  return filterBriefingDataForSession(base, sessionId).data;
+}
+
+export function compileBriefingDataForSession(sessionId: string): {
+  data: BriefingData;
+  includedKeys: string[];
+} {
+  return filterBriefingDataForSession(compileBriefingDataBase(), sessionId);
+}
+
+function compileBriefingDataBase(): BriefingData {
   const lastDelivered = getLastBriefingTime();
   const hoursElapsed = lastDelivered
     ? (Date.now() - new Date(lastDelivered).getTime()) / (1000 * 60 * 60)
@@ -265,6 +287,7 @@ export function compileBriefingData(): BriefingData {
     .filter((c) => c.priorityLevel === "HIGH" || c.outcome === "FORWARDED")
     .slice(0, 5)
     .map((c) => ({
+      id: c.id,
       from: c.from,
       reason: c.reason || c.outcome,
       outcome: c.outcome
@@ -292,6 +315,13 @@ export function compileBriefingData(): BriefingData {
     value: m.value.slice(0, 200)
   }));
 
+  const unackNotes = getUnacknowledgedNotes(24);
+  const recentNotes = unackNotes.map((n) => ({
+    id: n.id,
+    content: n.content,
+    source: n.source
+  }));
+
   const executionSummary = buildExecutionSummaryLine(logs, emailsHandled, emailsArchived, memories.length);
 
   const isEmpty =
@@ -302,6 +332,7 @@ export function compileBriefingData(): BriefingData {
     worldIntel.length === 0 &&
     !weather &&
     memoryPromotions.length === 0 &&
+    recentNotes.length === 0 &&
     logs.length === 0;
 
   return {
@@ -320,6 +351,7 @@ export function compileBriefingData(): BriefingData {
     worldIntelCount: worldIntel.length,
     weather,
     memoryPromotions,
+    recentNotes,
     executionSummary,
     isEmpty
   };
@@ -442,6 +474,10 @@ export async function deliverBriefingIfDue(): Promise<GeneratedBriefing | null> 
       .slice(0, 3)
       .map((w) => w.id);
     markWorldIntelBriefed(ids);
+  }
+
+  if (data.recentNotes.length) {
+    markNotesSeenInRundown(data.recentNotes.map((n) => n.id));
   }
 
   logExecution({
