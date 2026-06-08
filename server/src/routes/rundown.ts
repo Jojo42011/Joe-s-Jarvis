@@ -11,7 +11,7 @@ import {
   markNotesSeenInRundown
 } from "../db/queries";
 import { formatNotesBriefingSnippet } from "../services/notes";
-import { getRecentGmailMessages } from "../services/gmail";
+import { enrichEmailsForPanel, getRecentGmailMessages } from "../services/gmail";
 import { generateOperatorBriefing } from "../services/claude";
 import { briefLog } from "../utils/requestLog";
 
@@ -71,7 +71,7 @@ export async function buildRundownResponse(): Promise<RundownResponse> {
   const operations = getOperationsSnapshot();
   const recentLogs = getRecentCommunicationLogs(8);
   const calls = getRecentCalls(20);
-  const emails = await getRecentGmailMessages(8);
+  const emails = enrichEmailsForPanel(await getRecentGmailMessages(8));
   const priorityEmails = emails.filter((email) => email.priority === "HIGH");
   const forwardedCalls = calls.filter((call) => call.outcome === "FORWARDED").length;
 

@@ -1,17 +1,37 @@
 import { Router } from "express";
-import { getRecentGmailMessages, sendGmailReply } from "../services/gmail";
+import {
+  enrichEmailsForPanel,
+  getEmailDetail,
+  getRecentGmailMessages,
+  sendGmailReply
+} from "../services/gmail";
 
 export const emailsRouter = Router();
 
 emailsRouter.get("/emails", async (req, res, next) => {
   try {
     const limit = Number(req.query.limit || 8);
-    const emails = await getRecentGmailMessages(Math.min(Math.max(limit, 1), 20));
+    const emails = enrichEmailsForPanel(
+      await getRecentGmailMessages(Math.min(Math.max(limit, 1), 20), true)
+    );
 
     res.json({
       status: "ready",
       emails
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+emailsRouter.get("/emails/:id/body", async (req, res, next) => {
+  try {
+    const detail = await getEmailDetail(String(req.params.id || ""));
+    if (!detail) {
+      res.status(404).json({ error: "Email not found" });
+      return;
+    }
+    res.json(detail);
   } catch (error) {
     next(error);
   }

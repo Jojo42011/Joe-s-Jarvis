@@ -1,4 +1,8 @@
-import { clearGmailAuthAlertIfPresent } from "../db/queries";
+import {
+  clearGmailAuthAlertIfPresent,
+  getExecutionLogSince,
+  getQueue
+} from "../db/queries";
 import { getGmailAccessToken } from "./googleAuth";
 import { gmailCircuit, CircuitOpenError } from "./circuitBreaker";
 import { logServiceError } from "../utils/logError";
@@ -24,6 +28,7 @@ type GmailMessageResponse = {
 
 type GmailMessagePart = {
   mimeType?: string;
+  filename?: string;
   body?: { data?: string; size?: number };
   parts?: GmailMessagePart[];
 };
@@ -38,16 +43,41 @@ type GmailSendResponse = {
   labelIds?: string[];
 };
 
+export type GmailAttachmentMeta = {
+  name: string;
+  mimeType: string;
+};
+
 export type GmailSummaryItem = {
   id: string;
   threadId?: string;
   from: string;
   subject: string;
   snippet: string;
+  bodyText?: string;
+  hasAttachment?: boolean;
+  attachmentNames?: string[];
   time: string;
   internalDate: number;
   priority: "HIGH" | "NORMAL" | "SPAM";
   action: string;
+  queueId?: number | null;
+  handled?: boolean;
+  urgency?: string | null;
+  queueStatus?: string | null;
+  resurfaceAt?: string | null;
+  hasQueueEntry?: boolean;
+  jarvisTags?: string[];
+};
+
+export type GmailEmailDetail = {
+  id: string;
+  from: string;
+  subject: string;
+  body: string;
+  attachments: GmailAttachmentMeta[];
+  time: string;
+  thread_id: string;
 };
 
 async function gmailFetch<T>(path: string) {
@@ -231,9 +261,40 @@ function extractTextFromParts(part: GmailMessagePart | undefined): string {
   if (part.parts?.length) {
     const plain = part.parts.find((p) => p.mimeType === "text/plain");
     if (plain) return extractTextFromParts(plain);
+    const html = part.parts.find((p) => p.mimeType === "text/html");
+    if (html) return extractTextFromParts(html);
     return part.parts.map((p) => extractTextFromParts(p)).filter(Boolean).join("\n");
   }
   return "";
+}
+
+function extractAttachmentsFromParts(
+  part: GmailMessagePart | undefined,
+  out: GmailAttachmentMeta[] = []
+): GmailAttachmentMeta[] {
+  if (!part) return out;
+  const mime = part.mimeType || "";
+  const isAttachment =
+    mime.startsWith("application/") ||
+    mime.startsWith("image/") ||
+    mime.startsWith("audio/") ||
+    mime.startsWith("video/");
+  if (isAttachment && part.body?.size && part.body.size > 0) {
+    const name = part.filename || mime.split("/").pop() || "attachment";
+    out.push({ name: String(name), mimeType: mime });
+  }
+  if (part.parts?.length) {
+    for (const child of part.parts) {
+      extractAttachmentsFromParts(child, out);
+    }
+  }
+  return out;
+}
+
+function bodyTextForSummary(raw: string, maxLen = 2000): string {
+  const normalized = normalizeReadableEmailText(raw);
+  if (!normalized) return "";
+  return normalized.length > maxLen ? `${normalized.slice(0, maxLen)}…` : normalized;
 }
 
 export async function getMessageBody(messageId: string): Promise<string> {
@@ -346,6 +407,8 @@ const GMAIL_LIST_MAX_RESULTS = 50;
 const GMAIL_METADATA_BATCH_SIZE = 5;
 const GMAIL_METADATA_BATCH_DELAY_MS = 200;
 const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+const BODY_TEXT_SUMMARY_MAX = 2000;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -355,13 +418,19 @@ function fourteenDaysAgoMs() {
   return Date.now() - FOURTEEN_DAYS_MS;
 }
 
-function mapMessageToSummary(message: GmailMessageResponse): GmailSummaryItem {
+function mapMessageToSummary(
+  message: GmailMessageResponse,
+  bodyExtras?: { bodyText?: string; hasAttachment?: boolean; attachmentNames?: string[] }
+): GmailSummaryItem {
   const item = {
     id: message.id,
     threadId: message.threadId,
     from: getHeader(message, "From") || "Unknown sender",
     subject: getHeader(message, "Subject") || "No subject",
     snippet: message.snippet || "",
+    bodyText: bodyExtras?.bodyText,
+    hasAttachment: bodyExtras?.hasAttachment,
+    attachmentNames: bodyExtras?.attachmentNames,
     time: formatMessageTime(message.internalDate),
     internalDate: Number(message.internalDate) || 0,
     priority: "NORMAL" as const,
@@ -371,38 +440,145 @@ function mapMessageToSummary(message: GmailMessageResponse): GmailSummaryItem {
   return { ...item, ...classification };
 }
 
-async function fetchMessageMetadataBatch(ids: string[]) {
-  const messages: GmailMessageResponse[] = [];
-  for (const id of ids) {
-    messages.push(
-      await gmailFetch<GmailMessageResponse>(
-        `/users/me/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`
-      )
-    );
-  }
-  return messages;
+function sevenDaysAgoMs() {
+  return Date.now() - SEVEN_DAYS_MS;
 }
 
-async function listGmailMessageSummaries(maxResults = GMAIL_LIST_MAX_RESULTS) {
+async function fetchMessageForSummary(
+  id: string,
+  fetchBody = false
+): Promise<GmailSummaryItem> {
+  const meta = await gmailFetch<GmailMessageResponse>(
+    `/users/me/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`
+  );
+  const internalDate = Number(meta.internalDate) || 0;
+  const snippet = meta.snippet || "";
+
+  if (fetchBody && internalDate > sevenDaysAgoMs()) {
+    const full = await gmailFetch<GmailMessageResponse>(
+      `/users/me/messages/${id}?format=full`
+    );
+    const rawBody = extractTextFromParts(full.payload);
+    const attachments = extractAttachmentsFromParts(full.payload);
+    const names = attachments.map((a) => a.name).slice(0, 10);
+    return mapMessageToSummary(full, {
+      bodyText: bodyTextForSummary(rawBody || full.snippet || "", BODY_TEXT_SUMMARY_MAX),
+      hasAttachment: names.length > 0,
+      attachmentNames: names
+    });
+  }
+
+  return mapMessageToSummary(meta, {
+    bodyText: bodyTextForSummary(snippet, BODY_TEXT_SUMMARY_MAX),
+    hasAttachment: false,
+    attachmentNames: []
+  });
+}
+
+async function fetchMessagesForSummaryBatch(ids: string[], fetchBody = false) {
+  const summaries: GmailSummaryItem[] = [];
+  for (const id of ids) {
+    summaries.push(await fetchMessageForSummary(id, fetchBody));
+  }
+  return summaries;
+}
+
+export async function getEmailDetail(emailId: string): Promise<GmailEmailDetail | null> {
+  const id = String(emailId || "").trim().replace(/^gmail:/i, "");
+  if (!id) return null;
+
+  try {
+    const message = await gmailFetch<GmailMessageResponse>(
+      `/users/me/messages/${id}?format=full`
+    );
+    const rawBody = extractTextFromParts(message.payload);
+    const attachments = extractAttachmentsFromParts(message.payload).slice(0, 20);
+
+    return {
+      id: message.id,
+      from: getHeader(message, "From") || "Unknown sender",
+      subject: getHeader(message, "Subject") || "No subject",
+      body: normalizeReadableEmailText(rawBody || message.snippet || ""),
+      attachments,
+      time: formatMessageTime(message.internalDate),
+      thread_id: message.threadId || ""
+    };
+  } catch (error) {
+    logServiceError("Gmail", "getEmailDetail", error);
+    return null;
+  }
+}
+
+export function enrichEmailsForPanel(emails: GmailSummaryItem[]): GmailSummaryItem[] {
+  const queue = getQueue(false);
+  const logs = getExecutionLogSince(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), 120);
+
+  return emails.map((email) => {
+    const sourceId = `gmail:${email.id}`;
+    const qItem = queue.find((q) => q.type === "email" && q.sourceId === sourceId);
+    const related = logs.filter(
+      (l) =>
+        l.type === "email" &&
+        (l.itemId === sourceId || (l.itemId || "").includes(email.id))
+    );
+
+    const jarvisTags: string[] = [];
+    if (related.some((l) => l.result === "success" && /send|reply/i.test(l.action))) {
+      jarvisTags.push("REPLIED");
+    }
+    if (related.some((l) => l.result === "success" && /archive/i.test(l.action))) {
+      jarvisTags.push("ARCHIVED");
+    }
+    if (qItem && !qItem.handled) {
+      jarvisTags.push("QUEUED");
+    }
+    if (
+      email.priority === "HIGH" ||
+      (email.action && !/no immediate/i.test(email.action))
+    ) {
+      if (!jarvisTags.includes("QUEUED")) jarvisTags.push("NEEDS RESPONSE");
+    }
+    if (email.priority === "SPAM" || /filtered/i.test(email.action)) {
+      jarvisTags.push("READ ONLY");
+    }
+
+    const handled = Boolean(qItem?.handled);
+
+    return {
+      ...email,
+      queueId: qItem?.id ?? null,
+      handled,
+      urgency: qItem?.urgency ?? null,
+      queueStatus: qItem?.status ?? null,
+      resurfaceAt: qItem?.resurfaceAt ?? null,
+      hasQueueEntry: Boolean(qItem),
+      jarvisTags
+    };
+  });
+}
+
+async function listGmailMessageSummaries(
+  maxResults = GMAIL_LIST_MAX_RESULTS,
+  fetchBody = false
+) {
   const startedAt = Date.now();
   const list = await gmailFetch<GmailListResponse>(
     `/users/me/messages?maxResults=${maxResults}`
   );
 
   const ids = (list.messages || []).map((message) => message.id);
-  const messages: GmailMessageResponse[] = [];
-
+  const summaries: GmailSummaryItem[] = [];
   for (let i = 0; i < ids.length; i += GMAIL_METADATA_BATCH_SIZE) {
     const batch = ids.slice(i, i + GMAIL_METADATA_BATCH_SIZE);
-    messages.push(...(await fetchMessageMetadataBatch(batch)));
+    summaries.push(...(await fetchMessagesForSummaryBatch(batch, fetchBody)));
     if (i + GMAIL_METADATA_BATCH_SIZE < ids.length) {
       await sleep(GMAIL_METADATA_BATCH_DELAY_MS);
     }
   }
-
-  const summaries = messages.map(mapMessageToSummary);
   clearGmailAuthAlertIfPresent();
-  gmailLog(`fetched ${summaries.length} messages — ${Date.now() - startedAt}ms`);
+  gmailLog(
+    `fetched ${summaries.length} messages — ${Date.now() - startedAt}ms (${fetchBody ? "full body when recent" : "metadata only"})`
+  );
   return summaries;
 }
 
@@ -410,9 +586,9 @@ function messageInternalDate(item: GmailSummaryItem) {
   return item.internalDate ?? 0;
 }
 
-export async function getRecentGmailMessages(limit = 8) {
+export async function getRecentGmailMessages(limit = 8, fetchBody = false) {
   const cutoff = fourteenDaysAgoMs();
-  const recent = (await listGmailMessageSummaries())
+  const recent = (await listGmailMessageSummaries(GMAIL_LIST_MAX_RESULTS, fetchBody))
     .filter((item) => messageInternalDate(item) >= cutoff)
     .sort((a, b) => messageInternalDate(b) - messageInternalDate(a))
     .slice(0, limit);
@@ -420,9 +596,13 @@ export async function getRecentGmailMessages(limit = 8) {
   return recent;
 }
 
-export async function getGmailMessagesSince(internalDateAfterMs: number, limit = 40) {
+export async function getGmailMessagesSince(
+  internalDateAfterMs: number,
+  limit = 40,
+  fetchBody = false
+) {
   const cutoff = fourteenDaysAgoMs();
-  const enriched = (await listGmailMessageSummaries())
+  const enriched = (await listGmailMessageSummaries(GMAIL_LIST_MAX_RESULTS, fetchBody))
     .filter((item) => {
       const internalDate = messageInternalDate(item);
       return internalDate > internalDateAfterMs && internalDate >= cutoff;

@@ -3,11 +3,14 @@ import { MEMORY_CATEGORIES } from "../config/memoryCategories";
 import {
   decayMemoryConfidence,
   enqueueMemoryAuditAction,
+  getAllActiveMemoriesForAudit,
   getMemoriesByCategory,
   getMemoryById,
   insertMemorySynthesisLog,
   markMemorySoftDeleted,
+  promoteWorldIntelMemory,
   saveMemory,
+  setMemoryConfidenceAbsolute,
   setSystemState,
   getSystemState,
   type JarvisMemory
@@ -15,7 +18,7 @@ import {
 import { invalidateDynamicPromptCache } from "../config/systemPrompt";
 import { findWorkingModel } from "../services/claude";
 import { claudeCircuit } from "../services/circuitBreaker";
-import { SYNTHESIS_CATEGORIES } from "./judgmentRules";
+import { SYNTHESIS_CATEGORIES, MEMORY_NEVER_DECAY } from "./judgmentRules";
 import { getOhioDateTimeString } from "../routes/chat/utils";
 
 const synthAnthropic = process.env.ANTHROPIC_API_KEY
@@ -257,6 +260,148 @@ function cleanupWorldIntelMemories(): { pruned: number; promoted: number } {
   return { pruned, promoted };
 }
 
+function tokenizeForSimilarity(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((word) => word.length > 2)
+  );
+}
+
+function wordSimilarity(a: string, b: string): number {
+  const wordsA = tokenizeForSimilarity(a);
+  const wordsB = tokenizeForSimilarity(b);
+  if (!wordsA.size || !wordsB.size) return 0;
+  let shared = 0;
+  for (const word of wordsA) {
+    if (wordsB.has(word)) shared += 1;
+  }
+  return shared / Math.max(wordsA.size, wordsB.size);
+}
+
+function areDuplicateMemories(a: JarvisMemory, b: JarvisMemory): boolean {
+  if (a.category !== b.category || a.id === b.id) return false;
+
+  const ak = a.key.toLowerCase();
+  const av = a.value.toLowerCase();
+  const bk = b.key.toLowerCase();
+  const bv = b.value.toLowerCase();
+
+  if (ak.includes(bk) || bk.includes(ak)) return true;
+  if (av.includes(bv) || bv.includes(av)) return true;
+
+  return wordSimilarity(a.key, b.key) > 0.6 || wordSimilarity(a.value, b.value) > 0.6;
+}
+
+function pickDuplicateKeeper(a: JarvisMemory, b: JarvisMemory): JarvisMemory {
+  if (a.retrievalCount !== b.retrievalCount) {
+    return a.retrievalCount > b.retrievalCount ? a : b;
+  }
+  if (a.confidence !== b.confidence) {
+    return a.confidence > b.confidence ? a : b;
+  }
+  return Date.parse(a.createdAt) >= Date.parse(b.createdAt) ? a : b;
+}
+
+function daysSinceIso(iso: string | null): number {
+  if (!iso) return 999;
+  const ms = Date.now() - Date.parse(iso);
+  return Number.isFinite(ms) ? Math.floor(ms / (24 * 60 * 60 * 1000)) : 999;
+}
+
+function isOhioSunday(): boolean {
+  const weekday = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "long"
+  }).format(new Date());
+  return weekday === "Sunday";
+}
+
+export async function runWeeklyMemoryAudit(): Promise<{
+  duplicatesRemoved: number;
+  staleDecayed: number;
+  softDeleted: number;
+  promoted: number;
+}> {
+  const ohioTime = getOhioDateTimeString();
+  const rows = getAllActiveMemoriesForAudit();
+  const removedIds = new Set<number>();
+  let duplicatesRemoved = 0;
+  let staleDecayed = 0;
+  let softDeleted = 0;
+  let promoted = 0;
+
+  const byCategory = new Map<string, JarvisMemory[]>();
+  for (const row of rows) {
+    const bucket = byCategory.get(row.category) || [];
+    bucket.push(row);
+    byCategory.set(row.category, bucket);
+  }
+
+  for (const group of byCategory.values()) {
+    for (let i = 0; i < group.length; i += 1) {
+      for (let j = i + 1; j < group.length; j += 1) {
+        const a = group[i];
+        const b = group[j];
+        if (removedIds.has(a.id) || removedIds.has(b.id)) continue;
+        if (!areDuplicateMemories(a, b)) continue;
+
+        const keeper = pickDuplicateKeeper(a, b);
+        const loser = keeper.id === a.id ? b : a;
+        setMemoryConfidenceAbsolute(loser.id, 0);
+        removedIds.add(loser.id);
+        duplicatesRemoved += 1;
+      }
+    }
+  }
+
+  for (const row of rows) {
+    if (removedIds.has(row.id)) continue;
+    if (MEMORY_NEVER_DECAY.includes(row.category as (typeof MEMORY_NEVER_DECAY)[number])) {
+      continue;
+    }
+
+    const staleByCreation = !row.lastRetrievedAt && daysSinceIso(row.createdAt) > 90;
+    const staleByRetrieval = row.lastRetrievedAt ? daysSinceIso(row.lastRetrievedAt) > 90 : false;
+    if (!staleByCreation && !staleByRetrieval) continue;
+
+    const nextConfidence = Math.max(0, row.confidence - 0.15);
+    setMemoryConfidenceAbsolute(row.id, nextConfidence);
+    staleDecayed += 1;
+
+    if (nextConfidence < 0.1) {
+      setMemoryConfidenceAbsolute(row.id, 0);
+      softDeleted += 1;
+    }
+  }
+
+  for (const row of rows) {
+    if (removedIds.has(row.id)) continue;
+    if (row.category !== MEMORY_CATEGORIES.WORLD_INTEL) continue;
+    if (row.retrievalCount < 3) continue;
+
+    promoteWorldIntelMemory(row.id);
+    promoted += 1;
+  }
+
+  const summary = `Weekly audit: ${duplicatesRemoved} duplicates removed, ${staleDecayed} stale decayed, ${promoted} promoted`;
+  insertMemorySynthesisLog({
+    ohioTime,
+    category: "weekly_audit",
+    memoriesRead: rows.length,
+    memoriesCreated: 0,
+    memoriesUpdated: staleDecayed + promoted,
+    memoriesPruned: duplicatesRemoved + softDeleted,
+    synthesisSummary: summary
+  });
+
+  console.log(`[memory-audit] ${summary} (${softDeleted} soft deleted)`);
+  invalidateDynamicPromptCache();
+
+  return { duplicatesRemoved, staleDecayed, softDeleted, promoted };
+}
+
 export async function runDailySynthesis(): Promise<{
   categoriesProcessed: number;
   memoriesCreated: number;
@@ -329,6 +474,11 @@ export async function runDailySynthesis(): Promise<{
   console.log(
     `[memory-synthesis] Done: ${categoriesProcessed} categories, +${memoriesCreated} created, ${memoriesPruned} pruned`
   );
+
+  if (isOhioSunday()) {
+    console.log("[memory-audit] Starting weekly memory audit...");
+    await runWeeklyMemoryAudit();
+  }
 
   return { categoriesProcessed, memoriesCreated, memoriesUpdated, memoriesPruned };
 }

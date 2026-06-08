@@ -3,6 +3,7 @@ import { addAppointment, logExecution } from "../db/queries";
 import { checkAvailability, createCalendarEvent, enforceBusinessHours, type CalendarEventResult } from "./googleCalendar";
 import { findWorkingModel } from "./claude";
 import { claudeCircuit } from "./circuitBreaker";
+import { extractCallerNumberFromVapiPayload, mergeVapiBody } from "./vapi";
 import { logServiceError } from "../utils/logError";
 
 const OHIO_TZ = "America/New_York";
@@ -293,14 +294,7 @@ export async function tryBookAppointmentFromVapiCall(body: unknown): Promise<voi
   try {
     const merged =
       body && typeof body === "object"
-        ? (() => {
-            const root = body as Record<string, unknown>;
-            const msg = root.message;
-            if (msg && typeof msg === "object" && !Array.isArray(msg)) {
-              return { ...root, ...(msg as Record<string, unknown>) };
-            }
-            return root;
-          })()
+        ? mergeVapiBody(body)
         : {};
 
     const transcript = String(
@@ -319,16 +313,7 @@ export async function tryBookAppointmentFromVapiCall(body: unknown): Promise<voi
         ""
     );
 
-    const callerNumber = String(
-      merged.caller_number ||
-        merged.callerNumber ||
-        (merged.call &&
-        typeof merged.call === "object" &&
-        (merged.call as Record<string, unknown>).customer
-          ? ((merged.call as Record<string, unknown>).customer as Record<string, unknown>).number
-          : "") ||
-        ""
-    );
+    const callerNumber = extractCallerNumberFromVapiPayload(body);
     const callerName = String(merged.caller_name || merged.callerName || "");
 
     const extraction = await parseAppointmentFromCall({

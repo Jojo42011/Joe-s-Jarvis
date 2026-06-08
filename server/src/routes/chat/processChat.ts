@@ -7,13 +7,7 @@ import {
   type ConversationState
 } from "../../db/queries";
 import { extractAndSaveMemory, scheduleEpisodicMemoryWrite } from "../../services/memory";
-import {
-  handleJoeActivation,
-  buildActivationContext,
-  shouldSilenceActivationBriefing,
-  isActivationNetNewEmpty,
-  ALL_CLEAR
-} from "../../brain/activationBriefing";
+import { handleJoeActivation } from "../../brain/activationBriefing";
 import { claudeCircuit } from "../../services/circuitBreaker";
 import { logServiceError } from "../../utils/logError";
 import {
@@ -21,7 +15,6 @@ import {
   tryUploadFollowUpRoute
 } from "./uploadOrchestrator";
 import { getSessionUploads } from "../../services/uploadSession";
-import { enforceTruthfulSpeech } from "./truthGuard";
 import { memoryOutcomeLabel, shouldExtractMemories } from "./memoryOrchestrator";
 import { logSpeechBuilt, routeLog, reqLog } from "../../utils/requestLog";
 import { stateForResponse } from "./tools";
@@ -31,6 +24,7 @@ import { clearSpokenSession, recordSpokenFromResponse } from "./spokenSessionTra
 import { buildSmartContext } from "../../chat/context";
 import { runChatLoop } from "../../chat/runChatLoop";
 import { scheduleMemoryExtraction } from "../../memory/extractionEngine";
+import { inferHandledFromContext } from "../../brain/queueEscalation";
 
 export type ChatApiPayload = {
   speech: string;
@@ -91,32 +85,6 @@ export async function processChatRequest(req: Request): Promise<ProcessChatResul
   try {
     if (message === ACTIVATION_MESSAGE) {
       routeLog("hit: __JARVIS_ACTIVATE__");
-      const ctx = buildActivationContext();
-
-      if (shouldSilenceActivationBriefing(ctx) || isActivationNetNewEmpty(ctx)) {
-        clearSpokenSession(sessionId);
-        recordJoeActivity();
-        const speech = clientSpeech(ALL_CLEAR);
-        const nextState = setState(sessionId, {
-          activePanel: null,
-          activeItems: [],
-          selectedItem: null,
-          lastIntent: "activation.clear"
-        });
-        addConversationMessage("assistant", speech, sessionId);
-        trackSpokenResponse(sessionId, speech, "activation.clear");
-        return {
-          ok: true,
-          payload: {
-            speech,
-            ui: { panel: null, action: null, data: [] },
-            intent: "activation.clear",
-            state: stateForResponse(nextState),
-            status: "complete"
-          }
-        };
-      }
-
       const activation = await handleJoeActivation();
       recordJoeActivity();
       const speech = clientSpeech(activation.speech);
@@ -226,6 +194,7 @@ export async function processChatRequest(req: Request): Promise<ProcessChatResul
     trackSpokenResponse(sessionId, speech, loopResult.intent, loopResult.ui.data);
 
     schedulePostChatMemoryIfNeeded(message, speech, loopResult.intent);
+    inferHandledFromContext(message, sessionId);
     scheduleMemoryExtraction(message, speech, sessionId);
     scheduleEpisodicMemoryWrite(sessionId, loopResult.intent, loopResult.tool || null);
 

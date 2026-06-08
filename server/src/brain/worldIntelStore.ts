@@ -10,6 +10,8 @@ export type WorldIntelRow = {
   relevance: WorldIntelRelevance | null;
   briefed: boolean;
   fetchedAt: string;
+  domain: string | null;
+  lastResearchedAt: string | null;
 };
 
 type WorldIntelDbRow = {
@@ -20,7 +22,13 @@ type WorldIntelDbRow = {
   relevance: string | null;
   briefed: number;
   fetched_at: string;
+  domain: string | null;
+  last_researched_at: string | null;
 };
+
+const WORLD_INTEL_SELECT = `
+  id, query, results_json, summary, relevance, briefed, fetched_at, domain, last_researched_at
+`;
 
 function mapRow(row: WorldIntelDbRow): WorldIntelRow {
   const rel = row.relevance?.toUpperCase();
@@ -33,7 +41,9 @@ function mapRow(row: WorldIntelDbRow): WorldIntelRow {
     summary: row.summary,
     relevance,
     briefed: Boolean(row.briefed),
-    fetchedAt: row.fetched_at
+    fetchedAt: row.fetched_at,
+    domain: row.domain ?? "general",
+    lastResearchedAt: row.last_researched_at
   };
 }
 
@@ -42,19 +52,26 @@ export function insertWorldIntel(input: {
   resultsJson: string;
   summary?: string | null;
   relevance?: WorldIntelRelevance | null;
+  domain?: string | null;
 }): number {
+  const domain = input.domain?.slice(0, 80) || "general";
   const result = db
     .prepare(
       `
-    INSERT INTO world_intel (query, results_json, summary, relevance, briefed, fetched_at)
-    VALUES (@query, @results_json, @summary, @relevance, 0, datetime('now'))
+    INSERT INTO world_intel (
+      query, results_json, summary, relevance, briefed, fetched_at, domain, last_researched_at
+    )
+    VALUES (
+      @query, @results_json, @summary, @relevance, 0, datetime('now'), @domain, datetime('now')
+    )
   `
     )
     .run({
       query: input.query,
       results_json: input.resultsJson,
       summary: input.summary ?? null,
-      relevance: input.relevance ?? null
+      relevance: input.relevance ?? null,
+      domain
     });
   return Number(result.lastInsertRowid);
 }
@@ -63,7 +80,7 @@ export function getWorldIntelPendingJudgment(limit = 50): WorldIntelRow[] {
   const rows = db
     .prepare(
       `
-    SELECT id, query, results_json, summary, relevance, briefed, fetched_at
+    SELECT ${WORLD_INTEL_SELECT}
     FROM world_intel
     WHERE (relevance IS NULL OR summary IS NULL OR summary = '')
     ORDER BY id ASC
@@ -92,7 +109,7 @@ export function getHighUnbriefedWorldIntel(): WorldIntelRow[] {
   const rows = db
     .prepare(
       `
-    SELECT id, query, results_json, summary, relevance, briefed, fetched_at
+    SELECT ${WORLD_INTEL_SELECT}
     FROM world_intel
     WHERE relevance = 'HIGH' AND briefed = 0
     ORDER BY id DESC
@@ -106,7 +123,7 @@ export function getMediumUnbriefedWorldIntel(limit = 10): WorldIntelRow[] {
   const rows = db
     .prepare(
       `
-    SELECT id, query, results_json, summary, relevance, briefed, fetched_at
+    SELECT ${WORLD_INTEL_SELECT}
     FROM world_intel
     WHERE relevance = 'MEDIUM' AND briefed = 0
     ORDER BY id DESC
@@ -129,7 +146,7 @@ export function getWorldIntelSinceHours(hours = 48): WorldIntelRow[] {
   const rows = db
     .prepare(
       `
-    SELECT id, query, results_json, summary, relevance, briefed, fetched_at
+    SELECT ${WORLD_INTEL_SELECT}
     FROM world_intel
     WHERE datetime(fetched_at) >= datetime('now', @offset)
     ORDER BY
@@ -164,7 +181,7 @@ export function getWorldIntelById(id: number): WorldIntelRow | null {
   const row = db
     .prepare(
       `
-    SELECT id, query, results_json, summary, relevance, briefed, fetched_at
+    SELECT ${WORLD_INTEL_SELECT}
     FROM world_intel WHERE id = @id
   `
     )

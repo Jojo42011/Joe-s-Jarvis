@@ -1,5 +1,10 @@
 import { Router } from "express";
 import { Judgment } from "../brain/judgment";
+import {
+  getDomainStatuses,
+  getResearchDomainById,
+  runDomainResearch
+} from "../brain/domainResearch";
 import { Perception, runWorldIntelPipeline } from "../brain/perception";
 import {
   getWorldIntelById,
@@ -8,7 +13,9 @@ import {
 import {
   clearAlertIfMatchingQueueItem,
   clearActiveAlertState,
+  dismissActiveAlert,
   getActiveAlertPayload,
+  getDomainResearchLog,
   getQueueGroupedByUrgency,
   markQueueItemHandled
 } from "../db/queries";
@@ -30,6 +37,11 @@ intelligenceRouter.post("/intelligence/alerts/clear", (_req, res) => {
   res.json({ status: "cleared" });
 });
 
+intelligenceRouter.post("/intelligence/alerts/dismiss", (_req, res) => {
+  dismissActiveAlert();
+  res.json({ success: true });
+});
+
 intelligenceRouter.post("/intelligence/handled/:id", (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id) || id <= 0) {
@@ -42,6 +54,33 @@ intelligenceRouter.post("/intelligence/handled/:id", (req, res) => {
   res.json({ status: "ok", id });
 });
 
+intelligenceRouter.get("/intelligence/domains/log", (_req, res) => {
+  const items = getDomainResearchLog(50);
+  res.json({ items, count: items.length });
+});
+
+intelligenceRouter.get("/intelligence/domains", (_req, res) => {
+  res.json({ domains: getDomainStatuses() });
+});
+
+intelligenceRouter.post("/intelligence/domains/:id/run", async (req, res, next) => {
+  try {
+    const domain = getResearchDomainById(String(req.params.id || ""));
+    if (!domain) {
+      res.status(404).json({ error: "Unknown domain id" });
+      return;
+    }
+    const result = await runDomainResearch(domain);
+    if (result.world_intel_ids.length) {
+      const judgment = new Judgment();
+      await judgment.judgeWorldIntel(result.world_intel_ids);
+    }
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 intelligenceRouter.get("/intelligence/world", (_req, res) => {
   const items = getWorldIntelSinceHours(48).map((row) => ({
     id: row.id,
@@ -49,7 +88,8 @@ intelligenceRouter.get("/intelligence/world", (_req, res) => {
     summary: row.summary,
     relevance: row.relevance,
     briefed: row.briefed,
-    fetchedAt: row.fetchedAt
+    fetchedAt: row.fetchedAt,
+    domain: row.domain
   }));
   res.json({ items, count: items.length });
 });

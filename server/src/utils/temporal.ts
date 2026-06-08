@@ -17,18 +17,18 @@ export function formatCurrentTimeForPrompt(now: Date = new Date()): string {
   return `Current time: ${formatted}`;
 }
 
-function ohioDateKey(at: Date): string {
+export function getOhioDateKey(at: Date = new Date()): string {
   return at.toLocaleDateString("en-CA", { timeZone: OHIO_TZ });
 }
 
-function ohioHour(at: Date): number {
+export function getOhioHour(at: Date = new Date()): number {
   const h = at.toLocaleString("en-US", { timeZone: OHIO_TZ, hour: "numeric", hour12: false });
   return Number.parseInt(h, 10);
 }
 
 function ohioDayDiff(from: Date, to: Date): number {
-  const fromKey = ohioDateKey(from);
-  const toKey = ohioDateKey(to);
+  const fromKey = getOhioDateKey(from);
+  const toKey = getOhioDateKey(to);
   const fromMs = Date.parse(`${fromKey}T12:00:00`);
   const toMs = Date.parse(`${toKey}T12:00:00`);
   return Math.round((toMs - fromMs) / 86_400_000);
@@ -39,8 +39,8 @@ export function formatRelativeAge(isoOrDate: string | Date, now: Date = new Date
   const then = typeof isoOrDate === "string" ? new Date(isoOrDate) : isoOrDate;
   if (Number.isNaN(then.getTime())) return "some time ago";
 
-  const thenDay = ohioDateKey(then);
-  const nowDay = ohioDateKey(now);
+  const thenDay = getOhioDateKey(then);
+  const nowDay = getOhioDateKey(now);
   const dayDiff = ohioDayDiff(then, now);
 
   if (thenDay === nowDay) {
@@ -49,8 +49,8 @@ export function formatRelativeAge(isoOrDate: string | Date, now: Date = new Date
     if (diffMin < 2) return "just now";
     if (diffMin < 60) return `${diffMin} minute${diffMin === 1 ? "" : "s"} ago`;
 
-    const thenHour = ohioHour(then);
-    const nowHour = ohioHour(now);
+    const thenHour = getOhioHour(then);
+    const nowHour = getOhioHour(now);
     if (thenHour < 12 && nowHour >= 12) return "this morning";
 
     const diffHr = Math.floor(diffMin / 60);
@@ -93,8 +93,16 @@ export function formatBriefingTimePhrase(hoursElapsed: number): string {
 }
 
 /** Spoken greeting for activation briefing (Ohio Eastern). */
+/** Spoken activation greeting — "Good morning sir." etc. */
+export function getActivationGreeting(now: Date = new Date()): string {
+  const h = getOhioHour(now);
+  if (h < 12) return "Good morning sir.";
+  if (h < 17) return "Good afternoon sir.";
+  return "Good evening sir.";
+}
+
 export function getOhioTimeOfDayGreeting(now: Date = new Date()): string {
-  const h = ohioHour(now);
+  const h = getOhioHour(now);
   if (h >= 5 && h < 12) return "Good morning";
   if (h >= 12 && h < 17) return "Good afternoon";
   return "Evening sir";

@@ -1,5 +1,7 @@
 import { db } from "./index";
-import { MEMORY_CATEGORY_LIST, MEMORY_NEVER_DECAY } from "../config/memoryCategories";
+import { markQueueItemHandled as markQueueItemHandledWithReason } from "../brain/queueEscalation";
+import { MEMORY_CATEGORIES, MEMORY_CATEGORY_LIST, MEMORY_NEVER_DECAY } from "../config/memoryCategories";
+import { getOhioDateKey } from "../utils/temporal";
 
 export type ConversationRole = "user" | "assistant" | "system";
 
@@ -126,6 +128,23 @@ function normalizePhoneNumber(value: string | null | undefined) {
   return String(value || "").replace(/[^\d+]/g, "");
 }
 
+function normalizeStoredCallerNumber(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+      if (typeof parsed.number === "string" && parsed.number.trim()) {
+        return parsed.number.trim();
+      }
+    } catch {
+      return null;
+    }
+  }
+  return trimmed;
+}
+
 function formatCallDuration(seconds: number | null) {
   if (!seconds || seconds <= 0) return "0s";
   if (seconds < 60) return `${seconds}s`;
@@ -156,11 +175,15 @@ function mapCallRow(row: {
   const outcome = (row.outcome || "MESSAGE").toUpperCase() as CallOutcome;
   const timestamp = row.timestamp;
 
+  const callerNumber = normalizeStoredCallerNumber(row.caller_number);
+  const callerName = row.caller_name?.trim() || null;
+  const callReason = row.call_reason?.trim() || null;
+
   return {
     id: row.id,
-    callerNumber: row.caller_number,
-    callerName: row.caller_name,
-    callReason: row.call_reason,
+    callerNumber,
+    callerName,
+    callReason,
     transcript: row.transcript,
     outcome,
     durationSeconds: row.duration_seconds,
@@ -168,8 +191,8 @@ function mapCallRow(row: {
     forwardedTo: row.forwarded_to,
     timestamp,
     status: outcome,
-    from: row.caller_name || row.caller_number || "Unknown caller",
-    reason: row.call_reason || "No reason captured",
+    from: callerName || callerNumber || "Unknown caller",
+    reason: callReason || "No reason captured",
     duration: formatCallDuration(row.duration_seconds),
     time: formatCallTime(timestamp)
   };
@@ -211,7 +234,7 @@ export function addCallLog(input: {
     `
     )
     .run({
-      callerNumber: input.callerNumber || null,
+      callerNumber: normalizeStoredCallerNumber(input.callerNumber || null),
       callerName: input.callerName || null,
       callReason: input.callReason || null,
       transcript: input.transcript || null,
@@ -572,6 +595,13 @@ export type PriorityQueueItem = {
   handled: boolean;
   rawData: string | null;
   timestamp: string;
+  status?: string;
+  firstBriefedAt?: string | null;
+  lastBriefedAt?: string | null;
+  briefCount?: number;
+  resurfaceAt?: string | null;
+  handledReason?: string | null;
+  handledAt?: string | null;
 };
 
 type PriorityQueueRow = {
@@ -584,7 +614,19 @@ type PriorityQueueRow = {
   handled: number;
   raw_data: string | null;
   timestamp: string;
+  status?: string;
+  first_briefed_at?: string | null;
+  last_briefed_at?: string | null;
+  brief_count?: number;
+  resurface_at?: string | null;
+  handled_reason?: string | null;
+  handled_at?: string | null;
 };
+
+const PRIORITY_QUEUE_COLUMNS = `
+  id, type, source_id, summary, action_needed, urgency, handled, raw_data, timestamp,
+  status, first_briefed_at, last_briefed_at, brief_count, resurface_at, handled_reason, handled_at
+`;
 
 function mapPriorityQueueRow(row: PriorityQueueRow): PriorityQueueItem {
   return {
@@ -596,8 +638,23 @@ function mapPriorityQueueRow(row: PriorityQueueRow): PriorityQueueItem {
     urgency: row.urgency,
     handled: Boolean(row.handled),
     rawData: row.raw_data,
-    timestamp: row.timestamp
+    timestamp: row.timestamp,
+    status: row.status ?? (row.handled ? "handled" : "open"),
+    firstBriefedAt: row.first_briefed_at ?? null,
+    lastBriefedAt: row.last_briefed_at ?? null,
+    briefCount: row.brief_count ?? 0,
+    resurfaceAt: row.resurface_at ?? null,
+    handledReason: row.handled_reason ?? null,
+    handledAt: row.handled_at ?? null
   };
+}
+
+export function getLastBriefedDate(): string | null {
+  return getSystemState("last_briefed_date");
+}
+
+export function setLastBriefedDate(): void {
+  setSystemState("last_briefed_date", getOhioDateKey());
 }
 
 export function getSystemState(key: string): string | null {
@@ -607,13 +664,41 @@ export function getSystemState(key: string): string | null {
   return row?.value ?? null;
 }
 
+function activeAlertSignature(raw: string): string | null {
+  if (!raw?.trim()) return null;
+  try {
+    const parsed = JSON.parse(raw) as { summary?: string; message?: string };
+    const text = String(parsed.summary || parsed.message || "").trim();
+    return text || null;
+  } catch {
+    return raw.trim() || null;
+  }
+}
+
 export function setSystemState(key: string, value: string) {
+  if (key === "active_alert" && value) {
+    const existing = getSystemState("active_alert");
+    if (existing === value) return;
+
+    const incomingSig = activeAlertSignature(value);
+    const dismissedSig = getSystemState("dismissed_alert_sig");
+    if (incomingSig && dismissedSig && incomingSig === dismissedSig) return;
+  }
+
   db.prepare(
     `
     INSERT INTO system_state (key, value, updated_at) VALUES (@key, @value, datetime('now'))
     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')
   `
   ).run({ key, value });
+
+  if (key === "active_alert" && value) {
+    const incomingSig = activeAlertSignature(value);
+    const dismissedSig = getSystemState("dismissed_alert_sig");
+    if (incomingSig && dismissedSig && incomingSig !== dismissedSig) {
+      setSystemState("dismissed_alert_sig", "");
+    }
+  }
 }
 
 const BRIEFING_DELIVERED_KEY = "last_briefing_delivered";
@@ -658,7 +743,8 @@ export function recordActivationBriefingDelivered(briefedIds: string[], speechSu
   setSystemState("last_briefing_time", now);
   setSystemState(BRIEFING_DELIVERED_KEY, now);
   setSystemState(BRIEFING_SUMMARY_KEY, speechSummary.slice(0, 8000));
-  mergeLastBriefedItems(briefedIds);
+  const nonQueueIds = briefedIds.filter((id) => !id.startsWith("queue:"));
+  mergeLastBriefedItems(nonQueueIds);
 }
 
 export function getCallsSince(since: Date, limit = 80): CallLogItem[] {
@@ -719,7 +805,7 @@ export function pendingQueueItemExists(type: string, sourceId: string): boolean 
     .prepare(
       `
     SELECT COUNT(*) as c FROM priority_queue
-    WHERE type = @type AND source_id = @sourceId AND handled = 0
+    WHERE type = @type AND source_id = @sourceId AND handled = 0 AND status != 'handled'
   `
     )
     .get({ type, sourceId }) as { c: number };
@@ -738,8 +824,8 @@ export function addToQueue(item: {
   const result = db
     .prepare(
       `
-    INSERT INTO priority_queue (type, source_id, summary, action_needed, urgency, handled, raw_data)
-    VALUES (@type, @source_id, @summary, @action_needed, @urgency, @handled, @raw_data)
+    INSERT INTO priority_queue (type, source_id, summary, action_needed, urgency, handled, raw_data, status)
+    VALUES (@type, @source_id, @summary, @action_needed, @urgency, @handled, @raw_data, 'open')
   `
     )
     .run({
@@ -759,9 +845,9 @@ export function getQueue(handled = false): PriorityQueueItem[] {
   const rows = db
     .prepare(
       `
-    SELECT id, type, source_id, summary, action_needed, urgency, handled, raw_data, timestamp
+    SELECT ${PRIORITY_QUEUE_COLUMNS}
     FROM priority_queue
-    WHERE handled = @handled
+    WHERE handled = @handled AND status != 'handled'
     ORDER BY
       CASE urgency
         WHEN 'NOW' THEN 0
@@ -792,7 +878,7 @@ export function getQueueItemById(id: number): PriorityQueueItem | null {
   const row = db
     .prepare(
       `
-    SELECT id, type, source_id, summary, action_needed, urgency, handled, raw_data, timestamp
+    SELECT ${PRIORITY_QUEUE_COLUMNS}
     FROM priority_queue WHERE id = @id
   `
     )
@@ -801,7 +887,7 @@ export function getQueueItemById(id: number): PriorityQueueItem | null {
 }
 
 export function markQueueItemHandled(id: number) {
-  db.prepare(`UPDATE priority_queue SET handled = 1 WHERE id = @id`).run({ id });
+  markQueueItemHandledWithReason(id, "brain_auto");
 }
 
 /** Open queue rows older than minAgeHours for backlog maintenance. */
@@ -809,9 +895,9 @@ export function getQueueMaintenanceCandidates(limit = 10, minAgeHours = 1): Prio
   const rows = db
     .prepare(
       `
-    SELECT id, type, source_id, summary, action_needed, urgency, handled, raw_data, timestamp
+    SELECT ${PRIORITY_QUEUE_COLUMNS}
     FROM priority_queue
-    WHERE handled = 0
+    WHERE handled = 0 AND status != 'handled'
       AND datetime(timestamp) <= datetime('now', '-' || @minAgeHours || ' hours')
     ORDER BY timestamp ASC
     LIMIT @limit
@@ -866,7 +952,8 @@ export function markQueueItemHandledWithNote(id: number, note: string) {
   db.prepare(
     `
     UPDATE priority_queue
-    SET handled = 1, action_needed = @note, raw_data = @raw_data
+    SET handled = 1, status = 'handled', handled_reason = 'brain_auto',
+        action_needed = @note, raw_data = @raw_data
     WHERE id = @id
   `
   ).run({ id, note: note.slice(0, 500), raw_data: JSON.stringify(raw) });
@@ -922,9 +1009,9 @@ export function getStaleQueueItemsForRetriage(limit = 5, ageMinutes = 30): Prior
   const rows = db
     .prepare(
       `
-    SELECT id, type, source_id, summary, action_needed, urgency, handled, raw_data, timestamp
+    SELECT ${PRIORITY_QUEUE_COLUMNS}
     FROM priority_queue
-    WHERE handled = 0
+    WHERE handled = 0 AND status != 'handled'
       AND datetime(timestamp) <= datetime('now', '-' || @ageMinutes || ' minutes')
     ORDER BY timestamp ASC
     LIMIT @limit
@@ -995,6 +1082,24 @@ export function setLastCallIntelCursor(id: number) {
 
 export function clearActiveAlertState() {
   setSystemState("active_alert", JSON.stringify({ hasAlert: false }));
+}
+
+/** Joe dismissed the intel banner — clear server alert and remember signature. */
+export function dismissActiveAlert() {
+  const raw = getSystemState("active_alert");
+  const sig = raw ? activeAlertSignature(raw) : null;
+  setSystemState("active_alert", "");
+  if (getSystemState("active_alert_type") !== null) {
+    setSystemState("active_alert_type", "");
+  }
+  if (sig) {
+    db.prepare(
+      `
+      INSERT INTO system_state (key, value, updated_at) VALUES (@key, @value, datetime('now'))
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')
+    `
+    ).run({ key: "dismissed_alert_sig", value: sig });
+  }
 }
 
 /** Drop stale brain alert after Gmail recovers (avoids Claude repeating old auth failures). */
@@ -2716,17 +2821,115 @@ export function getRecentNotes(limit = 20): Note[] {
 export function searchNotes(query: string, limit = 20): Note[] {
   const q = query.trim();
   if (!q) return [];
+  return searchNotesForTool(q, limit);
+}
+
+export function searchNotesForTool(query: string, limit = 20): Note[] {
+  const q = query.trim().slice(0, 200);
+  if (!q) return [];
   const rows = db
     .prepare(
       `
     SELECT * FROM notes
     WHERE content LIKE '%' || @q || '%'
+       OR COALESCE(linked_entities, '') LIKE '%' || @q || '%'
     ORDER BY created_at DESC
     LIMIT @limit
   `
     )
-    .all({ q: q.slice(0, 200), limit: Math.min(Math.max(1, limit), 50) }) as NoteRow[];
+    .all({ q, limit: Math.min(Math.max(1, limit), 50) }) as NoteRow[];
   return rows.map(mapNoteRow);
+}
+
+export function getNotesCount(): number {
+  const row = db.prepare(`SELECT COUNT(*) AS c FROM notes`).get() as { c: number };
+  return row.c ?? 0;
+}
+
+export function searchEntityProfiles(query: string, limit = 10): EntityProfile[] {
+  const q = query.trim().slice(0, 120);
+  if (!q) return [];
+  const rows = db
+    .prepare(
+      `
+    SELECT * FROM entity_profiles
+    WHERE lower(name) LIKE '%' || lower(@q) || '%'
+       OR lower(COALESCE(notes, '')) LIKE '%' || lower(@q) || '%'
+       OR lower(COALESCE(relationship_summary, '')) LIKE '%' || lower(@q) || '%'
+       OR lower(COALESCE(email, '')) LIKE '%' || lower(@q) || '%'
+    ORDER BY interaction_count DESC, updated_at DESC
+    LIMIT @limit
+  `
+    )
+    .all({ q, limit: Math.min(Math.max(1, limit), 20) }) as EntityProfileRow[];
+  return rows.map(mapEntityProfileRow);
+}
+
+export function searchMemoriesSql(
+  query: string,
+  category?: string,
+  limit = 20
+): JarvisMemory[] {
+  const q = query.trim().slice(0, 120);
+  if (!q) return [];
+  const cat = category?.trim();
+  const rows = cat
+    ? (db
+        .prepare(
+          `
+      SELECT * FROM jarvis_memory
+      WHERE category = @category
+        AND confidence > 0
+        AND (is_synthesized IS NULL OR is_synthesized >= 0)
+        AND (
+          lower(key) LIKE '%' || lower(@q) || '%'
+          OR lower(value) LIKE '%' || lower(@q) || '%'
+        )
+      ORDER BY importance DESC, confidence DESC, last_seen DESC
+      LIMIT @limit
+    `
+        )
+        .all({ q, category: cat, limit }) as JarvisMemoryRow[])
+    : (db
+        .prepare(
+          `
+      SELECT * FROM jarvis_memory
+      WHERE confidence > 0
+        AND (is_synthesized IS NULL OR is_synthesized >= 0)
+        AND (
+          lower(key) LIKE '%' || lower(@q) || '%'
+          OR lower(value) LIKE '%' || lower(@q) || '%'
+          OR lower(category) LIKE '%' || lower(@q) || '%'
+        )
+      ORDER BY importance DESC, confidence DESC, last_seen DESC
+      LIMIT @limit
+    `
+        )
+        .all({ q, limit }) as JarvisMemoryRow[]);
+  return rows.map(mapJarvisMemoryRow);
+}
+
+export function getSelfEvolutionRecent(limit = 3) {
+  const rows = db
+    .prepare(
+      `
+    SELECT id, observation, suggested_improvement, category, status, confidence, created_at, resolved_at
+    FROM self_evolution_log
+    ORDER BY datetime(created_at) DESC
+    LIMIT @limit
+  `
+    )
+    .all({ limit: Math.min(Math.max(1, limit), 20) }) as Array<{
+    id: number;
+    observation: string;
+    suggested_improvement: string;
+    category: string;
+    status: string;
+    confidence: number;
+    created_at: string;
+    resolved_at: string | null;
+  }>;
+  return rows;
 }
 
 export function getUnacknowledgedNotes(sinceHours = 24): Note[] {
@@ -2751,4 +2954,155 @@ export function markNotesSeenInRundown(ids: number[]): void {
   for (const id of unique) {
     stmt.run({ id });
   }
+}
+
+export type DomainResearchLogRow = {
+  id: number;
+  domain: string;
+  ranAt: string;
+  ohioTime: string | null;
+  queriesRun: number;
+  resultsSaved: number;
+  memoriesPromoted: number;
+  summary: string | null;
+};
+
+export function insertDomainResearchLog(input: {
+  domain: string;
+  ohioTime: string;
+  queriesRun: number;
+  resultsSaved: number;
+  memoriesPromoted: number;
+  summary?: string | null;
+}): number {
+  const result = db
+    .prepare(
+      `
+    INSERT INTO domain_research_log (
+      domain, ohio_time, queries_run, results_saved, memories_promoted, summary
+    )
+    VALUES (@domain, @ohio_time, @queries_run, @results_saved, @memories_promoted, @summary)
+  `
+    )
+    .run({
+      domain: input.domain,
+      ohio_time: input.ohioTime,
+      queries_run: input.queriesRun,
+      results_saved: input.resultsSaved,
+      memories_promoted: input.memoriesPromoted,
+      summary: input.summary?.slice(0, 2000) ?? null
+    });
+  return Number(result.lastInsertRowid);
+}
+
+export function getDomainResearchLog(limit = 50): DomainResearchLogRow[] {
+  const rows = db
+    .prepare(
+      `
+    SELECT id, domain, ran_at, ohio_time, queries_run, results_saved, memories_promoted, summary
+    FROM domain_research_log
+    ORDER BY ran_at DESC
+    LIMIT @limit
+  `
+    )
+    .all({ limit }) as Array<{
+    id: number;
+    domain: string;
+    ran_at: string;
+    ohio_time: string | null;
+    queries_run: number;
+    results_saved: number;
+    memories_promoted: number;
+    summary: string | null;
+  }>;
+  return rows.map((r) => ({
+    id: r.id,
+    domain: r.domain,
+    ranAt: r.ran_at,
+    ohioTime: r.ohio_time,
+    queriesRun: r.queries_run,
+    resultsSaved: r.results_saved,
+    memoriesPromoted: r.memories_promoted,
+    summary: r.summary
+  }));
+}
+
+export function countDomainResearchMemories(domainId: string): number {
+  const row = db
+    .prepare(
+      `
+    SELECT COUNT(*) AS c FROM jarvis_memory
+    WHERE source = 'domain_research' AND key LIKE @prefix
+  `
+    )
+    .get({ prefix: `${domainId}_%` }) as { c: number };
+  return Number(row?.c ?? 0);
+}
+
+export function getTopMemoriesByCategory(category: string, limit = 3): JarvisMemory[] {
+  return getMemoriesByCategory(category, 0.25).slice(0, limit);
+}
+
+export function getDomainResearchMemories(input: {
+  category: string;
+  domainIdPrefix: string;
+  limit?: number;
+}): JarvisMemory[] {
+  const limit = input.limit ?? 3;
+  const rows = db
+    .prepare(
+      `
+    SELECT * FROM jarvis_memory
+    WHERE category = @category
+      AND source = 'domain_research'
+      AND key LIKE @prefix
+      AND confidence >= 0.25
+    ORDER BY importance DESC, confidence DESC, last_seen DESC
+    LIMIT @limit
+  `
+    )
+    .all({
+      category: input.category,
+      prefix: `${input.domainIdPrefix}_%`,
+      limit
+    }) as JarvisMemoryRow[];
+  return rows.map(mapJarvisMemoryRow);
+}
+
+export function getAllActiveMemoriesForAudit(): JarvisMemory[] {
+  const rows = db
+    .prepare(
+      `
+    SELECT * FROM jarvis_memory
+    WHERE flagged = 0 AND confidence > 0 AND (is_synthesized IS NULL OR is_synthesized >= 0)
+  `
+    )
+    .all() as JarvisMemoryRow[];
+  return rows.map(mapJarvisMemoryRow);
+}
+
+export function setMemoryConfidenceAbsolute(id: number, confidence: number) {
+  db.prepare(
+    `
+    UPDATE jarvis_memory
+    SET confidence = @confidence, last_seen = datetime('now')
+    WHERE id = @id
+  `
+  ).run({ id, confidence: Math.max(0, Math.min(1, confidence)) });
+}
+
+export function promoteWorldIntelMemory(id: number) {
+  db.prepare(
+    `
+    UPDATE jarvis_memory
+    SET category = @category,
+        importance = @importance,
+        last_seen = datetime('now')
+    WHERE id = @id
+  `
+  ).run({
+    id,
+    category: MEMORY_CATEGORIES.BUSINESS_CONTEXT,
+    importance: 0.8
+  });
 }

@@ -6,6 +6,7 @@ import {
   pendingQueueItemExists,
   setSystemState
 } from "../db/queries";
+import { escalateStaleItems } from "./queueEscalation";
 import { brainLog } from "../utils/requestLog";
 import { prewarmRundownCacheIfStale } from "../routes/rundown";
 import { Communication } from "./communication";
@@ -84,6 +85,8 @@ export async function brainCycle() {
     }
 
     const comms = await communication.decide(results, payload, "cycle");
+
+    await escalateStaleItems();
 
     if (results.length) {
       const lines = results

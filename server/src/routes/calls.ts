@@ -7,7 +7,7 @@ import {
   getRecentCalls,
   setState
 } from "../db/queries";
-import { buildVapiAgentConfig } from "../services/vapi";
+import { buildVapiAgentConfig, extractCallerNumberFromVapiPayload, mergeVapiBody } from "../services/vapi";
 import { tryBookAppointmentFromVapiCall } from "../services/appointmentBooking";
 
 export const callsRouter = Router();
@@ -16,19 +16,6 @@ function scheduleVapiAppointmentBooking(body: unknown) {
   setImmediate(() => {
     void tryBookAppointmentFromVapiCall(body);
   });
-}
-
-/** Vapi often wraps events in `{ message: { type, ... } }`; merge for parsers. */
-function mergeVapiBody(body: unknown): Record<string, unknown> {
-  if (!body || typeof body !== "object") return {};
-
-  const root = body as Record<string, unknown>;
-  const msg = root.message;
-  if (msg && typeof msg === "object" && !Array.isArray(msg)) {
-    return { ...root, ...(msg as Record<string, unknown>) };
-  }
-
-  return root;
 }
 
 function getVapiEventType(body: unknown): string | undefined {
@@ -57,8 +44,16 @@ function getNestedValue(source: unknown, paths: string[]) {
 
 function asString(value: unknown) {
   if (value === undefined || value === null) return "";
-  if (typeof value === "string") return value;
-  return JSON.stringify(value);
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) return "";
+    return trimmed;
+  }
+  if (typeof value === "object" && value !== null && "name" in value) {
+    const name = (value as Record<string, unknown>).name;
+    return typeof name === "string" ? name.trim() : "";
+  }
+  return "";
 }
 
 function asNumber(value: unknown) {
@@ -66,19 +61,10 @@ function asNumber(value: unknown) {
   return Number.isFinite(number) ? number : null;
 }
 
-function getCallerNumber(body: unknown) {
-  return asString(
-    getNestedValue(body, [
-      "caller_number",
-      "callerNumber",
-      "from",
-      "phoneNumber",
-      "call.customer.number",
-      "customer.number",
-      "message.call.customer.number",
-      "message.customer.number"
-    ])
-  );
+function readPhoneNumberFromText(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.startsWith("{")) return null;
+  return trimmed;
 }
 
 function extractTranscript(body: unknown) {
@@ -148,8 +134,11 @@ function parseWebhookOutcome(body: unknown) {
     asString(getNestedValue(merged, ["caller_name", "callerName", "call.customer.name", "customer.name"]));
   const callerReason =
     asString(actionJson.caller_reason || actionJson.callerReason || actionJson.reason) || summary;
-  const callerNumber =
-    getCallerNumber(merged) || asString(actionJson.callback_number || actionJson.callbackNumber);
+  const fromPayload = extractCallerNumberFromVapiPayload(body);
+  const callbackNumber = readPhoneNumberFromText(
+    asString(actionJson.callback_number || actionJson.callbackNumber)
+  );
+  const callerNumber = fromPayload !== "Unknown" ? fromPayload : callbackNumber || "Unknown";
   const durationSeconds =
     asNumber(
       getNestedValue(merged, [
@@ -198,7 +187,7 @@ function logCall(body: unknown) {
 
 function respondAssistantConfig(reqBody: unknown, res: Response) {
   const merged = mergeVapiBody(reqBody);
-  const callerNumber = getCallerNumber(merged);
+  const callerNumber = extractCallerNumberFromVapiPayload(merged);
   const priorityContact = findPriorityContactByPhone(callerNumber);
   const config = buildVapiAgentConfig({ callerNumber, priorityContact });
 

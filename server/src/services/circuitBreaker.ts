@@ -1,4 +1,4 @@
-import { logExecution } from "../db/queries";
+import { getSystemState, logExecution, setSystemState } from "../db/queries";
 import { isRateLimitError } from "../utils/rateLimit";
 import { logServiceError } from "../utils/logError";
 import { circuitLog } from "../utils/requestLog";
@@ -16,6 +16,7 @@ export class CircuitOpenError extends Error {
 }
 
 const OPEN_MS = 60_000;
+const PERSIST_OPEN_RECOVERY_MS = 5 * 60_000;
 const FAILURE_THRESHOLD = 3;
 
 class ServiceCircuit {
@@ -25,7 +26,47 @@ class ServiceCircuit {
   private openLogged = false;
   private rejectLogged = false;
 
-  constructor(private readonly serviceName: string) {}
+  constructor(private readonly serviceName: string) {
+    this.restoreFromPersistence();
+  }
+
+  private stateKey(): string {
+    return `circuit_${this.serviceName}_state`;
+  }
+
+  private openedAtKey(): string {
+    return `circuit_${this.serviceName}_opened_at`;
+  }
+
+  private restoreFromPersistence() {
+    const persisted = getSystemState(this.stateKey());
+    const openedAtStr = getSystemState(this.openedAtKey());
+    if (persisted !== "OPEN" || !openedAtStr) return;
+
+    const openedAt = Date.parse(openedAtStr);
+    if (!Number.isFinite(openedAt)) return;
+
+    this.openedAt = openedAt;
+    const age = Date.now() - openedAt;
+    if (age >= PERSIST_OPEN_RECOVERY_MS) {
+      this.state = "HALF_OPEN";
+      circuitLog(`${this.serviceName} circuit restored HALF_OPEN after restart (${Math.round(age / 1000)}s open)`);
+    } else {
+      this.state = "OPEN";
+      this.openLogged = true;
+      circuitLog(`${this.serviceName} circuit restored OPEN after restart (${Math.round(age / 1000)}s open)`);
+    }
+  }
+
+  private persistClosed() {
+    setSystemState(this.stateKey(), "CLOSED");
+  }
+
+  private persistOpen() {
+    const now = new Date().toISOString();
+    setSystemState(this.stateKey(), "OPEN");
+    setSystemState(this.openedAtKey(), now);
+  }
 
   getState(): CircuitState {
     if (this.state === "OPEN" && Date.now() - this.openedAt >= OPEN_MS) {
@@ -46,6 +87,7 @@ class ServiceCircuit {
     this.openedAt = 0;
     this.openLogged = false;
     this.rejectLogged = false;
+    this.persistClosed();
   }
 
   graceMessage(): string {
@@ -62,6 +104,7 @@ class ServiceCircuit {
     this.state = "OPEN";
     this.openedAt = Date.now();
     this.rejectLogged = false;
+    this.persistOpen();
     if (!this.openLogged) {
       this.openLogged = true;
       circuitLog(`${this.serviceName} circuit OPEN — ${reason} (${operation})`);
@@ -84,8 +127,10 @@ class ServiceCircuit {
         const wasOpen = this.state === "OPEN" || this.openLogged;
         this.state = "CLOSED";
         this.consecutiveFailures = 0;
+        this.openedAt = 0;
         this.openLogged = false;
         this.rejectLogged = false;
+        this.persistClosed();
         if (wasOpen) {
           circuitLog(`${this.serviceName} circuit CLOSED — recovered (${operation})`);
           logExecution({

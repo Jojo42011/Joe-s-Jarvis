@@ -2,6 +2,73 @@ import type { PriorityContact } from "../db/queries";
 
 const joePrivateNumber = process.env.JOE_PRIVATE_NUMBER || "";
 
+/** Vapi often wraps events in `{ message: { type, ... } }`; merge for parsers. */
+export function mergeVapiBody(body: unknown): Record<string, unknown> {
+  if (!body || typeof body !== "object") return {};
+
+  const root = body as Record<string, unknown>;
+  const msg = root.message;
+  if (msg && typeof msg === "object" && !Array.isArray(msg)) {
+    return { ...root, ...(msg as Record<string, unknown>) };
+  }
+
+  return root;
+}
+
+function nestedValue(source: Record<string, unknown>, path: string): unknown {
+  return path.split(".").reduce<unknown>((current, key) => {
+    if (!current || typeof current !== "object") return undefined;
+    return (current as Record<string, unknown>)[key];
+  }, source);
+}
+
+function readPhoneNumber(value: unknown): string | null {
+  if (value === undefined || value === null || value === "") return null;
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (trimmed.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+        if (typeof parsed.number === "string" && parsed.number.trim()) {
+          return parsed.number.trim();
+        }
+      } catch {
+        return null;
+      }
+    }
+    return trimmed;
+  }
+
+  if (typeof value === "object" && !Array.isArray(value)) {
+    const num = (value as Record<string, unknown>).number;
+    if (typeof num === "string" && num.trim()) return num.trim();
+  }
+
+  return null;
+}
+
+/** Extract E.164 or raw phone string from a Vapi webhook payload. */
+export function extractCallerNumberFromVapiPayload(body: unknown): string {
+  const payload = mergeVapiBody(body);
+
+  const candidates = [
+    nestedValue(payload, "call.customer.number"),
+    nestedValue(payload, "customer.number"),
+    nestedValue(payload, "phoneNumber.number"),
+    payload.phoneNumber,
+    payload.from
+  ];
+
+  for (const candidate of candidates) {
+    const number = readPhoneNumber(candidate);
+    if (number) return number;
+  }
+
+  return "Unknown";
+}
+
 export const vapiAgentConfig = {
   name: "JARVIS",
   firstMessage: "Joe Stewart's office. Who's calling and what can I help you with?",

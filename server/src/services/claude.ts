@@ -136,149 +136,6 @@ export async function findFastWorkingModel(): Promise<string | null> {
   return resolvedFastModel;
 }
 
-export async function generateJarvisResponse(
-  message: string,
-  history: ConversationMessage[]
-) {
-  if (!anthropic) {
-    return mockJarvisResponse(message);
-  }
-
-  const model = await findWorkingModel();
-  if (!model) {
-    return "No Claude model responded within the timeout, sir. Your API key may need billing credits. Visit https://console.anthropic.com/settings/billing.";
-  }
-
-  try {
-    const system = await buildDynamicSystemPrompt(message);
-    const response = await claudeCircuit.execute("chat", () =>
-      withTimeout(
-      anthropic.messages.create({
-        model,
-        max_tokens: 350,
-        temperature: 0.5,
-        system,
-        messages: [
-          ...history
-            .filter((entry) => entry.role === "user" || entry.role === "assistant")
-            .map((entry) => ({
-              role: entry.role as "user" | "assistant",
-              content: entry.content
-            })),
-          {
-            role: "user",
-            content: message
-          }
-        ]
-      }),
-      15_000,
-      "chat"
-    )
-    );
-
-    const textBlock = response.content.find((block) => block.type === "text");
-    return textBlock?.text?.trim() || "I have the signal, sir, but no useful response returned.";
-  } catch (error: unknown) {
-    if (error instanceof CircuitOpenError) {
-      return claudeCircuit.graceMessage();
-    }
-    logServiceError("Claude", "chat", error);
-    const msg = error instanceof Error ? error.message : "";
-    if (msg.includes("timed out")) {
-      return "Claude timed out, sir. The API key may need billing credits at https://console.anthropic.com/settings/billing.";
-    }
-    if (msg.includes("credit") || msg.includes("billing")) {
-      return "Claude API requires billing credits, sir. Visit https://console.anthropic.com/settings/billing.";
-    }
-    return "Claude connection interrupted, sir. Running in local mode.";
-  }
-}
-
-export async function generateJarvisIntentResponse(input: {
-  message: string;
-  history: ConversationMessage[];
-  state: unknown;
-}) {
-  if (!anthropic) {
-    return JSON.stringify({
-      speech: mockJarvisResponse(input.message),
-      intent: "general.chat",
-      entities: {},
-      ui: { panel: null, data: [], action: null },
-      tool: { name: null, args: {} }
-    });
-  }
-
-  const model = await findWorkingModel();
-  if (!model) {
-    return JSON.stringify({
-      speech: "Claude is unavailable, sir. I can see the request, but the brain is not answering.",
-      intent: "general.chat",
-      entities: {},
-      ui: { panel: null, data: [], action: null },
-      tool: { name: null, args: {} }
-    });
-  }
-
-  const messages: Anthropic.MessageParam[] = [];
-  for (const entry of input.history) {
-    if (entry.role === "user" || entry.role === "assistant") {
-      messages.push({ role: entry.role, content: entry.content });
-    }
-  }
-  messages.push({ role: "user", content: input.message });
-
-  const stateObj = input.state as Record<string, unknown> | null;
-  const alreadyCovered = stateObj?.alreadyCoveredThisSession;
-  const coveredList = Array.isArray(alreadyCovered)
-    ? alreadyCovered.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
-    : [];
-  const coveredBlock =
-    coveredList.length > 0
-      ? `\n\nAlready covered this session (do NOT repeat unless Joe explicitly asks for a recap): ${coveredList.join(", ")}`
-      : "";
-
-  const stateBlock = `\n\nOPERATOR STATE (authoritative for tools, inbox, execution log, last actions):\n${JSON.stringify(input.state, null, 2)}`;
-
-  try {
-    const system = `${await buildDynamicSystemPrompt(input.message)}${coveredBlock}${stateBlock}`;
-    const response = await claudeCircuit.execute("intent-chat", () =>
-      withTimeout(
-        anthropic.messages.create({
-          model,
-          max_tokens: 700,
-          temperature: 0.25,
-          system,
-          messages
-        }),
-        35_000,
-        "intent-chat"
-      )
-    );
-
-    const textBlock = response.content.find((block) => block.type === "text");
-    return textBlock?.text?.trim() || "";
-  } catch (error: unknown) {
-    if (error instanceof CircuitOpenError) {
-      return JSON.stringify({
-        speech: claudeCircuit.graceMessage(),
-        intent: "general.chat",
-        entities: {},
-        ui: { panel: null, data: [], action: null },
-        tool: { name: null, args: {} }
-      });
-    }
-    logServiceError("Claude", "intent-chat", error);
-    return JSON.stringify({
-      speech: "I hit a reasoning fault, sir. Try that once more.",
-      intent: "general.chat",
-      entities: {},
-      ui: { panel: null, data: [], action: null },
-      tool: { name: null, args: {} }
-    });
-  }
-}
-
 export async function generateFastJarvisResponse(message: string) {
   if (!anthropic) {
     return JSON.stringify({
@@ -301,12 +158,14 @@ export async function generateFastJarvisResponse(message: string) {
     });
   }
 
+  claudeLog(`fast-chat: ${model}`);
+
   try {
     const response = await claudeCircuit.execute("fast-chat", () =>
       withTimeout(
         anthropic.messages.create({
           model,
-          max_tokens: 100,
+          max_tokens: 150,
           temperature: 0.25,
           system:
             "You are JARVIS, Joe Stewart's autonomous operator. Reply briefly, confidently, and in operator tone. Greetings and pleasantries only — no tools, no capability claims, no JSON commentary. Return JSON only with speech, intent general.chat, entities {}, ui {panel:null,data:[],action:null}, tool {name:null,args:{}}.",

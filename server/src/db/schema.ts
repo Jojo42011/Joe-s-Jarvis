@@ -192,6 +192,67 @@ function applyMigrations(db: Database.Database) {
       CREATE INDEX IF NOT EXISTS transcripts_created ON transcripts(created_at);
     `);
   }
+
+  if (tableExists(db, "world_intel") && !columnExists(db, "world_intel", "domain")) {
+    db.exec(`ALTER TABLE world_intel ADD COLUMN domain TEXT DEFAULT 'general'`);
+  }
+  if (tableExists(db, "world_intel") && !columnExists(db, "world_intel", "last_researched_at")) {
+    db.exec(`ALTER TABLE world_intel ADD COLUMN last_researched_at TEXT`);
+  }
+
+  if (!tableExists(db, "domain_research_log")) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS domain_research_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        domain TEXT NOT NULL,
+        ran_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        ohio_time TEXT,
+        queries_run INTEGER DEFAULT 0,
+        results_saved INTEGER DEFAULT 0,
+        memories_promoted INTEGER DEFAULT 0,
+        summary TEXT
+      );
+      CREATE INDEX IF NOT EXISTS domain_research_log_ran_at ON domain_research_log(ran_at DESC);
+      CREATE INDEX IF NOT EXISTS domain_research_log_domain ON domain_research_log(domain, ran_at DESC);
+    `);
+  }
+
+  if (tableExists(db, "priority_queue")) {
+    if (!columnExists(db, "priority_queue", "status")) {
+      db.exec(`ALTER TABLE priority_queue ADD COLUMN status TEXT NOT NULL DEFAULT 'open'`);
+    }
+    if (!columnExists(db, "priority_queue", "first_briefed_at")) {
+      db.exec(`ALTER TABLE priority_queue ADD COLUMN first_briefed_at DATETIME`);
+    }
+    if (!columnExists(db, "priority_queue", "last_briefed_at")) {
+      db.exec(`ALTER TABLE priority_queue ADD COLUMN last_briefed_at DATETIME`);
+    }
+    if (!columnExists(db, "priority_queue", "brief_count")) {
+      db.exec(`ALTER TABLE priority_queue ADD COLUMN brief_count INTEGER NOT NULL DEFAULT 0`);
+    }
+    if (!columnExists(db, "priority_queue", "resurface_at")) {
+      db.exec(`ALTER TABLE priority_queue ADD COLUMN resurface_at DATETIME`);
+    }
+    if (!columnExists(db, "priority_queue", "handled_reason")) {
+      db.exec(`ALTER TABLE priority_queue ADD COLUMN handled_reason TEXT`);
+    }
+    if (!columnExists(db, "priority_queue", "handled_at")) {
+      db.exec(`ALTER TABLE priority_queue ADD COLUMN handled_at DATETIME`);
+    }
+
+    db.exec(`UPDATE priority_queue SET status = 'open' WHERE handled = 0`);
+    db.exec(`UPDATE priority_queue SET status = 'handled' WHERE handled = 1`);
+  }
+
+  if (tableExists(db, "calls")) {
+    db.exec(`
+      UPDATE calls
+      SET caller_number = json_extract(caller_number, '$.number')
+      WHERE caller_number LIKE '{%'
+        AND json_valid(caller_number) = 1
+        AND json_extract(caller_number, '$.number') IS NOT NULL
+    `);
+  }
 }
 
 export function applySchema(db: Database.Database) {
@@ -282,7 +343,14 @@ export function applySchema(db: Database.Database) {
       urgency TEXT,
       handled INTEGER NOT NULL DEFAULT 0,
       raw_data TEXT,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      status TEXT NOT NULL DEFAULT 'open',
+      first_briefed_at DATETIME,
+      last_briefed_at DATETIME,
+      brief_count INTEGER NOT NULL DEFAULT 0,
+      resurface_at DATETIME,
+      handled_reason TEXT,
+      handled_at DATETIME
     );
 
     CREATE TABLE IF NOT EXISTS system_state (
@@ -341,11 +409,14 @@ export function applySchema(db: Database.Database) {
       summary TEXT,
       relevance TEXT,
       briefed INTEGER NOT NULL DEFAULT 0,
-      fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+      fetched_at TEXT NOT NULL DEFAULT (datetime('now')),
+      domain TEXT DEFAULT 'general',
+      last_researched_at TEXT
     );
 
     CREATE INDEX IF NOT EXISTS world_intel_fetched_at ON world_intel(fetched_at);
     CREATE INDEX IF NOT EXISTS world_intel_relevance_briefed ON world_intel(relevance, briefed);
+    CREATE INDEX IF NOT EXISTS world_intel_domain ON world_intel(domain, fetched_at);
 
     CREATE TABLE IF NOT EXISTS notebooks (
       id TEXT PRIMARY KEY,

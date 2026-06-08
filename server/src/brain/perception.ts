@@ -737,7 +737,7 @@ export class Perception {
 
 
 
-        insertWorldIntel({ query, resultsJson });
+        insertWorldIntel({ query, resultsJson, domain: "general" });
 
         inserted += 1;
 
@@ -801,7 +801,9 @@ export class Perception {
 
       query: trimmed,
 
-      resultsJson
+      resultsJson,
+
+      domain: "general"
 
     });
 

@@ -117,6 +117,38 @@ body::after{
 .tag.live{color:var(--white);border:1px solid rgba(245,245,247,.25);background:rgba(245,245,247,.06);box-shadow:0 0 6px rgba(255,255,255,.08)}
 .tag.next{color:var(--red);border:1px solid rgba(224,32,48,.3);background:rgba(224,32,48,.07)}
 .tag.queued{color:var(--muted);border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03)}
+.queue-status-panel{display:flex;flex-direction:column;gap:14px}
+.queue-status-section{border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px;background:rgba(0,0,0,.2)}
+.queue-status-head{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--red);margin-bottom:8px;font-weight:700}
+.queue-status-sub{font-size:10px;color:var(--muted);margin:-4px 0 8px}
+.queue-status-row{display:flex;gap:8px;align-items:flex-start;justify-content:space-between;padding:8px 0;border-top:1px solid rgba(255,255,255,.06)}
+.queue-status-row:first-of-type{border-top:none}
+.queue-status-main{flex:1;min-width:0}
+.queue-status-summary{font-size:12px;color:var(--text);line-height:1.35}
+.queue-status-meta{font-size:10px;color:var(--muted);margin-top:3px}
+.queue-status-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.queue-urgency{font-size:9px;font-weight:700;letter-spacing:.08em;padding:2px 6px;border-radius:3px;text-transform:uppercase}
+.queue-urgency.now{color:#fff;background:rgba(224,32,48,.55)}
+.queue-urgency.today{color:#f5c6cb;background:rgba(160,16,32,.35)}
+.queue-urgency.week{color:var(--muted);background:rgba(255,255,255,.06)}
+.queue-btn{font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;border-radius:4px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:var(--text);cursor:pointer}
+.queue-btn:hover{border-color:rgba(224,32,48,.45);color:#fff}
+.queue-snooze-select{font-size:9px;padding:3px 4px;border-radius:4px;background:#111;color:var(--text);border:1px solid rgba(255,255,255,.15)}
+.queue-total{font-size:11px;color:var(--muted);text-align:center;padding:6px 0}
+.call-card{border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:12px;background:rgba(0,0,0,.18);margin-bottom:10px}
+.call-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px}
+.call-caller{font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px}
+.call-caller-icon{opacity:.85}
+.call-time-ohio{font-size:10px;color:var(--muted);white-space:nowrap}
+.call-summary{font-size:12px;line-height:1.45;color:var(--muted);margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.call-badges{display:flex;flex-wrap:wrap;gap:6px}
+.call-badge{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:3px}
+.call-badge.inbound{color:#f5c6cb;background:rgba(160,16,32,.35);border:1px solid rgba(224,32,48,.25)}
+.call-badge.duration{color:var(--muted);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
+.call-badge.answered{color:#b8e0c2;background:rgba(40,120,70,.25);border:1px solid rgba(80,160,100,.2)}
+.call-badge.missed{color:#ffb4b4;background:rgba(160,16,32,.2);border:1px solid rgba(224,32,48,.2)}
+.call-badge.ended{color:var(--muted);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+.call-badge.screened{color:#d4c4f0;background:rgba(100,60,140,.2);border:1px solid rgba(140,90,180,.2)}
 .operator-log{
   display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 420px);overflow-y:auto;padding-right:4px;
 }
@@ -382,20 +414,6 @@ body::after{
 }
 .bar-legacy-hidden{display:none!important}
 
-.listening-stop-btn{
-  position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0));
-  transform:translateX(-50%);z-index:82;
-  padding:12px 22px;border:1.5px solid var(--red-hot);border-radius:6px;
-  background:rgba(160,16,32,.35);color:var(--white);cursor:pointer;
-  font-family:'Orbitron',sans-serif;font-size:10px;font-weight:800;letter-spacing:.16em;
-  box-shadow:0 0 24px rgba(224,32,48,.35);
-  display:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
-}
-.listening-stop-btn.visible{display:block;animation:noteIn .25s ease}
-.listening-stop-btn:hover,.listening-stop-btn:focus{
-  background:rgba(224,32,48,.45);outline:none;border-color:var(--white);
-}
-
 .doc-upload-btn{
   position:relative;width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(255,255,255,.12);
   background:rgba(255,255,255,.03);color:var(--muted);cursor:pointer;
@@ -657,6 +675,28 @@ body::after{
 }
 .memory-card-actions button:hover{border-color:var(--red);color:var(--white)}
 .memory-empty{font-size:12px;color:var(--muted);padding:24px 8px;text-align:center}
+.domain-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.domain-card{
+  border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:14px;
+  background:rgba(0,0,0,.35);position:relative
+}
+.domain-card.overdue{border-color:var(--maroon);box-shadow:0 0 0 1px rgba(160,16,32,.4)}
+.domain-card.due-soon{border-color:rgba(224,32,48,.5)}
+.domain-card.due-soon::before{
+  content:'';position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;
+  background:var(--red-hot);box-shadow:0 0 8px var(--red-hot)
+}
+.domain-card-title{font-family:'Orbitron',sans-serif;font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--white);margin-bottom:8px;padding-right:14px}
+.domain-card-meta{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:10px}
+.domain-card-meta strong{color:var(--white);font-weight:600}
+.domain-card-actions{display:flex;gap:8px;flex-wrap:wrap}
+.domain-card-actions button{
+  font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;letter-spacing:.1em;
+  padding:8px 12px;border:1px solid rgba(255,255,255,.15);background:rgba(160,16,32,.2);
+  color:var(--white);cursor:pointer;border-radius:4px
+}
+.domain-card-actions button:hover:not(:disabled){border-color:var(--red);background:rgba(224,32,48,.25)}
+.domain-card-actions button:disabled{opacity:.5;cursor:wait}
 .memory-audit-card{
   border:1px solid rgba(224,32,48,.28);border-radius:8px;padding:12px;margin-bottom:10px;
   background:rgba(160,16,32,.08);
@@ -842,6 +882,62 @@ body::after{
 .panel-primary{font-size:13px;color:var(--white);margin-bottom:5px}
 .panel-secondary{font-size:12px;color:var(--text);line-height:1.4;margin-bottom:7px}
 .panel-action{font-size:11px;color:var(--muted);line-height:1.35}
+.email-panel{font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+.email-section{margin-bottom:20px}
+.email-section:last-child{margin-bottom:0}
+.email-section-head{
+  display:flex;align-items:center;gap:8px;margin:0 0 10px;
+  font-size:13px;font-weight:700;color:var(--white);letter-spacing:.02em;
+}
+.email-section-count{
+  font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;
+  background:rgba(255,255,255,.08);color:var(--text);
+}
+.email-section-sub{font-size:11px;color:var(--muted);margin:-6px 0 10px}
+.email-card{
+  position:relative;margin-bottom:12px;padding:12px 14px 12px 16px;
+  border:1px solid rgba(255,255,255,.08);border-radius:10px;
+  background:rgba(255,255,255,.03);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  opacity:0;transform:translateX(20px);animation:cardIn .32s ease forwards;
+}
+.email-card.needs-now{border-left:4px solid var(--red-hot)}
+.email-card.tasks{border-left:4px solid #8b2942}
+.email-card.timeline{border-left:4px solid rgba(120,120,120,.5);opacity:.82}
+.email-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
+.email-tags{display:flex;flex-wrap:wrap;gap:6px;flex:1}
+.email-tag-pill{
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  padding:3px 8px;border-radius:999px;line-height:1.2;
+}
+.email-tag-pill.urgent{background:rgba(224,32,48,.85);color:#fff}
+.email-tag-pill.follow-up{background:rgba(139,41,66,.9);color:#fff}
+.email-tag-pill.info{background:rgba(120,120,120,.35);color:#eee}
+.email-tag-pill.completed{background:rgba(60,60,60,.7);color:#aaa;text-decoration:line-through}
+.email-tag-pill.action-replied{background:rgba(40,120,80,.45);color:#dfffe8}
+.email-tag-pill.action-archived{background:rgba(80,80,80,.5);color:#ddd}
+.email-tag-pill.action-queued{background:rgba(160,16,32,.35);color:#ffc8cf}
+.email-tag-pill.action-needs{background:rgba(200,120,40,.4);color:#fff3e0}
+.email-tag-pill.action-read{background:rgba(100,100,120,.35);color:#e8e8f0}
+.email-time{font-size:11px;color:rgba(212,212,212,.55);white-space:nowrap;flex-shrink:0}
+.email-from{font-size:14px;font-weight:600;color:#fff;margin-bottom:4px;line-height:1.3}
+.email-subject{font-size:13px;font-weight:400;color:rgba(220,220,220,.88);margin-bottom:8px;line-height:1.35}
+.email-divider{height:1px;background:rgba(255,255,255,.08);margin:8px 0}
+.email-preview{font-size:12px;font-weight:300;color:rgba(180,180,180,.75);line-height:1.45}
+.email-preview.expanded{white-space:pre-wrap}
+.email-attachments{margin-top:8px;font-size:11px;color:rgba(200,200,200,.7)}
+.email-attachments span{margin-right:10px}
+.email-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.email-btn{
+  font-size:11px;font-weight:600;padding:6px 12px;border-radius:6px;
+  border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--white);
+  cursor:pointer;font-family:inherit;
+}
+.email-btn:hover{border-color:var(--red-hot);background:rgba(160,16,32,.2)}
+.email-btn.primary{border-color:rgba(224,32,48,.5)}
+.email-read-more{
+  display:inline;margin-left:4px;font-size:11px;color:var(--red-hot);
+  background:none;border:none;padding:0;cursor:pointer;font-family:inherit;
+}
 .weather-panel-card{
   border-left-width:3px;padding:16px 14px 14px 16px;margin-bottom:0;
   animation:cardIn .32s ease forwards;
@@ -1020,10 +1116,6 @@ body::after{
   .hud-menu-sheet{
     left:8px;right:8px;bottom:calc(68px + env(safe-area-inset-bottom,0));max-width:none;
   }
-  .listening-stop-btn{
-    bottom:calc(76px + env(safe-area-inset-bottom,0));
-    padding:14px 24px;font-size:11px;min-height:48px;
-  }
 
   .dynamic-panel-layer{
     top:0;right:0;bottom:0;left:0;width:100%;max-width:100vw;
@@ -1183,7 +1275,6 @@ body::after{
         <span class="pulse-label">PROCESSING</span>
       </div>
     </div>
-    <button class="listening-stop-btn" id="listeningStopBtn" type="button" aria-hidden="true" title="Stop listening">STOP LISTENING</button>
   </section>
 
   <!-- RIGHT PANEL -->
@@ -1480,9 +1571,6 @@ async function loadExecutionFeed(force=false){
     executionFeed.innerHTML='<div class="execution-empty">Execution feed unavailable.</div>';
   }
 }
-async function playQuickTts(text){
-  await playSessionTts(text,{manageUi:false});
-}
 const docUploadBtn=document.getElementById('docUploadBtn');
 const docFileInput=document.getElementById('docFileInput');
 const recButton=document.getElementById('recButton');
@@ -1538,6 +1626,7 @@ let memoryWorldIntel=[];
 let memorySynthesisLogs=[];
 let memoryGaps=[];
 let memoryActiveCategory='business_context';
+let memoryDomainStatuses=[];
 
 const metricEls={
   priorityCalls:document.getElementById('metricPriorityCalls'),
@@ -1564,36 +1653,6 @@ function setTextIfPresent(el,value){
   if(el)el.textContent=value;
 }
 
-let deepgramSocket=null;
-let micStream=null;
-let listenTimeout=null;
-let deepgramFinalTranscript='';
-let deepgramInterimEl=null;
-let latestDeepgramFinal='';
-let speechSilenceTimer=null;
-let utteranceSegments=[];
-let utteranceInterim='';
-let isUtteranceCommitting=false;
-let deepgramVadSpeaking=false;
-let vadAnalyser=null;
-let vadFrameId=null;
-let localVadWasSpeech=false;
-/** Silence after last speech activity before sending to JARVIS */
-const UTTERANCE_COMMIT_MS=1500;
-/** Extra buffer after Deepgram UtteranceEnd (DG already waited utterance_end_ms) */
-const UTTERANCE_END_BUFFER_MS=600;
-const LOCAL_VAD_RMS_THRESHOLD=0.014;
-const STT_DEBUG=false;
-let audioContext=null;
-let audioSource=null;
-let audioProcessor=null;
-let sttReady=false;
-let sttSessionId=0;
-let sttFailureCount=0;
-let sttLastErrorAt=0;
-let sttIntentionalClose=false;
-const STT_MAX_FAILURES=8;
-
 async function requestAppWakeLock(){
   try{
     if(!('wakeLock' in navigator))return;
@@ -1614,55 +1673,19 @@ async function releaseAppWakeLock(){
   appWakeLock=null;
 }
 
-function setConversationMode(enabled){
-  conversationMode=enabled;
-  if(enabled){
-    void requestAppWakeLock();
-  }
-  const stopBtn=document.getElementById('listeningStopBtn');
-  if(stopBtn){
-    stopBtn.classList.toggle('visible',enabled);
-    stopBtn.setAttribute('aria-hidden',enabled?'false':'true');
-  }
-}
-
 async function resumeSuspendedAudioContexts(){
   try{
     if(playbackAudioContext?.state==='suspended'){
       await playbackAudioContext.resume();
-    }
-    if(audioContext?.state==='suspended'){
-      await audioContext.resume();
     }
   }catch(e){
     console.warn('[visibility] audio resume skipped',e);
   }
 }
 
-function isDeepgramSocketDead(){
-  return !deepgramSocket||deepgramSocket.readyState===WebSocket.CLOSED||deepgramSocket.readyState===WebSocket.CLOSING;
-}
-
 function handleVisibilityRestore(){
   void requestAppWakeLock();
   void resumeSuspendedAudioContexts();
-  if(!conversationMode||recordingModeActive)return;
-  if(statusEl.textContent==='PROCESSING'||statusEl.textContent==='RESPONDING')return;
-
-  setTimeout(()=>{
-    if(!conversationMode||recordingModeActive)return;
-    if(statusEl.textContent==='PROCESSING'||statusEl.textContent==='RESPONDING')return;
-
-    if(isListening&&isDeepgramSocketDead()){
-      cleanupDeepgramListening({restart:false,intentional:true});
-    }
-
-    if(!isListening){
-      void startListening(false);
-    }else if(isDeepgramSocketDead()){
-      scheduleListeningRestart(400);
-    }
-  },800);
 }
 
 function setStatus(s){
@@ -1707,10 +1730,25 @@ function addLog(message){
 }
 
 let activePlaybackSource=null;
+let activeStreamingAudio=null;
+let activeStreamingObjectUrl=null;
 let speechToken=0;
-let conversationMode=false;
-let isListening=false;
-let listenRestartTimer=null;
+let geminiLiveWs=null;
+let geminiSessionActive=false;
+let geminiAudioQueue=[];
+let geminiIsPlaying=false;
+let geminiActiveSource=null;
+let geminiCaptureCtx=null;
+let geminiCaptureProcessor=null;
+let geminiCaptureStream=null;
+let geminiReconnectTimer=null;
+let geminiBackgroundAt=0;
+let gemini1011RetryCount=0;
+let geminiMicStarted=false;
+let geminiSetupFallbackTimer=null;
+let geminiTurnComplete=false;
+const GEMINI_PCM_RATE=16000;
+const GEMINI_PLAYBACK_RATE=24000;
 let audioUnlocked=false;
 /** Global playback context — unlocked synchronously on mic/tap; all TTS uses this. */
 let playbackAudioContext=null;
@@ -1729,6 +1767,23 @@ function getPlaybackAudioContext(){
   return playbackAudioContext;
 }
 
+function stopActiveStreamingAudio(){
+  if(activeStreamingAudio){
+    try{
+      activeStreamingAudio.pause();
+      activeStreamingAudio.removeAttribute('src');
+      activeStreamingAudio.load();
+    }catch(_){/* already stopped */}
+    activeStreamingAudio.onended=null;
+    activeStreamingAudio.onerror=null;
+    activeStreamingAudio=null;
+  }
+  if(activeStreamingObjectUrl){
+    URL.revokeObjectURL(activeStreamingObjectUrl);
+    activeStreamingObjectUrl=null;
+  }
+}
+
 function stopActivePlaybackSource(){
   if(!activePlaybackSource)return;
   try{activePlaybackSource.stop(0)}catch(_){/* already stopped */}
@@ -1737,8 +1792,9 @@ function stopActivePlaybackSource(){
 }
 
 function haltPlayback(){
+  stopGeminiPlayback();
   stopActivePlaybackSource();
-  if('speechSynthesis' in window)window.speechSynthesis.cancel();
+  stopActiveStreamingAudio();
 }
 
 /**
@@ -1769,184 +1825,100 @@ function unlockAudioFromUserGesture(){
   window.audioUnlocked=true;
 }
 
-function playArrayBufferOnUnlockedContext(arrayBuffer){
+function parsePcmSampleRate(mimeType){
+  const match=String(mimeType||'').match(/rate=(\d+)/i);
+  return match?Number(match[1]):GEMINI_PLAYBACK_RATE;
+}
+
+async function playSpeakAudioBuffer(arrayBuffer,contentType){
   const ctx=getPlaybackAudioContext();
   if(!ctx)throw new Error('AudioContext unavailable');
+  if(ctx.state==='suspended'){
+    await ctx.resume();
+  }
 
-  const copy=arrayBuffer.slice(0);
-  return ctx.decodeAudioData(copy).then(decoded=>{
-    stopActivePlaybackSource();
-    if(ctx.state==='suspended'){
-      return ctx.resume().then(()=>decoded);
-    }
-    return decoded;
-  }).then(decoded=>{
+  const mime=String(contentType||'').toLowerCase();
+  if(mime.includes('pcm')||mime.includes('l16')||mime.includes('raw')){
+    const rate=parsePcmSampleRate(mime);
+    const samples=new Int16Array(arrayBuffer);
+    const audioBuffer=ctx.createBuffer(1,samples.length,rate);
+    const channelData=audioBuffer.getChannelData(0);
+    for(let i=0;i<samples.length;i++)channelData[i]=samples[i]/32768;
     return new Promise((resolve,reject)=>{
       const source=ctx.createBufferSource();
-      source.buffer=decoded;
+      source.buffer=audioBuffer;
       source.connect(ctx.destination);
       activePlaybackSource=source;
       source.onended=()=>{
         if(activePlaybackSource===source)activePlaybackSource=null;
         resolve();
       };
-      try{
-        source.start(0);
-      }catch(err){
+      try{source.start(0)}catch(err){
         activePlaybackSource=null;
         reject(err);
       }
     });
+  }
+
+  const copy=arrayBuffer.slice(0);
+  const decoded=await ctx.decodeAudioData(copy);
+  return new Promise((resolve,reject)=>{
+    stopActivePlaybackSource();
+    const source=ctx.createBufferSource();
+    source.buffer=decoded;
+    source.connect(ctx.destination);
+    activePlaybackSource=source;
+    source.onended=()=>{
+      if(activePlaybackSource===source)activePlaybackSource=null;
+      resolve();
+    };
+    try{source.start(0)}catch(err){
+      activePlaybackSource=null;
+      reject(err);
+    }
   });
 }
 
-async function playSessionTts(text,{manageUi=true,token=null,skipRestart=false}={}){
-  const trimmed=String(text||'').trim();
-  if(!trimmed){
-    if(manageUi){
-      waveformSpeaking=false;
-      setStatus('STANDBY');
-      if(!skipRestart)scheduleListeningRestart();
-    }
-    return;
-  }
+async function speak(text,options={}){
+  if(!text?.trim())return;
+  const {skipRestart=false}=options;
 
-  if(!audioUnlocked&&!window.audioUnlocked){
-    console.warn('TTS before unlock — tap mic or TRANSMIT first on mobile');
-  }
-
-  const ctx=getPlaybackAudioContext();
-  if(ctx?.state==='suspended'){
-    try{await ctx.resume()}catch(e){console.warn('Playback context resume',e)}
-  }
-
-  if(manageUi){
-    setStatus('RESPONDING');
-    waveformSpeaking=true;
-  }
+  haltPlayback();
+  speechToken++;
 
   try{
-    const r=await fetch('/api/voice',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({text:trimmed})
-    });
-    if(!r.ok)throw new Error(`TTS HTTP ${r.status}`);
-    const arrayBuffer=await r.arrayBuffer();
-    if(!arrayBuffer.byteLength)throw new Error('TTS empty audio');
-
-    await playArrayBufferOnUnlockedContext(arrayBuffer);
-
-    if(token!==null&&token!==speechToken)return;
-    if(manageUi){
-      waveformSpeaking=false;
-      setStatus('STANDBY');
-      if(!skipRestart)scheduleListeningRestart();
+    if(!audioUnlocked&&!window.audioUnlocked){
+      console.warn('TTS before unlock — tap mic or TRANSMIT first on mobile');
     }
-  }catch(e){
-    console.error('Web Audio TTS failed',e);
-    stopActivePlaybackSource();
-    await fallbackSpeak(trimmed,{token,manageUi,skipRestart});
-  }
-}
 
-async function speak(text,{skipRestart=false}={}){
-  const token=++speechToken;
-  haltPlayback();
-  await playSessionTts(text,{manageUi:true,token,skipRestart});
-}
-
-function pickSpeechVoice(){
-  if(!('speechSynthesis' in window))return null;
-  const voices=window.speechSynthesis.getVoices();
-  if(!voices.length)return null;
-  return(
-    voices.find(v=>v.lang.startsWith('en')&&/google|natural|premium|samsung/i.test(v.name))||
-    voices.find(v=>v.lang.startsWith('en'))||
-    voices[0]
-  );
-}
-
-async function fallbackSpeak(text,{token=null,manageUi=true,skipRestart=false}={}){
-  if(!('speechSynthesis' in window)){
-    if(manageUi){
-      setStatus('STANDBY');
-      waveformSpeaking=false;
-      if(!skipRestart)scheduleListeningRestart();
-    }
-    return;
-  }
-
-  if(manageUi){
     setStatus('RESPONDING');
     waveformSpeaking=true;
+
+    const response=await fetch('/api/gemini-live/speak',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:String(text).trim(),sessionId})
+    });
+
+    if(!response.ok)throw new Error(`TTS HTTP ${response.status}`);
+
+    const arrayBuffer=await response.arrayBuffer();
+    if(!arrayBuffer.byteLength)throw new Error('TTS empty audio');
+
+    const contentType=response.headers.get('Content-Type')||'audio/wav';
+    await playSpeakAudioBuffer(arrayBuffer,contentType);
+
+    waveformSpeaking=false;
+    if(!skipRestart)setStatus('STANDBY');
+  }catch(err){
+    console.error('[speak] failed:',err);
+    waveformSpeaking=false;
+    if(!skipRestart)setStatus('STANDBY');
   }
-
-  const speakNow=()=>{
-    window.speechSynthesis.cancel();
-    const u=new SpeechSynthesisUtterance(text);
-    const voice=pickSpeechVoice();
-    if(voice)u.voice=voice;
-    u.rate=0.96;
-    u.pitch=0.88;
-    u.volume=1;
-    u.onend=()=>{
-      if(token!==null&&token!==speechToken)return;
-      if(manageUi){
-        waveformSpeaking=false;
-        setStatus('STANDBY');
-        if(!skipRestart)scheduleListeningRestart();
-      }
-    };
-    u.onerror=()=>{
-      if(token!==null&&token!==speechToken)return;
-      if(manageUi){
-        waveformSpeaking=false;
-        setStatus('STANDBY');
-        if(!skipRestart)scheduleListeningRestart();
-      }
-    };
-    window.speechSynthesis.speak(u);
-  };
-
-  const voices=window.speechSynthesis.getVoices();
-  if(voices.length){
-    speakNow();
-    return;
-  }
-
-  await new Promise(resolve=>{
-    const onVoices=()=>{
-      window.speechSynthesis.removeEventListener('voiceschanged',onVoices);
-      speakNow();
-      resolve();
-    };
-    window.speechSynthesis.addEventListener('voiceschanged',onVoices);
-    setTimeout(()=>{
-      window.speechSynthesis.removeEventListener('voiceschanged',onVoices);
-      speakNow();
-      resolve();
-    },300);
-  });
 }
 
-function sttRetryDelayMs(){
-  const exp=Math.min(16000,1000*Math.pow(2,Math.max(0,sttFailureCount-1)));
-  return exp;
-}
-
-function scheduleListeningRestart(overrideDelay=null){
-  if(!conversationMode)return;
-  if(statusEl.textContent==='PROCESSING'||statusEl.textContent==='RESPONDING')return;
-  if(sttFailureCount>=STT_MAX_FAILURES)return;
-
-  clearTimeout(listenRestartTimer);
-  const delay=overrideDelay!=null?overrideDelay:sttRetryDelayMs();
-  listenRestartTimer=setTimeout(()=>{
-    if(conversationMode&&statusEl.textContent!=='PROCESSING'&&statusEl.textContent!=='RESPONDING'){
-      void startListening(false);
-    }
-  },delay);
+function playQuickTts(text){
+  return speak(text,{skipRestart:true});
 }
 
 function closeDynamicPanel(){
@@ -1985,6 +1957,34 @@ function openDynamicPanel(panel,data=[]){
   if(panel==='weather'){
     dynamicPanelTitle.textContent='Field Conditions';
     dynamicPanelBody.innerHTML=renderWeatherPanel(data);
+    dynamicPanelLayer.classList.add('active');
+    dynamicPanelLayer.setAttribute('aria-hidden','false');
+    return;
+  }
+  if(panel==='queue'){
+    dynamicPanelTitle.textContent='Priority Queue';
+    dynamicPanelBody.innerHTML=renderQueueStatusPanel(data);
+    dynamicPanelLayer.classList.add('active');
+    dynamicPanelLayer.setAttribute('aria-hidden','false');
+    return;
+  }
+  if(panel==='action-list'){
+    dynamicPanelTitle.textContent='Action List';
+    dynamicPanelBody.innerHTML=renderActionListPanel(data);
+    dynamicPanelLayer.classList.add('active');
+    dynamicPanelLayer.setAttribute('aria-hidden','false');
+    return;
+  }
+  if(panel==='calls'){
+    dynamicPanelTitle.textContent='Call Activity';
+    dynamicPanelBody.innerHTML=renderCallsPanel(data);
+    dynamicPanelLayer.classList.add('active');
+    dynamicPanelLayer.setAttribute('aria-hidden','false');
+    return;
+  }
+  if(panel==='emails'){
+    dynamicPanelTitle.textContent='Emails';
+    dynamicPanelBody.innerHTML=renderEmailsPanel(data);
     dynamicPanelLayer.classList.add('active');
     dynamicPanelLayer.setAttribute('aria-hidden','false');
     return;
@@ -2041,6 +2041,233 @@ function renderPhotoPanel(data=[]){
   </div>`;
 }
 
+function formatQueueResurfaceIn(iso){
+  if(!iso) return 'soon';
+  const ms=Date.parse(iso)-Date.now();
+  if(!Number.isFinite(ms)||ms<=0) return 'now';
+  const h=Math.ceil(ms/3600000);
+  if(h<24) return `${h}h`;
+  return `${Math.ceil(h/24)}d`;
+}
+
+function queueUrgencyClass(urgency){
+  const u=String(urgency||'').toUpperCase();
+  if(u==='NOW') return 'queue-urgency now';
+  if(u==='TODAY') return 'queue-urgency today';
+  return 'queue-urgency week';
+}
+
+function renderQueueStatusRow(item,opts={}){
+  const id=Number(item.id);
+  const summary=escapeHtml(item.summary||'Queue item');
+  const urgency=escapeHtml(String(item.urgency||'THIS_WEEK'));
+  const uClass=queueUrgencyClass(item.urgency);
+  const resurface=opts.showResurface
+    ? `<div class="queue-status-meta">Resurfaces in ${escapeHtml(formatQueueResurfaceIn(item.resurfaceAt))}</div>`
+    : '';
+  const snooze=opts.showSnooze?`<select class="queue-snooze-select" data-queue-snooze="${id}" aria-label="Snooze hours">
+    <option value="">⏰ Snooze</option>
+    <option value="2">2h</option>
+    <option value="4">4h</option>
+    <option value="8">8h</option>
+    <option value="24">Tomorrow</option>
+  </select>`:'';
+  return `<div class="queue-status-row" data-queue-id="${id}">
+    <div class="queue-status-main">
+      <div class="queue-status-summary">${summary}</div>
+      <div class="queue-status-meta"><span class="${uClass}">${urgency}</span></div>
+      ${resurface}
+    </div>
+    <div class="queue-status-actions">
+      <button type="button" class="queue-btn" data-queue-dismiss="${id}">Dismiss</button>
+      ${snooze}
+    </div>
+  </div>`;
+}
+
+function renderActionListPanel(data={}){
+  const needs=Array.isArray(data.needs_attention)?data.needs_attention:[];
+  const monitored=Array.isArray(data.being_monitored)?data.being_monitored:[];
+  const handled=Array.isArray(data.handled_today)?data.handled_today:[];
+  const needRows=needs.length?needs.map((item)=>{
+    const id=Number(item.id);
+    const summary=escapeHtml(item.summary||'Queue item');
+    const urgency=escapeHtml(String(item.urgency||'ITEM'));
+    const uClass=queueUrgencyClass(item.urgency);
+    const briefNote=Number(item.brief_count)>1?`<span class="queue-status-meta">Briefed ${escapeHtml(String(item.brief_count))} times</span>`:'';
+    return `<div class="queue-status-row action-list-row" data-action-id="${id}">
+      <div class="queue-status-main">
+        <div class="queue-status-summary">${summary}</div>
+        <div class="queue-status-meta"><span class="${uClass}">${urgency}</span>${briefNote}</div>
+      </div>
+      <div class="queue-status-actions">
+        <button type="button" class="queue-btn" data-action-done="${id}">Done</button>
+        <button type="button" class="queue-btn" data-action-snooze="${id}">Snooze</button>
+      </div>
+    </div>`;
+  }).join(''):'<p class="panel-secondary">Nothing needs attention right now.</p>';
+  const monRows=monitored.length?monitored.map((item)=>{
+    const summary=escapeHtml(item.summary||'Queue item');
+    const resurface=escapeHtml(formatQueueResurfaceIn(item.resurface_at));
+    return `<div class="queue-status-row action-list-row monitored">
+      <div class="queue-status-main">
+        <div class="queue-status-summary">${summary}</div>
+        <div class="queue-status-meta">Resurfaces in ${resurface}</div>
+      </div>
+    </div>`;
+  }).join(''):'<p class="panel-secondary">No items in monitoring window.</p>';
+  const handledRows=handled.length?handled.map((item)=>{
+    const summary=escapeHtml(item.summary||'Queue item');
+    const when=escapeHtml(formatCallOhioTime(item.handled_at||item.timestamp)||'—');
+    return `<div class="queue-status-row action-list-row handled">
+      <div class="queue-status-main">
+        <div class="queue-status-summary">${summary}</div>
+        <div class="queue-status-meta">Handled ${when}</div>
+      </div>
+    </div>`;
+  }).join(''):'<p class="panel-secondary">Nothing handled today yet.</p>';
+  return `<div class="action-list-panel">
+    <section class="queue-status-section">
+      <div class="queue-status-head">🔴 Needs attention (${needs.length})</div>
+      ${needRows}
+    </section>
+    <section class="queue-status-section">
+      <div class="queue-status-head">🟡 Being monitored (${monitored.length})</div>
+      ${monRows}
+    </section>
+    <section class="queue-status-section">
+      <div class="queue-status-head">✅ Handled today (${handled.length})</div>
+      ${handledRows}
+    </section>
+  </div>`;
+}
+
+async function refreshActionListPanel(){
+  try{
+    const r=await fetch('/api/action-list');
+    if(!r.ok)return;
+    const d=await r.json();
+    if(dynamicPanelLayer?.classList.contains('active')){
+      openDynamicPanel('action-list',d);
+    }
+  }catch(e){
+    console.warn('Action list refresh failed',e);
+  }
+}
+
+function renderQueueStatusPanel(data={}){
+  const needs=Array.isArray(data.needs_attention)?data.needs_attention:[];
+  const monitored=Array.isArray(data.being_monitored)?data.being_monitored:[];
+  const total=Number(data.total_open)||0;
+  const needRows=needs.length
+    ? needs.map((item)=>renderQueueStatusRow(item,{showSnooze:true})).join('')
+    : '<p class="panel-secondary">Nothing due for briefing right now.</p>';
+  const monRows=monitored.length
+    ? monitored.map((item)=>renderQueueStatusRow(item,{showResurface:true,showSnooze:true})).join('')
+    : '<p class="panel-secondary">No items in monitoring window.</p>';
+  return `<div class="queue-status-panel">
+    <section class="queue-status-section">
+      <div class="queue-status-head">⚡ Needs attention (${needs.length})</div>
+      <div class="queue-status-sub">Items due for briefing now</div>
+      ${needRows}
+    </section>
+    <section class="queue-status-section">
+      <div class="queue-status-head">👁 Being monitored (${monitored.length})</div>
+      <div class="queue-status-sub">Briefed — resurfacing later</div>
+      ${monRows}
+    </section>
+    <div class="queue-total">✓ Total open: ${total}</div>
+  </div>`;
+}
+
+async function refreshQueuePanel(){
+  try{
+    const r=await fetch('/api/queue');
+    const d=await r.json();
+    if(dynamicPanelLayer?.classList.contains('active')){
+      openDynamicPanel('queue',d);
+    }
+  }catch(e){
+    console.warn('Queue refresh failed',e);
+  }
+}
+
+if(dynamicPanelBody){
+  dynamicPanelBody.addEventListener('click',async(e)=>{
+    const readBtn=e.target.closest('[data-email-read-btn]');
+    if(readBtn){
+      const id=readBtn.getAttribute('data-email-read-btn');
+      if(id)await loadEmailBodyIntoCard(id);
+      return;
+    }
+    const readMore=e.target.closest('[data-email-read]');
+    if(readMore){
+      const id=readMore.getAttribute('data-email-read');
+      if(id)await loadEmailBodyIntoCard(id);
+      return;
+    }
+    const doneBtn=e.target.closest('[data-email-done]');
+    if(doneBtn){
+      const qid=Number(doneBtn.getAttribute('data-email-done'));
+      if(Number.isFinite(qid)){
+        await dismissEmailQueueItem(qid,null);
+        const card=doneBtn.closest('.email-card');
+        if(card)card.classList.add('timeline');
+        doneBtn.disabled=true;
+      }
+      return;
+    }
+    const doneSource=e.target.closest('[data-email-done-source]');
+    if(doneSource){
+      const sid=doneSource.getAttribute('data-email-done-source');
+      await dismissEmailQueueItem(null,sid);
+      doneSource.disabled=true;
+      return;
+    }
+
+    const dismissBtn=e.target.closest('[data-queue-dismiss]');
+    if(dismissBtn){
+      const id=Number(dismissBtn.getAttribute('data-queue-dismiss'));
+      if(!Number.isFinite(id)) return;
+      try{
+        await fetch(`/api/queue/${id}/handle`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:'joe_explicit'})});
+        await refreshQueuePanel();
+      }catch(err){console.warn('Queue dismiss failed',err);}
+      return;
+    }
+    const sel=e.target.closest('[data-queue-snooze]');
+    if(sel&&sel.tagName==='SELECT'&&sel.value){
+      const id=Number(sel.getAttribute('data-queue-snooze'));
+      const hours=Number(sel.value);
+      if(!Number.isFinite(id)||!Number.isFinite(hours)) return;
+      try{
+        await fetch(`/api/queue/${id}/snooze`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hours})});
+        await refreshQueuePanel();
+      }catch(err){console.warn('Queue snooze failed',err);}
+      return;
+    }
+    const actionDone=e.target.closest('[data-action-done]');
+    if(actionDone){
+      const id=Number(actionDone.getAttribute('data-action-done'));
+      if(!Number.isFinite(id)) return;
+      try{
+        await fetch(`/api/queue/${id}/handle`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:'joe_marked_done'})});
+        await refreshActionListPanel();
+      }catch(err){console.warn('Action list done failed',err);}
+      return;
+    }
+    const actionSnooze=e.target.closest('[data-action-snooze]');
+    if(actionSnooze){
+      const id=Number(actionSnooze.getAttribute('data-action-snooze'));
+      if(!Number.isFinite(id)) return;
+      try{
+        await fetch(`/api/queue/${id}/snooze`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hours:4})});
+        await refreshActionListPanel();
+      }catch(err){console.warn('Action list snooze failed',err);}
+    }
+  });
+}
+
 function renderWeatherPanel(data=[]){
   const w=Array.isArray(data)&&data[0]&&typeof data[0]==='object'?data[0]:{};
   const impact=String(w.crew_impact||'CAUTION').toUpperCase();
@@ -2081,9 +2308,353 @@ function escapeHtml(value){
   }[char]));
 }
 
+function isJsonLike(value){
+  if(value==null) return false;
+  const s=String(value).trim();
+  return s.startsWith('{')||s.startsWith('[');
+}
+
+function sanitizeDisplayText(value,fallback=''){
+  if(value==null) return fallback;
+  if(typeof value==='object') return fallback;
+  const s=String(value).trim();
+  if(!s||isJsonLike(s)||s.includes('{"')) return fallback;
+  return s;
+}
+
+function formatPhone(raw){
+  const cleaned=sanitizeDisplayText(raw);
+  if(!cleaned) return 'Unknown';
+  const digits=cleaned.replace(/\D/g,'');
+  if(digits.length===11&&digits.startsWith('1')){
+    return `+1 (${digits.slice(1,4)}) ${digits.slice(4,7)}-${digits.slice(7)}`;
+  }
+  if(digits.length===10){
+    return `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+  }
+  return cleaned;
+}
+
+function looksLikePhone(value){
+  const digits=String(value||'').replace(/\D/g,'');
+  return digits.length>=10;
+}
+
+function formatCallOhioTime(isoOrTime){
+  const raw=sanitizeDisplayText(isoOrTime);
+  if(!raw) return '—';
+  const d=new Date(raw);
+  if(Number.isNaN(d.getTime())) return raw;
+  const now=new Date();
+  const dayKey=(x)=>x.toLocaleDateString('en-CA',{timeZone:'America/New_York'});
+  const timeLabel=d.toLocaleString('en-US',{
+    timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true
+  }).replace(/\s/g,' ').trim();
+  const noteDay=dayKey(d);
+  if(noteDay===dayKey(now)) return `Today · ${timeLabel}`;
+  const yesterday=new Date(now.getTime()-86400000);
+  if(noteDay===dayKey(yesterday)) return `Yesterday · ${timeLabel}`;
+  const dateLabel=d.toLocaleString('en-US',{
+    timeZone:'America/New_York',month:'short',day:'numeric'
+  });
+  return `${dateLabel} · ${timeLabel}`;
+}
+
+function humanCallSummary(item){
+  const candidates=[item.callReason,item.reason,item.summary];
+  for(const c of candidates){
+    const t=sanitizeDisplayText(c);
+    if(t){
+      const flat=t.replace(/\s+/g,' ').trim();
+      return flat.length>180?`${flat.slice(0,177)}...`:flat;
+    }
+  }
+  return 'Call logged. View details for more.';
+}
+
+function callDisplayName(item){
+  const name=sanitizeDisplayText(item.callerName||item.caller_name||'');
+  const rawNumber=item.callerNumber||item.caller_number||'';
+  if(name&&!looksLikePhone(name)) return name;
+  const phone=formatPhone(rawNumber||item.from||'');
+  return phone==='Unknown'?'Unknown Caller':phone;
+}
+
+function callStatusBadge(outcome){
+  const o=String(outcome||'').toUpperCase();
+  if(o==='FORWARDED') return {label:'ANSWERED',cls:'answered'};
+  if(o==='BLOCKED') return {label:'SCREENED',cls:'screened'};
+  if(o==='MISSED') return {label:'MISSED',cls:'missed'};
+  if(o==='MESSAGE') return {label:'SCREENED',cls:'screened'};
+  return {label:'ENDED',cls:'ended'};
+}
+
+function callDurationBadge(item){
+  const sec=Number(item.durationSeconds);
+  if(Number.isFinite(sec)&&sec>0) return `${sec.toFixed(1)}s`;
+  const parsed=String(item.duration||'').match(/([\d.]+)/);
+  if(parsed) return `${Number(parsed[1]).toFixed(1)}s`;
+  return '—';
+}
+
+function renderCallCard(item,index=0){
+  const caller=escapeHtml(callDisplayName(item));
+  const when=escapeHtml(formatCallOhioTime(item.timestamp||item.time));
+  const summary=escapeHtml(humanCallSummary(item));
+  const status=callStatusBadge(item.outcome||item.status);
+  const duration=escapeHtml(callDurationBadge(item));
+  const delay=index*80;
+  return `<article class="call-card" style="animation-delay:${delay}ms">
+    <div class="call-card-top">
+      <div class="call-caller"><span class="call-caller-icon" aria-hidden="true">📞</span>${caller}</div>
+      <div class="call-time-ohio">${when}</div>
+    </div>
+    <div class="call-summary">${summary}</div>
+    <div class="call-badges">
+      <span class="call-badge inbound">INBOUND</span>
+      <span class="call-badge duration">${duration}</span>
+      <span class="call-badge ${status.cls}">${escapeHtml(status.label)}</span>
+    </div>
+  </article>`;
+}
+
+const emailBodyExpandCache=new Map();
+
+function formatEmailFriendlyTime(item){
+  const ms=item.internalDate||Date.parse(item.time||'')||0;
+  if(!ms||Number.isNaN(ms))return item.time||'—';
+  const diff=Date.now()-ms;
+  const mins=Math.floor(diff/60000);
+  if(mins<2)return 'Just now';
+  if(mins<60)return `${mins} min ago`;
+  const hours=Math.floor(mins/60);
+  if(hours<24)return `${hours} hour${hours===1?'':'s'} ago`;
+  const d=new Date(ms);
+  const now=new Date();
+  const yesterday=new Date(now);
+  yesterday.setDate(now.getDate()-1);
+  if(d.toDateString()===yesterday.toDateString()){
+    return `Yesterday ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/New_York'})}`;
+  }
+  if(d.toDateString()===now.toDateString()){
+    return d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/New_York'});
+  }
+  return d.toLocaleString('en-US',{
+    weekday:'short',hour:'numeric',minute:'2-digit',timeZone:'America/New_York'
+  });
+}
+
+function emailPriorityTag(item){
+  if(item.handled||(item.jarvisTags||[]).includes('ARCHIVED'))return {label:'COMPLETED',cls:'completed'};
+  const p=String(item.priority||'').toUpperCase();
+  if(p==='HIGH')return {label:'URGENT',cls:'urgent'};
+  if(p==='SPAM')return {label:'INFO',cls:'info'};
+  return {label:'FOLLOW UP',cls:'follow-up'};
+}
+
+function emailActionTags(item){
+  const tags=item.jarvisTags||[];
+  const out=[];
+  const map={
+    REPLIED:'action-replied',
+    ARCHIVED:'action-archived',
+    QUEUED:'action-queued',
+    'NEEDS RESPONSE':'action-needs',
+    'READ ONLY':'action-read'
+  };
+  for(const t of tags){
+    if(map[t])out.push({label:t.replace(/_/g,' '),cls:map[t]});
+  }
+  return out;
+}
+
+function normalizeEmailPanelPriority(item){
+  const p=String(item.priority||'').toLowerCase();
+  if(p==='high')return 'high';
+  if(p==='medium'||p==='normal')return 'medium';
+  if(p==='low'||p==='spam')return 'low';
+  return p;
+}
+
+function emailResurfaceMs(item){
+  const raw=item.resurfaceAt||item.resurface_at;
+  if(!raw)return null;
+  const ms=Date.parse(raw);
+  return Number.isFinite(ms)?ms:null;
+}
+
+function categorizeEmailItem(item){
+  const now=Date.now();
+  const queueStatus=String(item.queueStatus||item.queue_status||'').toLowerCase();
+  const urgency=String(item.urgency||'').toUpperCase();
+  const priority=normalizeEmailPanelPriority(item);
+  const hasQueue=Boolean(item.hasQueueEntry??(item.queueId!=null&&item.queueId!==''));
+  const resurfaceMs=emailResurfaceMs(item);
+  const action=String(item.action||'').toLowerCase();
+  const noActionNeeded=!action||/no immediate|filtered/i.test(action);
+  const ageMs=item.internalDate?now-item.internalDate:0;
+  const older48h=ageMs>48*60*60*1000;
+
+  if(item.handled||queueStatus==='handled')return 'timeline';
+  if(!hasQueue)return 'timeline';
+  if(older48h&&noActionNeeded)return 'timeline';
+
+  if(
+    urgency==='NOW'||
+    priority==='high'||
+    (queueStatus==='open'&&resurfaceMs!=null&&resurfaceMs<=now)
+  ){
+    return 'needs_now';
+  }
+
+  if(
+    (queueStatus==='briefed'&&resurfaceMs!=null&&resurfaceMs>now)||
+    (queueStatus==='open'&&resurfaceMs!=null&&resurfaceMs>now)||
+    priority==='medium'
+  ){
+    return 'tasks';
+  }
+
+  return 'timeline';
+}
+
+function emailPreviewText(item,expanded=false){
+  const cached=emailBodyExpandCache.get(item.id);
+  if(expanded&&cached)return cached;
+  const raw=item.bodyText||item.snippet||'';
+  const clean=String(raw).replace(/\s+/g,' ').trim();
+  if(!clean)return 'No preview available.';
+  if(expanded)return clean;
+  if(clean.length<=200)return clean;
+  return clean.slice(0,200)+'…';
+}
+
+function renderEmailCard(item,index=0,section='tasks'){
+  const pri=emailPriorityTag(item);
+  const actions=emailActionTags(item);
+  const expanded=emailBodyExpandCache.has(item.id);
+  const preview=emailPreviewText(item,expanded);
+  const attachNames=(item.attachmentNames||[]).slice(0,3);
+  const attachHtml=attachNames.length
+    ? `<div class="email-attachments">📎 ${attachNames.map(n=>`<span>${escapeHtml(n)}</span>`).join('')}</div>`
+    : item.hasAttachment?'<div class="email-attachments">📎 Attachment on file</div>':'';
+  const readMore=(!expanded&&(item.bodyText||item.snippet||'').length>200)
+    ? `<button type="button" class="email-read-more" data-email-read="${escapeHtml(item.id)}">Read more</button>`
+    : '';
+  const queueId=item.queueId!=null?Number(item.queueId):'';
+  const delay=index*70;
+
+  return `<article class="email-card ${section}" data-email-id="${escapeHtml(item.id)}" style="animation-delay:${delay}ms">
+    <div class="email-card-top">
+      <div class="email-tags">
+        <span class="email-tag-pill ${pri.cls}">${escapeHtml(pri.label)}</span>
+        ${actions.map(t=>`<span class="email-tag-pill ${t.cls}">${escapeHtml(t.label)}</span>`).join('')}
+      </div>
+      <span class="email-time">${escapeHtml(formatEmailFriendlyTime(item))}</span>
+    </div>
+    <div class="email-from">${escapeHtml(sanitizeDisplayText(item.from,'Unknown sender'))}</div>
+    <div class="email-subject">${escapeHtml(sanitizeDisplayText(item.subject,'No subject'))}</div>
+    <div class="email-divider"></div>
+    <div class="email-preview${expanded?' expanded':''}" data-email-preview="${escapeHtml(item.id)}">${escapeHtml(preview)}${readMore}</div>
+    ${attachHtml}
+    <div class="email-actions">
+      <button type="button" class="email-btn primary" data-email-read-btn="${escapeHtml(item.id)}">READ</button>
+      ${queueId?`<button type="button" class="email-btn" data-email-done="${queueId}">DONE</button>`:'<button type="button" class="email-btn" data-email-done-source="gmail:${escapeHtml(item.id)}">DONE</button>'}
+    </div>
+  </article>`;
+}
+
+function renderEmailSection(title,subtitle,items,sectionKey){
+  if(!items.length)return '';
+  return `<section class="email-section">
+    <div class="email-section-head">${title} <span class="email-section-count">${items.length}</span></div>
+    <div class="email-section-sub">${subtitle}</div>
+    ${items.map((item,i)=>renderEmailCard(item,i,sectionKey)).join('')}
+  </section>`;
+}
+
+function renderEmailsPanel(data=[]){
+  const items=panelData('emails',data);
+  const buckets={needs_now:[],tasks:[],timeline:[]};
+  for(const item of items){
+    buckets[categorizeEmailItem(item)].push(item);
+  }
+
+  const sections=[
+    renderEmailSection('🔴 NEEDS NOW','Urgent, action required today',buckets.needs_now,'needs-now'),
+    renderEmailSection('📋 TASKS & FOLLOW-UPS','Needs response, not urgent',buckets.tasks,'tasks'),
+    renderEmailSection('📅 TIMELINE','Recent activity, completed items',buckets.timeline,'timeline')
+  ].filter(Boolean);
+
+  if(!sections.length){
+    return '<div class="email-panel"><p class="panel-secondary">No emails in the last two weeks, sir.</p></div>';
+  }
+
+  return `<div class="email-panel">${sections.join('')}</div>`;
+}
+
+async function loadEmailBodyIntoCard(emailId){
+  const previewEl=dynamicPanelBody?.querySelector(`[data-email-preview="${CSS.escape(emailId)}"]`);
+  if(!previewEl)return;
+  previewEl.textContent='Loading…';
+  try{
+    const r=await fetch(`/api/emails/${encodeURIComponent(emailId)}/body`);
+    if(!r.ok)throw new Error('load failed');
+    const d=await r.json();
+    const body=String(d.body||'').trim()||'No body content.';
+    emailBodyExpandCache.set(emailId,body);
+    previewEl.classList.add('expanded');
+    previewEl.textContent=body;
+  }catch(e){
+    console.warn('Email body load failed',e);
+    previewEl.textContent='Could not load full email.';
+  }
+}
+
+async function dismissEmailQueueItem(queueId,sourceId){
+  try{
+    if(queueId&&Number.isFinite(queueId)){
+      await fetch(`/api/queue/${queueId}/handle`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({reason:'joe_explicit'})
+      });
+      return;
+    }
+    if(sourceId){
+      const r=await fetch('/api/queue');
+      const d=await r.json();
+      const all=[...(d.needs_attention||[]),...(d.being_monitored||[])];
+      const match=all.find(q=>q.sourceId===sourceId||q.source_id===sourceId);
+      if(match?.id){
+        await fetch(`/api/queue/${match.id}/handle`,{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({reason:'joe_explicit'})
+        });
+      }
+    }
+  }catch(e){
+    console.warn('Email dismiss failed',e);
+  }
+}
+
+function renderCallsPanel(data=[]){
+  const items=panelData('calls',data);
+  if(!items.length){
+    return '<div class="panel-section"><p class="panel-secondary">No calls logged yet, sir.</p></div>';
+  }
+  return `<div class="panel-section">
+    <div class="panel-section-title">Call Activity</div>
+    ${items.map((item,i)=>renderCallCard(item,i)).join('')}
+  </div>`;
+}
+
 function renderPanelSection(panel,data=[],startDelay=0){
+  if(panel==='calls') return renderCallsPanel(data);
+  if(panel==='emails') return renderEmailsPanel(data);
   const items=panelData(panel,data);
-  const title=panel==='emails'?'Priority Emails':panel==='texts'?'Text Messages':'Call Activity';
+  const title=panel==='texts'?'Text Messages':'Call Activity';
   return `
     <div class="panel-section">
       <div class="panel-section-title">${title}</div>
@@ -2093,23 +2664,13 @@ function renderPanelSection(panel,data=[],startDelay=0){
 }
 
 function renderPanelCard(panel,item,index){
-  const tag=(item.priority||item.status||'NORMAL').toUpperCase();
+  const tag=sanitizeDisplayText(item.priority||item.status||'NORMAL','NORMAL').toUpperCase();
   const cardClass=tag.toLowerCase().replace(/[^a-z0-9-]/g,'-');
   const delay=index*100;
   const safeTag=escapeHtml(tag);
 
   if(panel==='calls'){
-    return `
-      <article class="panel-card ${cardClass}" style="animation-delay:${delay}ms">
-        <div class="panel-card-top">
-          <span class="panel-tag ${cardClass}">${safeTag}</span>
-          <span class="panel-time">${escapeHtml(item.time)}</span>
-        </div>
-        <div class="panel-primary">${escapeHtml(item.from||'Unknown caller')}</div>
-        <div class="panel-secondary">${escapeHtml(item.reason||item.outcome||'No reason captured')}</div>
-        <div class="panel-action">Duration: ${escapeHtml(item.duration||'—')}</div>
-      </article>
-    `;
+    return renderCallCard(item,index);
   }
 
   if(panel==='texts'){
@@ -2117,10 +2678,10 @@ function renderPanelCard(panel,item,index){
       <article class="panel-card ${cardClass}" style="animation-delay:${delay}ms">
         <div class="panel-card-top">
           <span class="panel-tag ${cardClass}">${safeTag}</span>
-          <span class="panel-time">${escapeHtml(item.time)}</span>
+          <span class="panel-time">${escapeHtml(formatCallOhioTime(item.time||item.timestamp)||'—')}</span>
         </div>
-        <div class="panel-primary">${escapeHtml(item.from||'Unknown contact')}</div>
-        <div class="panel-secondary">${escapeHtml(item.preview||item.message||'No preview available')}</div>
+        <div class="panel-primary">${escapeHtml(sanitizeDisplayText(item.from,'Unknown contact'))}</div>
+        <div class="panel-secondary">${escapeHtml(sanitizeDisplayText(item.preview||item.message,'No preview available'))}</div>
       </article>
     `;
   }
@@ -2129,11 +2690,11 @@ function renderPanelCard(panel,item,index){
     <article class="panel-card ${cardClass}" style="animation-delay:${delay}ms">
       <div class="panel-card-top">
         <span class="panel-tag ${cardClass}">${safeTag}</span>
-        <span class="panel-time">${escapeHtml(item.time)}</span>
+        <span class="panel-time">${escapeHtml(formatCallOhioTime(item.time||item.timestamp)||'—')}</span>
       </div>
-      <div class="panel-primary">${escapeHtml(item.from||'Unknown sender')}</div>
-      <div class="panel-secondary">${escapeHtml(item.subject||'No subject')}</div>
-      <div class="panel-action">${escapeHtml(item.action||'No action recorded')}</div>
+      <div class="panel-primary">${escapeHtml(sanitizeDisplayText(item.from,'Unknown sender'))}</div>
+      <div class="panel-secondary">${escapeHtml(sanitizeDisplayText(item.subject,'No subject'))}</div>
+      <div class="panel-action">${escapeHtml(sanitizeDisplayText(item.action,'No action recorded'))}</div>
     </article>
   `;
 }
@@ -2146,10 +2707,10 @@ function renderRundownPanel(data=[]){
     const cards=groups.flatMap(([group,items])=>
       (Array.isArray(items)?items:[]).map((item)=>{
         const i=delay++;
-        const urg=escapeHtml(String(item.urgency||group||'ITEM'));
-        const typ=escapeHtml(String(item.type||group||''));
-        const sum=escapeHtml(String(item.summary||'Queue item'));
-        const act=escapeHtml(String(item.actionNeeded||item.action_needed||''));
+        const urg=escapeHtml(sanitizeDisplayText(item.urgency||group,'ITEM'));
+        const typ=escapeHtml(sanitizeDisplayText(item.type||group,''));
+        const sum=escapeHtml(sanitizeDisplayText(item.summary,'Queue item'));
+        const act=escapeHtml(sanitizeDisplayText(item.actionNeeded||item.action_needed,''));
         const priorityCls=/now|high|urgent/i.test(String(item.urgency||group))?' rundown-priority':'';
         return `
     <article class="panel-card ${String(item.urgency||group||'').toLowerCase()}${priorityCls}" style="animation-delay:${i*80}ms">
@@ -2172,10 +2733,10 @@ function renderRundownPanel(data=[]){
   if(first&&Array.isArray(first.queueItems)){
     const items=first.queueItems;
     const cards=items.map((item,i)=>{
-      const urg=escapeHtml(String(item.urgency||'ITEM'));
-      const typ=escapeHtml(String(item.type||''));
-      const sum=escapeHtml(String(item.summary||'Queue item'));
-      const act=escapeHtml(String(item.actionNeeded||''));
+      const urg=escapeHtml(sanitizeDisplayText(item.urgency,'ITEM'));
+      const typ=escapeHtml(sanitizeDisplayText(item.type,''));
+      const sum=escapeHtml(sanitizeDisplayText(item.summary,'Queue item'));
+      const act=escapeHtml(sanitizeDisplayText(item.actionNeeded,''));
       return `
     <article class="panel-card ${String(item.urgency||'').toLowerCase()}" style="animation-delay:${i*80}ms">
       <div class="panel-card-top">
@@ -2278,6 +2839,22 @@ function parseListeningControlCommand(message){
   if(text.length<=48&&stopLoose.some((pattern)=>pattern.test(text)))return 'stop';
   if(text.length<=24&&/^stop(\s+now)?$/.test(text))return 'stop';
 
+  const startExact=[
+    /^(hey\s+)?jarvis\s+(activate|start|enable)\s+(always\s+)?listening(\s+mode)?$/,
+    /^(activate|start|enable)\s+(always\s+)?listening(\s+mode)?$/,
+    /^listening\s+mode$/
+  ];
+  if(startExact.some((pattern)=>pattern.test(text)))return 'start';
+
+  const startLoose=[
+    /\bactivate\s+listening\s+mode\b/,
+    /\bstart\s+listening\s+mode\b/,
+    /\benable\s+listening\s+mode\b/,
+    /\balways\s+listening\s+mode\b/,
+    /\bturn\s+on\s+listening\s+mode\b/
+  ];
+  if(text.length<=64&&startLoose.some((pattern)=>pattern.test(text)))return 'start';
+
   return null;
 }
 
@@ -2286,11 +2863,9 @@ function isShutdownCommand(message){
 }
 
 async function stopListeningMode({speakConfirmation=true,message='Standing by, sir.',addAssistantMessage=true}={}){
-  setConversationMode(false);
-  clearTimeout(listenRestartTimer);
-  listenRestartTimer=null;
+  stopGeminiLiveSession();
+  geminiSessionActive=false;
   showProcessingIndicator(false);
-  cleanupDeepgramListening({restart:false,intentional:true});
   closeHudMenu();
   setStatus('STANDBY');
   addLog('Listening mode stopped.');
@@ -2318,12 +2893,9 @@ async function clearServerSessionState(sessionToClear){
 
 async function shutdownJarvis(){
   const oldSessionId=sessionId;
-  clearTimeout(listenRestartTimer);
-  listenRestartTimer=null;
   speechToken++;
   haltPlayback();
-  setConversationMode(false);
-  cleanupDeepgramListening({restart:false,intentional:true});
+  stopGeminiLiveSession();
   closeDynamicPanel();
   closeHudMenu();
   setStatus('STANDBY');
@@ -2338,9 +2910,16 @@ async function shutdownJarvis(){
   addMessage('assistant','Standing by, sir.');
 }
 
+function isBriefingRequest(text){
+  const t=String(text||'').trim();
+  if(!t)return false;
+  return /\b(give me a rundown|morning brief|briefing|rundown)\b/i.test(t);
+}
+
 async function jarvisActivateBriefing(){
   void requestAppWakeLock();
   triggerActivationSequence();
+  setStatus('PROCESSING');
   try{
     const r=await fetch('/api/chat',{
       method:'POST',
@@ -2350,16 +2929,25 @@ async function jarvisActivateBriefing(){
       },
       body:JSON.stringify({message:'__JARVIS_ACTIVATE__',sessionId})
     });
-    if(!r.ok)return;
+    if(!r.ok){
+      await startGeminiLiveSession();
+      return;
+    }
     const d=await r.json();
-    const t=String(d.speech||'Standing by, sir.').trim();
-    addLog('Auto briefing on activation');
+    const t=String(d.speech||'').trim();
+    if(!t){
+      addLog('Activation briefing — nothing new, silent');
+      await startGeminiLiveSession();
+      return;
+    }
+    addLog('Activation briefing');
     addMessage('assistant',t);
     handlePanelResponse(d.ui,d.intent);
-    if(t)setConversationMode(true);
-    speak(t);
+    await speak(t,{skipRestart:true});
+    await startGeminiLiveSession();
   }catch(e){
     console.warn('Activation briefing failed',e);
+    await startGeminiLiveSession();
   }
 }
 
@@ -2379,12 +2967,22 @@ async function sendCommand(message){
   input.value='';
 
   const listenControl=parseListeningControlCommand(cleanMessage);
+  if(listenControl==='start'){
+    unlockAudioFromUserGesture();
+    void startGeminiLiveSession(sessionId);
+    return;
+  }
   if(listenControl==='stop'){
     await stopListeningMode();
     return;
   }
   if(listenControl==='shutdown'){
     await shutdownJarvis();
+    return;
+  }
+
+  if(isBriefingRequest(cleanMessage)){
+    void jarvisActivateBriefing();
     return;
   }
 
@@ -2480,348 +3078,31 @@ document.addEventListener('keydown',e=>{
   if(key==='escape')closeDynamicPanel();
 });
 
-async function getDeepgramConnection(){
-  const r=await fetch('/api/deepgram/token');
-  if(!r.ok)throw new Error('Deepgram connection request failed');
-  const payload=await r.json();
-  if(payload.mode==='proxy'&&payload.url)return payload;
-  if(payload.mode==='token'&&payload.token)return payload;
-  throw new Error('Deepgram connection details missing');
-}
-
-function detachDeepgramSocketHandlers(socket){
-  if(!socket)return;
-  socket.onopen=null;
-  socket.onmessage=null;
-  socket.onerror=null;
-  socket.onclose=null;
-}
-
-function closeDeepgramSocket({intentional=false}={}){
-  sttIntentionalClose=intentional;
-  const socket=deepgramSocket;
-  deepgramSocket=null;
-  sttReady=false;
-  if(!socket)return;
-  detachDeepgramSocketHandlers(socket);
-  if(socket.readyState===WebSocket.OPEN||socket.readyState===WebSocket.CONNECTING){
-    try{socket.close(1000,'client-stop')}catch(e){console.warn('Deepgram socket close skipped',e)}
-  }
-}
-
-function notifySttFailure(message){
-  const now=Date.now();
-  if(now-sttLastErrorAt<8000)return;
-  sttLastErrorAt=now;
-  addMessage('assistant',message);
-}
-
-function handleSttFailure(logMessage,userMessage,{connectionDrop=false}={}){
-  if(logMessage)addLog(logMessage);
-  if(!connectionDrop)return;
-
-  sttFailureCount+=1;
-  cleanupDeepgramListening({restart:false,intentional:true});
-
-  if(sttFailureCount>=STT_MAX_FAILURES){
-    setConversationMode(false);
-    const msg='Lost connection sir. Tap mic when ready.';
-    notifySttFailure(msg);
-    void speak(msg);
-    return;
-  }
-
-  notifySttFailure(userMessage||'Deepgram connection dropped. Tap the mic to try again, sir.');
-  if(conversationMode)scheduleListeningRestart();
-}
-
-function bindDeepgramSocketHandlers(socket,sessionId){
-  socket.onmessage=async event=>{
-    let payload=null;
-    try{
-      payload=await parseDeepgramEventData(event.data);
-      if(payload?.type==='ProxyReady')return;
-    }catch(e){
-      console.warn('Deepgram message parse failed',e,event.data);
-      return;
-    }
-    handleDeepgramMessage({data:JSON.stringify(payload)});
-  };
-  socket.onerror=()=>{
-    if(sessionId!==sttSessionId||!isListening)return;
-    handleSttFailure('Deepgram socket error',null,{connectionDrop:true});
-  };
-  socket.onclose=event=>{
-    if(sessionId!==sttSessionId)return;
-    if(sttIntentionalClose){
-      sttIntentionalClose=false;
-      return;
-    }
-    if(recordingModeActive){
-      scheduleRecordingReconnect();
-      return;
-    }
-    if(isListening&&!deepgramFinalTranscript){
-      handleSttFailure(`Deepgram socket closed (${event.code||'unknown'})`,null,{connectionDrop:true});
-    }
-  };
-}
-
-function openDeepgramProxySocket(){
-  return getDeepgramConnection().then(connection=>{
-    if(connection.mode!=='proxy'||!connection.url){
-      throw new Error('Deepgram proxy unavailable');
-    }
-    const protocol=location.protocol==='https:'?'wss:':'ws:';
-    const wsUrl=`${protocol}//${location.host}${connection.url}`;
-    const sessionId=++sttSessionId;
-
-    return new Promise((resolve,reject)=>{
-      const socket=new WebSocket(wsUrl);
-      let settled=false;
-
-      const fail=reason=>{
-        if(settled)return;
-        settled=true;
-        clearTimeout(timer);
-        detachDeepgramSocketHandlers(socket);
-        if(socket.readyState===WebSocket.OPEN||socket.readyState===WebSocket.CONNECTING){
-          try{socket.close()}catch(_){}
-        }
-        reject(new Error(reason));
-      };
-
-      const timer=setTimeout(()=>fail('Deepgram proxy timeout'),15000);
-
-      socket.onopen=()=>{
-        addLog('STT websocket opened');
-      };
-
-      socket.onmessage=async event=>{
-        let payload=null;
-        try{
-          payload=await parseDeepgramEventData(event.data);
-          if(payload?.type==='ProxyReady'){
-            if(settled)return;
-            settled=true;
-            clearTimeout(timer);
-            sttReady=true;
-            sttFailureCount=0;
-            addLog('Deepgram proxy ready');
-            bindDeepgramSocketHandlers(socket,sessionId);
-            resolve(socket);
-            return;
-          }
-        }catch(e){
-          console.warn('Deepgram message parse failed',e,event.data);
-          return;
-        }
-        if(settled)handleDeepgramMessage({data:JSON.stringify(payload)});
-      };
-
-      socket.onerror=()=>fail('Deepgram socket error');
-      socket.onclose=event=>{
-        if(!settled)fail(`Deepgram socket closed (${event.code||'unknown'})`);
-      };
-    });
-  });
-}
-
-function cleanupDeepgramListening({restart=false,intentional=true}={}){
-  clearTimeout(listenTimeout);
-  listenTimeout=null;
-  stopLocalVadMonitor();
-  resetUtteranceBuffer();
-
-  if(audioProcessor){
-    try{audioProcessor.disconnect()}catch(e){console.warn('Audio processor disconnect skipped',e)}
-  }
-  audioProcessor=null;
-
-  if(audioSource){
-    try{audioSource.disconnect()}catch(e){console.warn('Audio source disconnect skipped',e)}
-  }
-  audioSource=null;
-
-  if(audioContext&&audioContext.state!=='closed'){
-    audioContext.close().catch(e=>console.warn('Audio context close skipped',e));
-  }
-  audioContext=null;
-
-  if(micStream){
-    micStream.getTracks().forEach(track=>track.stop());
-    micStream=null;
-  }
-
-  closeDeepgramSocket({intentional});
-  isListening=false;
-  clearInterimTranscript();
-
-  if(statusEl.textContent==='LISTENING')setStatus('STANDBY');
-  if(restart)scheduleListeningRestart();
-}
-
-function resetUtteranceBuffer(){
-  utteranceSegments=[];
-  utteranceInterim='';
-  latestDeepgramFinal='';
-  deepgramVadSpeaking=false;
-  localVadWasSpeech=false;
-  cancelUtteranceCommit();
-}
-
-function cancelUtteranceCommit(){
-  clearTimeout(speechSilenceTimer);
-  speechSilenceTimer=null;
-}
-
-function onSpeechActivity(){
-  deepgramVadSpeaking=true;
-  cancelUtteranceCommit();
-}
-
-function stopLocalVadMonitor(){
-  if(vadFrameId){
-    cancelAnimationFrame(vadFrameId);
-    vadFrameId=null;
-  }
-  vadAnalyser=null;
-  localVadWasSpeech=false;
-}
-
-function startLocalVadMonitor(){
-  stopLocalVadMonitor();
-  if(!vadAnalyser||!isListening)return;
-  const buf=new Float32Array(vadAnalyser.fftSize);
-  const tick=()=>{
-    if(!isListening||!vadAnalyser)return;
-    vadAnalyser.getFloatTimeDomainData(buf);
-    let sum=0;
-    for(let i=0;i<buf.length;i++)sum+=buf[i]*buf[i];
-    const rms=Math.sqrt(sum/buf.length);
-    const speech=rms>LOCAL_VAD_RMS_THRESHOLD;
-    if(speech&&!localVadWasSpeech){
-      onSpeechActivity();
-    }
-    localVadWasSpeech=speech;
-    vadFrameId=requestAnimationFrame(tick);
-  };
-  tick();
-}
-
-function getAccumulatedTranscript(){
-  const base=utteranceSegments.join(' ').replace(/\s+/g,' ').trim();
-  if(!utteranceInterim)return base;
-  if(!base)return utteranceInterim.trim();
-  if(utteranceInterim.startsWith(base))return utteranceInterim.trim();
-  return `${base} ${utteranceInterim}`.replace(/\s+/g,' ').trim();
-}
-
-function appendFinalSegment(transcript){
-  const t=transcript.trim();
-  if(!t)return;
-  const acc=utteranceSegments.join(' ').replace(/\s+/g,' ').trim();
-  if(acc===t)return;
-  if(acc&&t.startsWith(acc)){
-    utteranceSegments=[t];
-    return;
-  }
-  if(acc&&acc.includes(t))return;
-  utteranceSegments.push(t);
-}
-
-function scheduleUtteranceCommit(delayMs=UTTERANCE_COMMIT_MS){
-  cancelUtteranceCommit();
-  speechSilenceTimer=setTimeout(()=>{
-    if(deepgramVadSpeaking)return;
-    commitAccumulatedUtterance();
-  },delayMs);
-}
-
-function commitAccumulatedUtterance(){
-  if(isUtteranceCommitting)return;
-  if(deepgramVadSpeaking)return;
-  cancelUtteranceCommit();
-  const full=getAccumulatedTranscript();
-  if(!full||statusEl.textContent==='PROCESSING'||statusEl.textContent==='RESPONDING')return;
-  isUtteranceCommitting=true;
-  utteranceInterim='';
-  if(recordingModeActive){
-    const segment=full.trim();
-    if(segment){
-      recordingSegments.push(segment);
-      addLog(`Recording segment: ${segment.slice(0,80)}`);
-    }
-    resetUtteranceBuffer();
-    clearInterimTranscript();
-    isUtteranceCommitting=false;
-    return;
-  }
-  finishDeepgramTranscript(full);
-  isUtteranceCommitting=false;
-}
+let liveTranscriptEl=null;
 
 function clearInterimTranscript(){
-  if(deepgramInterimEl){
-    deepgramInterimEl.remove();
-    deepgramInterimEl=null;
+  if(liveTranscriptEl){
+    liveTranscriptEl.remove();
+    liveTranscriptEl=null;
   }
 }
 
 function showInterimTranscript(text){
   if(!text)return;
-  if(!deepgramInterimEl){
-    deepgramInterimEl=document.createElement('div');
-    deepgramInterimEl.className='msg user live-transcript';
+  if(!liveTranscriptEl){
+    liveTranscriptEl=document.createElement('div');
+    liveTranscriptEl.className='msg user live-transcript';
     const senderEl=document.createElement('div');
     senderEl.className='sender';
     senderEl.textContent='LISTENING';
     const textEl=document.createElement('div');
     textEl.className='text';
-    deepgramInterimEl.appendChild(senderEl);
-    deepgramInterimEl.appendChild(textEl);
-    messagesPanel.appendChild(deepgramInterimEl);
+    liveTranscriptEl.appendChild(senderEl);
+    liveTranscriptEl.appendChild(textEl);
+    messagesPanel.appendChild(liveTranscriptEl);
   }
-  const preview=getAccumulatedTranscript()||text;
-  deepgramInterimEl.querySelector('.text').textContent=preview;
+  liveTranscriptEl.querySelector('.text').textContent=text;
   messagesPanel.scrollTop=messagesPanel.scrollHeight;
-}
-
-function finishDeepgramTranscript(transcript){
-  const clean=transcript.trim();
-  if(!clean)return;
-  console.log(`Transcript: ${clean}`);
-  deepgramFinalTranscript=clean;
-  clearInterimTranscript();
-  cleanupDeepgramListening({restart:false,intentional:true});
-
-  void (async()=>{
-    const rest=hasJarvisWake(clean)?stripJarvisWake(clean):clean;
-    const text=(rest||clean).trim();
-    if(!text)return;
-
-    const listenControl=parseListeningControlCommand(text);
-    if(listenControl==='stop'){
-      addLog(`User command: ${text}`);
-      addMessage('user',text);
-      await stopListeningMode();
-      return;
-    }
-    if(listenControl==='shutdown'){
-      addLog(`User command: ${text}`);
-      addMessage('user',text);
-      await shutdownJarvis();
-      return;
-    }
-
-    setConversationMode(true);
-    if(hasJarvisWake(clean)&&!rest){
-      triggerActivationSequence();
-      await jarvisActivateBriefing();
-      return;
-    }
-    await sendCommand(text);
-  })();
 }
 
 function resampleTo16Khz(input,sampleRate){
@@ -2843,160 +3124,519 @@ function resampleTo16Khz(input,sampleRate){
   return output;
 }
 
-function floatToLinear16(input){
-  const output=new Int16Array(input.length);
-  for(let i=0;i<input.length;i++){
-    const sample=Math.max(-1,Math.min(1,input[i]));
-    output[i]=sample<0?sample*0x8000:sample*0x7fff;
-  }
-  return output.buffer;
+function logGeminiClient(event,detail){
+  console.log('[gemini-live]',event,detail||'');
+  fetch('/api/gemini-live/client-log',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({sessionId,event,detail:detail||{}})
+  }).catch(()=>{});
 }
 
-function streamPcmAudio(input,sampleRate){
-  if(!sttReady||deepgramSocket?.readyState!==WebSocket.OPEN)return;
+function base64ToArrayBuffer(base64){
+  const binary=atob(base64);
+  const bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  return bytes.buffer;
+}
 
-  const pcm=floatToLinear16(resampleTo16Khz(input,sampleRate));
-  if(pcm.byteLength>0){
-    deepgramSocket.send(pcm);
+function arrayBufferToBase64(buffer){
+  const bytes=new Uint8Array(buffer);
+  let binary='';
+  const chunk=0x8000;
+  for(let i=0;i<bytes.length;i+=chunk){
+    binary+=String.fromCharCode.apply(null,bytes.subarray(i,i+chunk));
+  }
+  return btoa(binary);
+}
+
+function stopGeminiAudioCapture(){
+  if(geminiCaptureProcessor){
+    try{geminiCaptureProcessor.disconnect()}catch(_){}
+    geminiCaptureProcessor=null;
+  }
+  if(geminiCaptureCtx&&geminiCaptureCtx.state!=='closed'){
+    geminiCaptureCtx.close().catch(()=>{});
+  }
+  geminiCaptureCtx=null;
+  if(geminiCaptureStream){
+    geminiCaptureStream.getTracks().forEach(t=>t.stop());
+    geminiCaptureStream=null;
   }
 }
 
-async function parseDeepgramEventData(data){
-  const text=data instanceof Blob?await data.text():String(data);
-  return JSON.parse(text);
+function stopGeminiPlayback(){
+  geminiAudioQueue=[];
+  geminiIsPlaying=false;
+  if(geminiActiveSource){
+    try{geminiActiveSource.stop(0)}catch(_){}
+    try{geminiActiveSource.disconnect()}catch(_){}
+    geminiActiveSource=null;
+  }
 }
 
-async function handleDeepgramMessage(event){
-  let payload;
-  try{
-    payload=await parseDeepgramEventData(event.data);
-    if(STT_DEBUG)console.log('Deepgram message received:',payload);
-  }catch(e){
-    console.warn('Deepgram message parse failed',e,event.data);
-    return;
-  }
-
-  if(payload.type==='UtteranceEnd'){
-    deepgramVadSpeaking=false;
-    scheduleUtteranceCommit(UTTERANCE_END_BUFFER_MS);
-    return;
-  }
-
-  if(payload.type==='SpeechStarted'){
-    onSpeechActivity();
-    return;
-  }
-
-  if(payload.type!=='Results')return;
-
-  const transcript=payload.channel?.alternatives?.[0]?.transcript?.trim();
-  if(!transcript)return;
-
-  if(payload.is_final){
-    appendFinalSegment(transcript);
-    utteranceInterim='';
-    latestDeepgramFinal=getAccumulatedTranscript();
-    showInterimTranscript(latestDeepgramFinal);
-    deepgramVadSpeaking=false;
-    scheduleUtteranceCommit(UTTERANCE_COMMIT_MS);
-    return;
-  }
-
-  utteranceInterim=transcript;
-  cancelUtteranceCommit();
-  showInterimTranscript(transcript);
+function scheduleGeminiReconnect(){
+  clearTimeout(geminiReconnectTimer);
+  geminiReconnectTimer=setTimeout(()=>{
+    if(!geminiSessionActive)return;
+    const sid=sessionId;
+    stopGeminiLiveSession();
+    void startGeminiLiveSession(sid);
+  },14*60*1000);
 }
 
-function handleMicTap(){
-  if(recordingModeActive){
-    void playQuickTts('Recording in progress sir');
-    return;
+function stopGeminiLiveSession(reason='stop'){
+  logGeminiClient('session_stop',{reason});
+  clearTimeout(geminiReconnectTimer);
+  geminiReconnectTimer=null;
+  clearTimeout(geminiSetupFallbackTimer);
+  geminiSetupFallbackTimer=null;
+  geminiMicStarted=false;
+  geminiSessionActive=false;
+  stopGeminiAudioCapture();
+  stopGeminiPlayback();
+  if(geminiLiveWs){
+    try{geminiLiveWs.close(1000,'client-stop')}catch(_){}
+    geminiLiveWs=null;
   }
-  unlockAudioFromUserGesture();
-  void startListening(true);
+  if(statusEl.textContent==='LISTENING'||statusEl.textContent==='PROCESSING'||statusEl.textContent==='RESPONDING'){
+    setStatus('STANDBY');
+  }
 }
 
-async function startListening(enableConversation=true){
-  if(isListening){
-    await stopListeningMode({speakConfirmation:false,addAssistantMessage:false});
-    return;
-  }
-  if(enableConversation)setConversationMode(true);
-  if(statusEl.textContent==='PROCESSING'||statusEl.textContent==='RESPONDING')return;
-
-  if(!navigator.mediaDevices?.getUserMedia||!window.AudioContext&&!window.webkitAudioContext||!window.WebSocket){
-    addMessage('assistant','Mic streaming is unavailable in this browser. Use text input, sir.');
-    return;
-  }
-
-  try{
-    clearTimeout(listenRestartTimer);
-    deepgramFinalTranscript='';
-    resetUtteranceBuffer();
-    clearInterimTranscript();
-    isListening=true;
-    setStatus('LISTENING');
-
-    deepgramSocket=await openDeepgramProxySocket();
-
-    micStream=await navigator.mediaDevices.getUserMedia({
-      audio:{
-        echoCancellation:true,
-        noiseSuppression:true,
-        autoGainControl:true,
-        channelCount:1
-      }
-    });
-
-    if(playbackAudioContext?.state==='suspended'){
-      await playbackAudioContext.resume();
+async function playNextGeminiChunk(){
+  if(!geminiAudioQueue.length){
+    geminiIsPlaying=false;
+    if(geminiTurnComplete){
+      geminiTurnComplete=false;
+      setStatus('LISTENING');
     }
-
-    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
-    audioContext=new AudioContextClass();
-    if(audioContext.state==='suspended'){
-      await audioContext.resume();
-    }
-    audioSource=audioContext.createMediaStreamSource(micStream);
-    vadAnalyser=audioContext.createAnalyser();
-    vadAnalyser.fftSize=2048;
-    vadAnalyser.smoothingTimeConstant=0.35;
-    audioSource.connect(vadAnalyser);
-    audioProcessor=audioContext.createScriptProcessor(4096,1,1);
-    audioProcessor.onaudioprocess=event=>{
-      streamPcmAudio(event.inputBuffer.getChannelData(0),audioContext.sampleRate);
+    return;
+  }
+  geminiIsPlaying=true;
+  const pcmData=geminiAudioQueue.shift();
+  const ctx=getPlaybackAudioContext();
+  if(!ctx){
+    geminiIsPlaying=false;
+    return;
+  }
+  if(ctx.state==='suspended'){
+    try{await ctx.resume()}catch(e){console.warn('[gemini-live] playback resume',e)}
+  }
+  const samples=new Int16Array(pcmData);
+  const audioBuffer=ctx.createBuffer(1,samples.length,GEMINI_PLAYBACK_RATE);
+  const channelData=audioBuffer.getChannelData(0);
+  for(let i=0;i<samples.length;i++)channelData[i]=samples[i]/32768;
+  return new Promise(resolve=>{
+    const source=ctx.createBufferSource();
+    source.buffer=audioBuffer;
+    source.connect(ctx.destination);
+    geminiActiveSource=source;
+    source.onended=()=>{
+      if(geminiActiveSource===source)geminiActiveSource=null;
+      resolve();
+      void playNextGeminiChunk();
     };
-    const sttMuteGain=audioContext.createGain();
-    sttMuteGain.gain.value=0;
-    audioSource.connect(audioProcessor);
-    audioProcessor.connect(sttMuteGain);
-    sttMuteGain.connect(audioContext.destination);
-    startLocalVadMonitor();
-    console.log(`PCM audio streaming initialized at browser sample rate ${audioContext.sampleRate}`);
-    addLog(`STT listening at ${audioContext.sampleRate}Hz`);
-  }catch(e){
-    console.error(e);
-    const denied=e&&((e.name==='NotAllowedError')||(e.name==='PermissionDeniedError'));
-    cleanupDeepgramListening({restart:false,intentional:true});
-    if(denied){
-      addLog('Mic permission denied');
-      addMessage('assistant','Mic access blocked. Allow microphone permission for this site, sir.');
-    }else{
-      addLog(String(e.message||e));
-      addMessage('assistant','Deepgram STT failed to start. Tap the mic to try again, sir.');
+    try{source.start(0)}catch(e){
+      console.warn('[gemini-live] chunk play failed',e);
+      resolve();
+      void playNextGeminiChunk();
     }
+  });
+}
+
+function queueGeminiAudioPcm(data){
+  if(!data)return;
+  const buffer=typeof data==='string'?base64ToArrayBuffer(data):data;
+  geminiAudioQueue.push(buffer);
+  if(!geminiIsPlaying)void playNextGeminiChunk();
+}
+
+let geminiToolInFlight=false;
+let geminiMicChunksSent=0;
+let geminiMicLogAt=0;
+let geminiAudioChunksReceived=0;
+
+function describeGeminiMessage(msg){
+  if(msg.setupComplete)return 'setupComplete';
+  if(msg.toolCall||msg.tool_call)return 'toolCall';
+  if(msg.serverContent?.turnComplete)return 'turnComplete';
+  if(msg.serverContent?.inputTranscription)return 'inputTranscription';
+  if(msg.serverContent?.modelTurn)return 'modelTurn';
+  if(msg.error)return 'error';
+  return Object.keys(msg).slice(0,4).join(',')||'unknown';
+}
+
+function parseGeminiToolResultEntry(entry){
+  if(!entry)return null;
+  let result=entry.response?.result;
+  if(typeof result==='string'){
+    try{result=JSON.parse(result);}catch(_e){}
+  }
+  return result;
+}
+
+function normalizeToolResult(toolName,result){
+  if(!result||result.error)return null;
+  if(toolName==='get_action_list'){
+    return {panel:'action-list',data:result};
+  }
+  if(toolName==='open_panel'&&result.panel){
+    const panel=String(result.panel).toLowerCase();
+    if(panel==='action-list'){
+      return {panel:'action-list',data:result.data&&typeof result.data==='object'?result.data:result};
+    }
+    const data=result.data??[];
+    return {panel,data};
+  }
+  return null;
+}
+
+function openPanelFromGeminiTool(toolName,result){
+  if(!result||result.error)return;
+  const normalized=normalizeToolResult(toolName,result);
+  if(normalized){
+    const panel=normalized.panel;
+    if(panel==='notes'){void openNotesPanel(Array.isArray(normalized.data)?normalized.data:[]);return;}
+    if(panel==='memory'){void openMemoryPanel();return;}
+    if(panel==='action-list'){
+      openDynamicPanel('action-list',normalized.data||{});
+      return;
+    }
+    if(panel==='rundown'){
+      const data=normalized.data??[];
+      openDynamicPanel('rundown',Array.isArray(data)?data:data?[data]:[]);
+      return;
+    }
+    const data=normalized.data??[];
+    openDynamicPanel(panel,Array.isArray(data)?data:data?[data]:[]);
+    return;
+  }
+  if(toolName==='read_emails'&&Array.isArray(result.emails)){
+    openDynamicPanel('emails',result.emails);
+    return;
+  }
+  if(toolName==='get_calls'&&Array.isArray(result.calls)){
+    openDynamicPanel('calls',result.calls);
+    return;
+  }
+  if(toolName==='get_queue'){
+    openDynamicPanel('queue',result);
+    return;
+  }
+  if(toolName==='get_notes'&&Array.isArray(result.notes)){
+    void openNotesPanel(result.notes);
+    return;
+  }
+  if(toolName==='get_weather'&&!result.error){
+    openDynamicPanel('weather',[result]);
   }
 }
+
+async function handleGeminiMessage(msg){
+  console.log('[gemini-live] msg keys:',Object.keys(msg));
+
+  if(msg.setupComplete){
+    logGeminiClient('setup_complete',{sessionId});
+    beginGeminiMicCapture('setup_complete');
+  }
+
+  const kind=describeGeminiMessage(msg);
+  if(kind==='error'){
+    logGeminiClient('ws_error',{payload:msg.error});
+  }else if(kind!=='modelTurn'){
+    logGeminiClient('ws_message',{kind});
+  }
+
+  if(msg.serverContent?.modelTurn?.parts){
+    geminiTurnComplete=false;
+    setStatus('RESPONDING');
+    waveformSpeaking=true;
+    for(const part of msg.serverContent.modelTurn.parts){
+      const mime=part.inlineData?.mimeType||'';
+      if(mime.includes('audio')&&part.inlineData?.data){
+        geminiAudioChunksReceived+=1;
+        if(geminiAudioChunksReceived===1){
+          logGeminiClient('audio_playback_start',{mime});
+        }
+        queueGeminiAudioPcm(part.inlineData.data);
+      }
+      if(part.text)showInterimTranscript(part.text);
+    }
+  }
+
+  if(msg.serverContent?.inputTranscription?.text){
+    const transcript=msg.serverContent.inputTranscription.text.trim();
+    if(transcript){
+      logGeminiClient('user_transcript',{chars:transcript.length,preview:transcript.slice(0,80)});
+      showInterimTranscript(transcript);
+      setStatus('PROCESSING');
+      const rest=hasJarvisWake(transcript)?stripJarvisWake(transcript):transcript;
+      if(isBriefingRequest(transcript)||(hasJarvisWake(transcript)&&(!rest||isBriefingRequest(rest)))){
+        void jarvisActivateBriefing();
+      }
+    }
+  }
+
+  const toolCall=msg.toolCall||msg.tool_call;
+  if(toolCall?.functionCalls?.length&&!geminiToolInFlight){
+    geminiToolInFlight=true;
+    setStatus('PROCESSING');
+    const toolNames=toolCall.functionCalls.map(c=>c.name).filter(Boolean);
+    logGeminiClient('tool_request',{tools:toolNames});
+    try{
+      const res=await fetch('/api/gemini-live/tool',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({sessionId,toolCall})
+      });
+      if(!res.ok)throw new Error(`tool HTTP ${res.status}`);
+      const toolResponse=await res.json();
+      if(geminiLiveWs?.readyState===WebSocket.OPEN){
+        geminiLiveWs.send(JSON.stringify({toolResponse}));
+        logGeminiClient('tool_response_sent',{tools:toolNames});
+      }
+      const responses=Array.isArray(toolResponse.functionResponses)?toolResponse.functionResponses:[];
+      for(let i=0;i<toolCall.functionCalls.length;i++){
+        const name=String(toolCall.functionCalls[i]?.name||'').trim();
+        const result=parseGeminiToolResultEntry(responses[i]);
+        if(name&&result)openPanelFromGeminiTool(name,result);
+      }
+    }catch(e){
+      console.error('[gemini-live] tool execution failed',e);
+      logGeminiClient('tool_failed',{error:String(e?.message||e),tools:toolNames});
+      addLog('Gemini tool call failed');
+    }finally{
+      geminiToolInFlight=false;
+    }
+  }
+
+  if(msg.serverContent?.turnComplete){
+    logGeminiClient('turn_complete',{
+      audioChunks:geminiAudioChunksReceived,
+      micChunks:geminiMicChunksSent
+    });
+    geminiAudioChunksReceived=0;
+    waveformSpeaking=false;
+    geminiTurnComplete=true;
+    if(!geminiIsPlaying){
+      geminiTurnComplete=false;
+      setStatus('LISTENING');
+    }
+    clearInterimTranscript();
+  }
+}
+
+function beginGeminiMicCapture(reason='setup_complete'){
+  if(geminiMicStarted)return;
+  geminiMicStarted=true;
+  clearTimeout(geminiSetupFallbackTimer);
+  geminiSetupFallbackTimer=null;
+  logGeminiClient('mic_start',{reason});
+  void startGeminiAudioCapture();
+}
+
+function startGeminiAudioCapture(){
+  stopGeminiAudioCapture();
+  const streamPromise=geminiCaptureStream
+    ?Promise.resolve(geminiCaptureStream)
+    :navigator.mediaDevices.getUserMedia({
+        audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}
+      });
+
+  return streamPromise.then(stream=>{
+    geminiCaptureStream=stream;
+    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+    geminiCaptureCtx=new AudioContextClass({sampleRate:16000});
+    const source=geminiCaptureCtx.createMediaStreamSource(stream);
+    geminiCaptureProcessor=geminiCaptureCtx.createScriptProcessor(4096,1,1);
+    geminiCaptureProcessor.onaudioprocess=(e)=>{
+      if(!geminiSessionActive||!geminiLiveWs||geminiLiveWs.readyState!==WebSocket.OPEN)return;
+      const input=resampleTo16Khz(
+        e.inputBuffer.getChannelData(0),
+        geminiCaptureCtx.sampleRate
+      );
+      const pcm16=new Int16Array(input.length);
+      for(let i=0;i<input.length;i++){
+        pcm16[i]=Math.max(-32768,Math.min(32767,Math.round(input[i]*32767)));
+      }
+      const base64Audio=arrayBufferToBase64(pcm16.buffer);
+      geminiMicChunksSent+=1;
+      const now=Date.now();
+      if(geminiMicChunksSent===1||now-geminiMicLogAt>30000){
+        geminiMicLogAt=now;
+        logGeminiClient('mic_uplink',{chunks:geminiMicChunksSent});
+      }
+      geminiLiveWs.send(JSON.stringify({
+        realtimeInput:{
+          audio:{
+            data:base64Audio,
+            mimeType:'audio/pcm'
+          }
+        }
+      }));
+    };
+    source.connect(geminiCaptureProcessor);
+    const mute=geminiCaptureCtx.createGain();
+    mute.gain.value=0;
+    geminiCaptureProcessor.connect(mute);
+    mute.connect(geminiCaptureCtx.destination);
+    logGeminiClient('mic_capture_started',{
+      sampleRate:geminiCaptureCtx.sampleRate,
+      targetRate:GEMINI_PCM_RATE
+    });
+  });
+}
+
+async function startGeminiLiveSession(sid=sessionId){
+  if(geminiSessionActive){
+    logGeminiClient('session_start_skipped',{reason:'already_active'});
+    return;
+  }
+  if(recordingModeActive)return;
+
+  logGeminiClient('session_start',{sessionId:sid.slice(0,8)});
+  geminiMicChunksSent=0;
+  geminiMicLogAt=0;
+  geminiAudioChunksReceived=0;
+  geminiMicStarted=false;
+  clearTimeout(geminiSetupFallbackTimer);
+  geminiSetupFallbackTimer=null;
+
+  unlockAudioFromUserGesture();
+
+  try{
+    const res=await fetch('/api/gemini-live/token',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({sessionId:sid})
+    });
+    if(!res.ok)throw new Error(`Gemini token HTTP ${res.status}`);
+    const payload=await res.json();
+    const {wsUrl,config,mode}=payload;
+    if(!wsUrl||!config?.systemPrompt)throw new Error('Gemini session config missing');
+    logGeminiClient('token_ok',{mode:mode||'unknown',model:config.model});
+
+    await new Promise((resolve,reject)=>{
+      geminiLiveWs=new WebSocket(wsUrl);
+      geminiLiveWs.onopen=()=>{
+        logGeminiClient('ws_open',{mode:mode||'unknown'});
+        geminiLiveWs.send(JSON.stringify({
+          setup:{
+            model:config.model||'models/gemini-3.1-flash-live-preview',
+            generationConfig:{
+              responseModalities:['AUDIO'],
+              speechConfig:{
+                voiceConfig:{
+                  prebuiltVoiceConfig:{voiceName:config.voice||'Zubenelgenubi'}
+                }
+              }
+            },
+            systemInstruction:{parts:[{text:config.systemPrompt}]},
+            tools:config.tools||[]
+          }
+        }));
+        logGeminiClient('waiting_for_setup_complete',{sessionId});
+        gemini1011RetryCount=0;
+        geminiSessionActive=true;
+        setStatus('LISTENING');
+        addLog('Gemini Live session active');
+        logGeminiClient('session_active',{model:config.model});
+        scheduleGeminiReconnect();
+        geminiSetupFallbackTimer=setTimeout(()=>{
+          if(geminiSessionActive&&!geminiMicStarted){
+            console.warn('[gemini-live] setupComplete timeout — starting mic anyway');
+            logGeminiClient('setup_complete_fallback',{sessionId});
+            beginGeminiMicCapture('timeout_fallback');
+          }
+        },3000);
+        resolve();
+      };
+      geminiLiveWs.onmessage=async (event)=>{
+        if(event.data instanceof Blob){
+          try{
+            const text=await event.data.text();
+            const msg=JSON.parse(text);
+            handleGeminiMessage(msg);
+            return;
+          }catch{
+            const arrayBuffer=await event.data.slice(0).arrayBuffer();
+            queueGeminiAudioPcm(arrayBuffer);
+            return;
+          }
+        }
+        try{
+          const msg=JSON.parse(event.data);
+          handleGeminiMessage(msg);
+        }catch(err){
+          console.error('[gemini-live] parse error:',err);
+        }
+      };
+      geminiLiveWs.onerror=(e)=>{
+        console.error('[gemini-live] WebSocket error:',e);
+        logGeminiClient('ws_error',{phase:'socket'});
+        reject(new Error('Gemini WebSocket error'));
+      };
+      geminiLiveWs.onclose=(ev)=>{
+        console.error('[gemini-live] WebSocket closed:',ev.code,ev.reason);
+        logGeminiClient('ws_close',{code:ev.code,reason:ev.reason||'',wasActive:geminiSessionActive});
+        if(ev.code===1011){
+          console.warn('[gemini-live] 1011 — stopping, no retry');
+          gemini1011RetryCount=0;
+          stopGeminiLiveSession();
+          geminiSessionActive=false;
+          setStatus('STANDBY');
+          return;
+        }
+        if(geminiSessionActive){
+          geminiSessionActive=false;
+          stopGeminiAudioCapture();
+          setStatus('STANDBY');
+        }
+      };
+    });
+  }catch(err){
+    console.error('[gemini-live] session failed:',
+      err instanceof Error?err.message:err
+    );
+    logGeminiClient('session_failed',{error:String(err?.message||err)});
+    stopGeminiLiveSession('start_failed');
+    setStatus('STANDBY');
+    const msg='Gemini Live unavailable. Check connection and tap mic to retry, sir.';
+    addLog(msg);
+    addMessage('assistant',msg);
+  }
+}
+
+async function handleMicTap(){
+  if(recordingModeActive)return;
+  unlockAudioFromUserGesture();
+  if(geminiSessionActive){
+    stopGeminiLiveSession();
+    setStatus('STANDBY');
+  }else{
+    void startGeminiLiveSession(sessionId);
+  }
+}
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){
+    geminiBackgroundAt=Date.now();
+    return;
+  }
+  if(
+    geminiBackgroundAt&&
+    geminiSessionActive&&
+    Date.now()-geminiBackgroundAt>5*60*1000
+  ){
+    stopGeminiLiveSession('background_timeout');
+    addLog('Gemini Live ended — app was backgrounded');
+  }
+  geminiBackgroundAt=0;
+});
 
 micButton.addEventListener('click',handleMicTap);
 hologram.addEventListener('click',handleMicTap);
-const listeningStopBtn=document.getElementById('listeningStopBtn');
-if(listeningStopBtn){
-  listeningStopBtn.addEventListener('click',()=>{
-    unlockAudioFromUserGesture();
-    void stopListeningMode();
-  });
-}
 
 function formatRecordingElapsed(ms){
   const sec=Math.floor(ms/1000);
@@ -3012,18 +3652,6 @@ function updateRecordingTimer(){
   if(elapsed>=RECORDING_MAX_MS)void stopRecordingMode(true);
 }
 
-async function requestRecordingWakeLock(){
-  try{
-    if('wakeLock' in navigator){
-      recordingWakeLock=await navigator.wakeLock.request('screen');
-    }else{
-      void playQuickTts('Sir, keep the screen active during recording');
-    }
-  }catch{
-    void playQuickTts('Sir, keep the screen active during recording');
-  }
-}
-
 async function releaseRecordingWakeLock(){
   try{
     if(recordingWakeLock){
@@ -3033,84 +3661,11 @@ async function releaseRecordingWakeLock(){
   }catch(_){}
 }
 
-function scheduleRecordingReconnect(){
-  if(!recordingModeActive||recordingReconnectTimer)return;
-  const gapMin=Math.max(1,Math.round((Date.now()-lastRecordingGapAt)/60000));
-  lastRecordingGapAt=Date.now();
-  recordingSegments.push(`[connection gap ~${gapMin}min]`);
-  recordingReconnectTimer=setTimeout(async()=>{
-    recordingReconnectTimer=null;
-    if(!recordingModeActive)return;
-    try{
-      if(deepgramSocket?.readyState===WebSocket.OPEN)deepgramSocket.close();
-      deepgramSocket=await openDeepgramProxySocket();
-      addLog('Recording stream reconnected');
-    }catch(e){
-      scheduleRecordingReconnect();
-    }
-  },1200);
-}
-
-async function setupRecordingAudio(){
-  micStream=await navigator.mediaDevices.getUserMedia({
-    audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}
-  });
-  if(playbackAudioContext?.state==='suspended')await playbackAudioContext.resume();
-  const AudioContextClass=window.AudioContext||window.webkitAudioContext;
-  audioContext=new AudioContextClass();
-  if(audioContext.state==='suspended')await audioContext.resume();
-  audioSource=audioContext.createMediaStreamSource(micStream);
-  vadAnalyser=audioContext.createAnalyser();
-  vadAnalyser.fftSize=2048;
-  vadAnalyser.smoothingTimeConstant=0.35;
-  audioSource.connect(vadAnalyser);
-  audioProcessor=audioContext.createScriptProcessor(4096,1,1);
-  audioProcessor.onaudioprocess=event=>{
-    streamPcmAudio(event.inputBuffer.getChannelData(0),audioContext.sampleRate);
-  };
-  const sttMuteGain=audioContext.createGain();
-  sttMuteGain.gain.value=0;
-  audioSource.connect(audioProcessor);
-  audioProcessor.connect(sttMuteGain);
-  sttMuteGain.connect(audioContext.destination);
-  startLocalVadMonitor();
-}
-
 async function startRecordingMode(){
   if(recordingModeActive)return;
-  if(isListening)cleanupDeepgramListening({restart:false});
+  if(geminiSessionActive)stopGeminiLiveSession();
   unlockAudioFromUserGesture();
-  if(!navigator.mediaDevices?.getUserMedia||!window.WebSocket){
-    void playQuickTts('Recording unavailable in this browser sir.');
-    return;
-  }
-  recordingModeActive=true;
-  recordingSegments=[];
-  recordingStartedAt=Date.now();
-  lastRecordingGapAt=recordingStartedAt;
-  if(recButton){recButton.classList.add('active');recButton.setAttribute('aria-pressed','true');}
-  if(recordingTimerEl){recordingTimerEl.classList.add('visible');updateRecordingTimer();}
-  recordingTimerInterval=setInterval(updateRecordingTimer,1000);
-  void requestRecordingWakeLock();
-  try{
-    conversationMode=false;
-    isListening=true;
-    setStatus('RECORDING');
-    deepgramFinalTranscript='';
-    resetUtteranceBuffer();
-    clearInterimTranscript();
-    deepgramSocket=await openDeepgramProxySocket();
-    await setupRecordingAudio();
-    void playQuickTts('Recording active sir.');
-  }catch(e){
-    console.error(e);
-    recordingModeActive=false;
-    if(recButton){recButton.classList.remove('active');recButton.setAttribute('aria-pressed','false');}
-    if(recordingTimerEl)recordingTimerEl.classList.remove('visible');
-    clearInterval(recordingTimerInterval);
-    cleanupDeepgramListening({restart:false});
-    void playQuickTts('Recording failed to start sir.');
-  }
+  void playQuickTts('Long-form recording is unavailable sir. Use the mic or type your message.');
 }
 
 async function stopRecordingMode(autoLimit=false){
@@ -3121,34 +3676,7 @@ async function stopRecordingMode(autoLimit=false){
   clearInterval(recordingTimerInterval);
   clearTimeout(recordingReconnectTimer);
   recordingReconnectTimer=null;
-  cleanupDeepgramListening({restart:false});
   await releaseRecordingWakeLock();
-  const raw=recordingSegments.join(' ').trim();
-  if(!raw){
-    setStatus('STANDBY');
-    void playQuickTts('No speech captured sir.');
-    return;
-  }
-  if(autoLimit)void playQuickTts('Sir, 3 hour limit reached. Saving now.');
-  setStatus('PROCESSING');
-  const durationSeconds=Math.round((Date.now()-recordingStartedAt)/1000);
-  try{
-    const r=await fetch('/api/transcripts/summarize',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-session-id':sessionId},
-      body:JSON.stringify({rawTranscript:raw,durationSeconds,date:new Date().toISOString().slice(0,10)})
-    });
-    const d=await r.json().catch(()=>({}));
-  if(!r.ok)throw new Error(d.error||`HTTP ${r.status}`);
-    const speech=d.speech||(autoLimit?'Sir, 3 hour limit reached. Saving now.':'Stored sir.');
-    addMessage('assistant',speech);
-    speak(speech);
-  }catch(e){
-    console.error(e);
-    const fb='Stored sir. Summary unavailable but transcript was saved locally in session.';
-    addMessage('assistant',fb);
-    speak(fb);
-  }
   setStatus('STANDBY');
 }
 
@@ -3186,6 +3714,7 @@ async function clearIntelligenceAlert(){
   if(intelAlert)intelAlert.classList.remove('visible');
   if(intelAlertText)intelAlertText.textContent='';
   lastIntelAlertSig=null;
+  fetch('/api/intelligence/alerts/dismiss',{method:'POST'}).catch(()=>{});
 }
 
 async function pollIntelligenceAlert(){
@@ -3212,7 +3741,7 @@ async function pollIntelligenceAlert(){
         lastIntelAlertSig=sig;
         try{
           const line='Sir, '+summary;
-          if(audioUnlocked)void playSessionTts(line,{manageUi:false});
+          if(audioUnlocked)void playQuickTts(line);
         }catch(_){/* alert TTS optional */}
       }
     }else{
@@ -3431,6 +3960,18 @@ function renderMemoryTabs(){
     });
     memoryTabs.appendChild(btn);
   }
+  const domainsBtn=document.createElement('button');
+  domainsBtn.type='button';
+  domainsBtn.className='memory-tab'+(memoryActiveCategory==='__domains__'?' active':'');
+  domainsBtn.dataset.category='__domains__';
+  const dueCount=memoryDomainStatuses.filter(d=>d.is_due).length;
+  domainsBtn.innerHTML=`Domains<span class="tab-count">${memoryDomainStatuses.length||9}</span>${dueCount?` · ${dueCount} due`:''}`;
+  domainsBtn.addEventListener('click',()=>{
+    memoryActiveCategory='__domains__';
+    renderMemoryTabs();
+    void renderMemoryDomains();
+  });
+  memoryTabs.appendChild(domainsBtn);
   const synthBtn=document.createElement('button');
   synthBtn.type='button';
   synthBtn.className='memory-tab'+(memoryActiveCategory==='__synthesis__'?' active':'');
@@ -3444,8 +3985,101 @@ function renderMemoryTabs(){
   memoryTabs.appendChild(synthBtn);
 }
 
+function formatDomainDue(iso,isDue){
+  if(!iso)return isDue?'Overdue':'Never';
+  const ms=Date.parse(iso)-Date.now();
+  if(Number.isNaN(ms))return '—';
+  if(ms<=0)return 'Overdue';
+  const hours=Math.ceil(ms/3600000);
+  if(hours<24)return `in ${hours}h`;
+  const days=Math.ceil(ms/86400000);
+  return `in ${days} day${days===1?'':'s'}`;
+}
+
+function domainIcon(id){
+  const icons={
+    landscaping:'🌿',business_management:'⚙',finance:'$',investment:'📈',
+    world_affairs:'🌐',science_technology:'🔬',ai_robotics:'🤖',
+    drone_faa:'✈',legal_compliance:'⚖'
+  };
+  return icons[id]||'◈';
+}
+
+async function renderMemoryDomains(){
+  if(!memoryPanelBody)return;
+  memoryTabs.querySelectorAll('.memory-tab').forEach(b=>{
+    b.classList.toggle('active',b.dataset.category==='__domains__');
+  });
+  memoryPanelBody.innerHTML='<div class="panel-loading">Loading domain intelligence</div>';
+  try{
+    const r=await fetch('/api/intelligence/domains');
+    if(!r.ok)throw new Error(`HTTP ${r.status}`);
+    const d=await r.json();
+    memoryDomainStatuses=Array.isArray(d.domains)?d.domains:[];
+  }catch(e){
+    memoryPanelBody.innerHTML=`<div class="memory-empty">Domain status unavailable: ${escapeHtml(e.message||e)}</div>`;
+    return;
+  }
+  if(!memoryDomainStatuses.length){
+    memoryPanelBody.innerHTML='<div class="memory-empty">No research domains configured.</div>';
+    return;
+  }
+  const grid=document.createElement('div');
+  grid.className='domain-grid';
+  const now=Date.now();
+  for(const dom of memoryDomainStatuses){
+    const card=document.createElement('article');
+    const lastRun=dom.last_run?formatMemoryAgo(dom.last_run):'Never';
+    const nextDue=formatDomainDue(dom.next_due,dom.is_due);
+    const dueSoon=!dom.is_due&&dom.next_due&&(Date.parse(dom.next_due)-now)<86400000;
+    card.className='domain-card'+(dom.is_due?' overdue':dueSoon?' due-soon':'');
+    card.innerHTML=`
+      <div class="domain-card-title">${domainIcon(dom.id)} ${escapeHtml(dom.label||dom.id)}</div>
+      <div class="domain-card-meta">
+        <div>Last researched: <strong>${escapeHtml(lastRun)}</strong></div>
+        <div>Next due: <strong>${escapeHtml(nextDue)}</strong></div>
+        <div>Memories stored: <strong>${dom.memories_count||0}</strong></div>
+        <div>Interval: every ${dom.interval_days||'?'} days → ${escapeHtml(dom.memory_category||'')}</div>
+      </div>
+      <div class="domain-card-actions">
+        <button type="button" data-domain-run="${escapeHtml(dom.id)}">Research Now</button>
+      </div>`;
+    grid.appendChild(card);
+  }
+  memoryPanelBody.innerHTML='';
+  memoryPanelBody.appendChild(grid);
+  memoryPanelBody.querySelectorAll('[data-domain-run]').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      const id=btn.getAttribute('data-domain-run');
+      if(!id||btn.disabled)return;
+      btn.disabled=true;
+      const prev=btn.textContent;
+      btn.textContent='Researching…';
+      try{
+        const res=await fetch(`/api/intelligence/domains/${encodeURIComponent(id)}/run`,{method:'POST'});
+        const body=await res.json().catch(()=>({}));
+        if(!res.ok)throw new Error(body.error||`HTTP ${res.status}`);
+        showDocToast(`${id}: ${body.memories_promoted||0} memories, ${body.results_saved||0} cached`);
+        await loadMemoryPanelData();
+        memoryActiveCategory='__domains__';
+        await renderMemoryDomains();
+      }catch(err){
+        addLog(`Domain research failed: ${err.message||err}`);
+        showDocToast(`Research failed: ${err.message||err}`);
+      }finally{
+        btn.disabled=false;
+        btn.textContent=prev;
+      }
+    });
+  });
+}
+
 function renderMemoryList(){
   if(!memoryPanelBody)return;
+  if(memoryActiveCategory==='__domains__'){
+    void renderMemoryDomains();
+    return;
+  }
   if(memoryActiveCategory==='__synthesis__'){
     renderMemorySynthesis();
     return;
@@ -3549,13 +4183,14 @@ function updateMemoryStatsUi(){
 }
 
 async function loadMemoryPanelData(){
-  const [memRes,statsRes,queueRes,worldRes,synthRes,gapsRes]=await Promise.all([
+  const [memRes,statsRes,queueRes,worldRes,synthRes,gapsRes,domainsRes]=await Promise.all([
     fetch('/api/memory'),
     fetch('/api/memory/stats'),
     fetch('/api/memory/audit-queue'),
     fetch('/api/intelligence/world'),
     fetch('/api/memory/synthesis-log'),
-    fetch('/api/memory/gaps')
+    fetch('/api/memory/gaps'),
+    fetch('/api/intelligence/domains')
   ]);
   if(!memRes.ok)throw new Error('Failed to load memories');
   memoryPayload=await memRes.json();
@@ -3576,9 +4211,14 @@ async function loadMemoryPanelData(){
     const g=await gapsRes.json().catch(()=>({gaps:[]}));
     memoryGaps=Array.isArray(g.gaps)?g.gaps:[];
   }
+  if(domainsRes.ok){
+    const d=await domainsRes.json().catch(()=>({domains:[]}));
+    memoryDomainStatuses=Array.isArray(d.domains)?d.domains:[];
+  }
   updateMemoryStatsUi();
   renderMemoryTabs();
   if(memoryActiveCategory==='__synthesis__')renderMemorySynthesis();
+  else if(memoryActiveCategory==='__domains__')await renderMemoryDomains();
   else renderMemoryList();
 }
 
@@ -3597,9 +4237,9 @@ function renderMemoryWorldIntel(){
     const stale=!item.summary;
     card.className='memory-card'+(high?' high-conf':'')+(stale?' stale':'');
     card.innerHTML=`
-      <div class="memory-key">WORLD INTEL: ${escapeHtml(rel)} · ${escapeHtml(item.query||'query')}</div>
+      <div class="memory-key">WORLD INTEL: ${escapeHtml(rel)} · ${escapeHtml(item.domain||'general')} · ${escapeHtml(item.query||'query')}</div>
       <div class="memory-value">${escapeHtml(item.summary||'Pending judgment / summary')}</div>
-      <div class="memory-meta">Fetched: ${formatMemoryAgo(item.fetchedAt)} | Briefed: ${item.briefed?'yes':'no'} | Cache only until promoted to durable memory</div>`;
+      <div class="memory-meta">Fetched: ${formatMemoryAgo(item.fetchedAt)} | Briefed: ${item.briefed?'yes':'no'} | Domain cache → durable memory when promoted</div>`;
     memoryPanelBody.appendChild(card);
   }
 }
@@ -3858,8 +4498,7 @@ async function openHudPanelFromMenu(panel){
     return;
   }
   if(panel==='listen'){
-    unlockAudioFromUserGesture();
-    void startListening(true);
+    void handleMicTap();
     return;
   }
   if(panel==='documents'){
@@ -3877,7 +4516,19 @@ async function openHudPanelFromMenu(panel){
     void sendCommand('What is the weather for our Ohio job sites right now?');
     return;
   }
-  if(panel==='queue'||panel==='rundown'){
+  if(panel==='queue'){
+    showPanelLoading('Priority Queue');
+    try{
+      const r=await fetch('/api/queue');
+      const d=await r.json();
+      openDynamicPanel('queue',d);
+    }catch(e){
+      console.warn('Queue panel failed',e);
+      openDynamicPanel('queue',{needs_attention:[],being_monitored:[],total_open:0});
+    }
+    return;
+  }
+  if(panel==='rundown'){
     showPanelLoading('Operational Rundown');
     try{
       const r=await fetch('/api/rundown');
@@ -3888,12 +4539,40 @@ async function openHudPanelFromMenu(panel){
     }
     return;
   }
-  showPanelLoading(panel==='emails'?'Emails':'Calls');
+  if(panel==='emails'){
+    showPanelLoading('Emails');
+    try{
+      const r=await fetch('/api/emails?limit=20');
+      if(!r.ok){
+        const err=await r.json().catch(()=>({}));
+        console.error('[emails] fetch failed:',err);
+        openDynamicPanel('emails',[]);
+        const body=document.getElementById('dynamicPanelBody');
+        if(body)body.innerHTML=`
+      <div class="panel-empty-state">
+        <p>Unable to reach Gmail right now, sir.</p>
+        <p style="font-size:0.8em;opacity:0.6">
+          ${err.detail||'Auth error'}
+        </p>
+      </div>`;
+        return;
+      }
+      const d=await r.json();
+      if(!d.emails?.length){
+        console.warn('[emails] 200 OK but empty inbox payload');
+      }
+      openDynamicPanel('emails',d.emails||[]);
+    }catch(e){
+      console.warn('Emails panel load failed',e);
+      openDynamicPanel('emails',[]);
+    }
+    return;
+  }
+  showPanelLoading('Calls');
   try{
     const r=await fetch('/api/rundown');
     const d=await r.json();
-    const items=panel==='emails'?(d.emails||[]):(d.calls||[]);
-    openDynamicPanel(panel,items);
+    openDynamicPanel(panel,d.calls||[]);
   }catch(e){
     console.warn('Panel load failed',e);
     openDynamicPanel(panel,[]);

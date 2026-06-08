@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ConversationMessage } from "../db/queries";
 import { claudeCircuit } from "../services/circuitBreaker";
-import { findWorkingModel } from "../services/claude";
+import { findWorkingModel, generateFastJarvisResponse } from "../services/claude";
 import { enforceTruthfulSpeech } from "../routes/chat/truthGuard";
 import type { JarvisUiPayload } from "../routes/chat/types";
 import { sanitizeSpeechForClient } from "../routes/chat/utils";
@@ -18,6 +18,7 @@ import {
   executeChatTool,
   type ToolExecutionResult
 } from "./tools";
+import { claudeLog } from "../utils/requestLog";
 
 const chatAnthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -79,10 +80,10 @@ function inferUiFromTools(
     if (hit?.result) {
       data.push({
         location: hit.result.location,
-        temperature: hit.result.temp,
+        temperature: hit.result.temperature ?? hit.result.temp,
         conditions: hit.result.conditions,
         wind: hit.result.wind,
-        crew_impact: hit.result.job_site_rating,
+        crew_impact: hit.result.crew_impact ?? hit.result.job_site_rating,
         crew_note: hit.result.crew_note
       });
     }
@@ -104,11 +105,48 @@ function inferIntent(toolsCalled: string[]): string {
   if (toolsCalled.includes("send_email")) return "gmail.send_reply";
   if (toolsCalled.includes("get_weather")) return "weather.get";
   if (toolsCalled.includes("get_notes")) return "notes.query";
+  if (toolsCalled.includes("get_full_picture") || toolsCalled.includes("get_entity")) return "memory";
   if (toolsCalled.includes("get_memory") || toolsCalled.includes("save_memory")) return "memory";
   if (toolsCalled.includes("get_queue")) return "intelligence.queue";
   if (toolsCalled.includes("get_execution_log")) return "execution.log";
   if (toolsCalled.includes("book_calendar")) return "calendar.create";
   return "chat.tools";
+}
+
+const SIMPLE_INTENT_RE =
+  /^(hi|hello|hey|thanks|thank you|ok|okay|got it|sounds good|perfect|great|sure|yes|no|what time|what's the time|how are you|good morning|good afternoon|good evening)[\s?!.]*$/i;
+
+function isSimpleIntent(message: string): boolean {
+  const trimmed = message.trim();
+  return trimmed.length < 50 && SIMPLE_INTENT_RE.test(trimmed);
+}
+
+function parseFastJarvisSpeech(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "Standing by, sir.";
+  try {
+    const parsed = JSON.parse(trimmed) as { speech?: string };
+    if (typeof parsed.speech === "string" && parsed.speech.trim()) {
+      return parsed.speech.trim();
+    }
+  } catch {
+    if (!trimmed.startsWith("{")) return trimmed;
+  }
+  return "Standing by, sir.";
+}
+
+async function runSimpleChatLoop(message: string): Promise<ChatLoopResult> {
+  claudeLog("chat fast path: Haiku (simple intent)");
+  const raw = await generateFastJarvisResponse(message);
+  const speech = sanitizeSpeechForClient(parseFastJarvisSpeech(raw), "Standing by, sir.");
+  return {
+    speech,
+    intent: "chat.direct",
+    ui: { panel: null, data: [], action: null },
+    tool: "",
+    sentEmail: false,
+    toolsCalled: []
+  };
 }
 
 export async function runChatLoop(
@@ -129,6 +167,10 @@ export async function runChatLoop(
       sentEmail: false,
       toolsCalled: []
     };
+  }
+
+  if (isSimpleIntent(message)) {
+    return runSimpleChatLoop(message);
   }
 
   const model = await findWorkingModel();
@@ -162,36 +204,58 @@ export async function runChatLoop(
         model,
         max_tokens: 1024,
         temperature: 0.35,
-        system,
+        system: [
+          {
+            type: "text" as const,
+            text: system,
+            cache_control: { type: "ephemeral" }
+          }
+        ],
         tools: CHAT_TOOL_DEFINITIONS,
         tool_choice: { type: "auto" },
         messages
       })
     );
 
-    if (response.stop_reason === "tool_use") {
-      messages.push({ role: "assistant", content: response.content });
-      const toolResults: Anthropic.ToolResultBlockParam[] = [];
-
-      for (const block of response.content) {
-        if (block.type !== "tool_use") continue;
-        toolsCalled.push(block.name);
-        const result = await executeChatTool(
-          block.name,
-          block.input as Record<string, unknown>,
-          sessionId
+    if (response.usage) {
+      const cacheRead =
+        (response.usage as { cache_read_input_tokens?: number }).cache_read_input_tokens ?? 0;
+      const cacheCreate =
+        (response.usage as { cache_creation_input_tokens?: number }).cache_creation_input_tokens ??
+        0;
+      if (cacheRead || cacheCreate) {
+        claudeLog(
+          `chat_tool_loop cache: read=${cacheRead} create=${cacheCreate} in=${response.usage.input_tokens}`
         );
-        toolPayloads.push({ name: block.name, result });
-        if (block.name === "send_email" && emailWasSent(result)) {
-          sentEmail = true;
-        }
-        toolResults.push({
-          type: "tool_result",
-          tool_use_id: block.id,
-          content: JSON.stringify(result)
-        });
       }
+    }
 
+    if (response.stop_reason === "tool_use") {
+      const toolUseBlocks = response.content.filter(
+        (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
+      );
+
+      const toolResults = await Promise.all(
+        toolUseBlocks.map(async (block) => {
+          toolsCalled.push(block.name);
+          const result = await executeChatTool(
+            block.name,
+            block.input as Record<string, unknown>,
+            sessionId
+          );
+          toolPayloads.push({ name: block.name, result });
+          if (block.name === "send_email" && emailWasSent(result)) {
+            sentEmail = true;
+          }
+          return {
+            type: "tool_result" as const,
+            tool_use_id: block.id,
+            content: JSON.stringify(result)
+          };
+        })
+      );
+
+      messages.push({ role: "assistant", content: response.content });
       messages.push({ role: "user", content: toolResults });
       continue;
     }
