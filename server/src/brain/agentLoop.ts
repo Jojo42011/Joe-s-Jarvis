@@ -1,7 +1,7 @@
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 import { Response } from 'express';
 import { ARLO_SYSTEM_PROMPT } from '../config/constants';
-import { ARLO_MODEL, ARLO_FAST_MODEL, ARLO_MAX_TOKENS } from '../config/models';
+import { ANTHROPIC_MODEL, ANTHROPIC_FAST_MODEL, ARLO_MAX_TOKENS } from '../config/models';
 import { getMemoryPacket } from './memoryPacket';
 import { needsSonnet, isGreeting } from './routing';
 import { drainSentences, flushSentenceBuffer } from './extractSentences';
@@ -10,21 +10,27 @@ import { getRetrievalConfidence } from '../db/memory';
 import { buildInboxCalendarContext } from '../services/google/context';
 import { getSelectedPersonality } from '../services/personality';
 import { FUNCTION_TOOLS, executeTool } from './tools';
+import { braveWebSearch } from '../services/webSearch';
 
-type ChatTurn = { role: 'user' | 'assistant'; content: string };
+// Anthropic message shapes (kept loose — the SDK's union types are verbose and
+// this loop only needs the handful of fields below).
+type MsgContent = string | unknown[];
+type ChatMessage = { role: 'user' | 'assistant'; content: MsgContent };
 
 // Tool-calling can be turned off instantly via env if it ever misbehaves.
 const TOOLS_ENABLED = process.env.ARLO_TOOLS_ENABLED !== 'false';
+// Web search is a client tool backed by Brave; off if no key or explicitly disabled.
+const WEB_SEARCH_ENABLED = process.env.ARLO_WEB_SEARCH !== 'false';
 const MAX_TOOL_ROUNDS = 4;
 
 /** Recent turns as working memory, plus the current message, for the model input. */
-function buildConversationInput(message: string): ChatTurn[] {
-  // 12 turns (was 8) so a conversation picked back up after a break still has
-  // enough working memory to feel continuous, without the token cost of the
-  // whole history — long-term facts/episodes are the real durable memory.
+function buildConversationInput(message: string): ChatMessage[] {
+  // 12 turns so a conversation picked back up after a break still has enough
+  // working memory to feel continuous, without the token cost of the whole
+  // history — long-term facts/episodes are the real durable memory.
   const history = getRecentConversation(12)
     .filter((t) => (t.role === 'user' || t.role === 'assistant') && t.content?.trim())
-    .map((t) => ({ role: t.role as 'user' | 'assistant', content: t.content }));
+    .map((t) => ({ role: t.role as 'user' | 'assistant', content: t.content as MsgContent }));
   history.push({ role: 'user', content: message });
   return history;
 }
@@ -49,7 +55,7 @@ async function buildSystemPrompt(message: string): Promise<string> {
   const inbox = buildInboxCalendarContext();
   if (inbox) {
     system += `\n\n${inbox}`;
-    console.log(`[Brain] Inbox/calendar snapshot injected into Arlo's context (${inbox.length} chars)`);
+    console.log(`[Brain] Inbox/calendar snapshot injected into Jarvis's context (${inbox.length} chars)`);
   } else {
     console.log('[Brain] No inbox/calendar snapshot to inject — no mailbox connected or nothing to surface');
   }
@@ -70,14 +76,12 @@ ask ONE targeted clarifying question instead of guessing from general knowledge.
 }
 
 function selectModel(message: string, hasHistory: boolean): string {
-  if (needsSonnet(message) || message.length > 80) return ARLO_MODEL;
+  if (needsSonnet(message) || message.length > 80) return ANTHROPIC_MODEL;
   // Only a cold-open greeting (no prior turns) takes the fast path. Mid-flow, use
   // the full brain so replies stay sharp and in-context.
-  if (isGreeting(message) && !hasHistory) return ARLO_FAST_MODEL;
-  return ARLO_MODEL;
+  if (isGreeting(message) && !hasHistory) return ANTHROPIC_FAST_MODEL;
+  return ANTHROPIC_MODEL;
 }
-
-const WEB_SEARCH_TOOLS = [{ type: 'web_search_preview' as const }];
 
 // Tools that resolve near-instantly (in-process SQLite reads) — no need to bridge
 // silence for these. Everything else (network calls, generation) gets a short,
@@ -85,76 +89,101 @@ const WEB_SEARCH_TOOLS = [{ type: 'web_search_preview' as const }];
 const FAST_TOOLS = new Set(['open_dashboard', 'get_agent_status']);
 const BRIDGE_PHRASES = ['One sec.', 'On it.', 'Give me a beat.', 'Working on it.', 'Hang on.', 'Pulling that now.'];
 
-// Function tools only on the full model (never the fast greeting path).
-function toolsFor(model: string) {
-  if (model === ARLO_FAST_MODEL || !TOOLS_ENABLED) return WEB_SEARCH_TOOLS as unknown[];
-  return [...WEB_SEARCH_TOOLS, ...FUNCTION_TOOLS] as unknown[];
+// A web-search client tool backed by Brave, in Anthropic's tool schema.
+const WEB_SEARCH_TOOL = {
+  name: 'web_search',
+  description:
+    'Search the live web for current information — prices, a supplier, news, a ' +
+    "lead's business, a permit rule, anything not already in memory or general " +
+    'knowledge. Returns titles, URLs, and snippets. Use it, then answer from the results.',
+  input_schema: {
+    type: 'object' as const,
+    properties: { query: { type: 'string', description: 'The search query.' } },
+    required: ['query'],
+  },
+};
+
+/** Convert the OpenAI-style FUNCTION_TOOLS into Anthropic's tool schema. */
+function convertFunctionTools() {
+  return (FUNCTION_TOOLS as unknown as { name: string; description: string; parameters: unknown }[]).map(
+    (t) => ({ name: t.name, description: t.description, input_schema: t.parameters })
+  );
 }
 
-function baseParams(model: string, system: string, input: ChatTurn[]) {
-  return {
-    model,
-    instructions: system,
-    input,
-    max_output_tokens: model === ARLO_FAST_MODEL ? 512 : ARLO_MAX_TOKENS,
-    tools: toolsFor(model),
-  };
+// Full tool set for the main model; the fast greeting path runs tool-free.
+function toolsFor(model: string): unknown[] {
+  if (model === ANTHROPIC_FAST_MODEL || !TOOLS_ENABLED) return [];
+  const tools: unknown[] = [...convertFunctionTools()];
+  if (WEB_SEARCH_ENABLED) tools.unshift(WEB_SEARCH_TOOL);
+  return tools;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function functionCalls(output: any): any[] {
-  return ((output || []) as any[]).filter((i) => i && i.type === 'function_call');
+/** Run one collected tool call — web_search goes to Brave, everything else to executeTool. */
+async function runToolCall(name: string, input: Record<string, unknown>): Promise<{ result: unknown; navigate?: string }> {
+  if (name === 'web_search') {
+    return { result: await braveWebSearch(String(input.query || '')) };
+  }
+  return executeTool(name, input);
 }
+
+interface ToolUse { id: string; name: string; input: Record<string, unknown> }
 
 export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoopResult> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
 
   const { message } = options;
-  const client = new OpenAI({ apiKey });
-  const input = buildConversationInput(message);
-  const model = selectModel(message, input.length > 1);
+  const client = new Anthropic({ apiKey });
+  const messages = buildConversationInput(message);
+  const model = selectModel(message, messages.length > 1);
   const system = await buildSystemPrompt(message);
+  const tools = toolsFor(model);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let response: any = await client.responses.create(baseParams(model, system, input) as any);
   let navigate: string | null = null;
+  let finalText = '';
 
-  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const calls = functionCalls(response.output);
-    if (!calls.length) break;
-    const outputs: unknown[] = [];
-    for (const call of calls) {
-      let args: Record<string, unknown> = {};
-      try { args = JSON.parse(call.arguments || '{}'); } catch { /* keep {} */ }
-      const outcome = await executeTool(call.name, args);
+  for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const resp: any = await client.messages.create({
+      model,
+      max_tokens: model === ANTHROPIC_FAST_MODEL ? 512 : ARLO_MAX_TOKENS,
+      system,
+      messages: messages as Anthropic.MessageParam[],
+      ...(tools.length ? { tools: tools as Anthropic.Tool[] } : {}),
+    });
+
+    const textBlocks = (resp.content || []).filter((b: { type: string }) => b.type === 'text');
+    finalText = textBlocks.map((b: { text: string }) => b.text).join('');
+    const toolUses = (resp.content || []).filter((b: { type: string }) => b.type === 'tool_use') as ToolUse[];
+
+    if (resp.stop_reason !== 'tool_use' || !toolUses.length || round === MAX_TOOL_ROUNDS) break;
+
+    messages.push({ role: 'assistant', content: resp.content });
+    const toolResults: unknown[] = [];
+    for (const tu of toolUses) {
+      const outcome = await runToolCall(tu.name, tu.input || {});
       if (outcome.navigate) navigate = outcome.navigate;
-      outputs.push({ type: 'function_call_output', call_id: call.call_id, output: JSON.stringify(outcome.result) });
+      toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(outcome.result) });
     }
-    response = await client.responses.create({
-      model, previous_response_id: response.id, input: outputs,
-      tools: toolsFor(model), max_output_tokens: ARLO_MAX_TOKENS,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    messages.push({ role: 'user', content: toolResults });
   }
 
-  const text = response.output_text || '';
   insertConversation('user', message);
-  insertConversation('assistant', text);
-  return { text, speech: text, navigate };
+  insertConversation('assistant', finalText);
+  return { text: finalText, speech: finalText, navigate };
 }
 
 export async function streamAgentLoop(
   options: AgentLoopOptions,
   res: Response
 ): Promise<void> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
 
   const { message } = options;
-  const client = new OpenAI({ apiKey });
-  const input = buildConversationInput(message);
-  const model = selectModel(message, input.length > 1);
+  const client = new Anthropic({ apiKey });
+  const messages = buildConversationInput(message);
+  const model = selectModel(message, messages.length > 1);
   const system = await buildSystemPrompt(message);
 
   res.setHeader('Content-Type', 'text/event-stream');
@@ -169,6 +198,8 @@ export async function streamAgentLoop(
   const sentenceBuffer = { text: '', emitted: 0 };
   let fullText = '';
   let didNavigate = false;
+  let bridgeSent = false;
+  let toolsDisabled = false;
 
   const emitText = (delta: string) => {
     fullText += delta;
@@ -176,70 +207,95 @@ export async function streamAgentLoop(
     for (const s of drainSentences(sentenceBuffer)) send({ type: 'sentence', text: s });
   };
 
-  // Round-based: stream text; if the model calls tools instead, run them (emitting
-  // navigation), then continue with previous_response_id to stream the real answer.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let curInput: any = input;
-  let previousResponseId: string | undefined;
-  let disableTools = false;
-  let bridgeSent = false;
-
   try {
-    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
+      const tools = toolsDisabled ? [] : toolsFor(model);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const params: any = previousResponseId
-        ? { model, previous_response_id: previousResponseId, input: curInput, max_output_tokens: ARLO_MAX_TOKENS, tools: disableTools ? WEB_SEARCH_TOOLS : toolsFor(model), stream: true }
-        : { ...baseParams(model, system, input), tools: disableTools ? WEB_SEARCH_TOOLS : toolsFor(model), stream: true };
+      const params: any = {
+        model,
+        max_tokens: model === ANTHROPIC_FAST_MODEL ? 512 : ARLO_MAX_TOKENS,
+        system,
+        messages: messages as Anthropic.MessageParam[],
+        stream: true,
+        ...(tools.length ? { tools } : {}),
+      };
 
       let stream;
       try {
-        stream = await client.responses.create(params);
+        stream = await client.messages.create(params);
       } catch (err) {
-        // Safety: if the tool-enabled call fails, fall back to a plain stream.
-        if (!disableTools && !previousResponseId) {
-          console.warn('[Brain] tool-enabled stream failed, falling back to plain:', err instanceof Error ? err.message : err);
-          disableTools = true;
-          stream = await client.responses.create({ ...baseParams(model, system, input), tools: WEB_SEARCH_TOOLS, stream: true });
+        // If the tool-enabled call fails on the first round, retry tool-free so
+        // Joe still gets an answer instead of dead air.
+        if (!toolsDisabled && round === 0) {
+          console.warn('[Brain] tool-enabled stream failed, retrying tool-free:', err instanceof Error ? err.message : err);
+          toolsDisabled = true;
+          stream = await client.messages.create({
+            model, max_tokens: ARLO_MAX_TOKENS, system, messages: messages as Anthropic.MessageParam[], stream: true,
+          });
         } else { throw err; }
       }
 
+      // Reconstruct the assistant turn's content blocks so a tool round can be
+      // continued (Anthropic needs the tool_use blocks echoed back verbatim).
+      const assistantBlocks: unknown[] = [];
+      const toolUses: ToolUse[] = [];
+      let curText = '';
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pendingCalls: any[] = [];
-      let respId: string | undefined;
+      let curTool: { id: string; name: string; json: string } | null = null;
+      let stopReason: string | null = null;
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       for await (const event of stream as any) {
-        if (event.type === 'response.output_text.delta') {
-          if (event.delta) emitText(event.delta);
-        } else if (event.type === 'response.output_item.done' && event.item?.type === 'function_call') {
-          pendingCalls.push(event.item);
-        } else if (event.type === 'response.completed') {
-          respId = event.response?.id;
+        if (event.type === 'content_block_start') {
+          if (event.content_block?.type === 'text') {
+            curText = '';
+          } else if (event.content_block?.type === 'tool_use') {
+            curTool = { id: event.content_block.id, name: event.content_block.name, json: '' };
+          }
+        } else if (event.type === 'content_block_delta') {
+          if (event.delta?.type === 'text_delta' && event.delta.text) {
+            curText += event.delta.text;
+            emitText(event.delta.text);
+          } else if (event.delta?.type === 'input_json_delta' && curTool) {
+            curTool.json += event.delta.partial_json || '';
+          }
+        } else if (event.type === 'content_block_stop') {
+          if (curTool) {
+            let input: Record<string, unknown> = {};
+            try { input = JSON.parse(curTool.json || '{}'); } catch { /* keep {} */ }
+            assistantBlocks.push({ type: 'tool_use', id: curTool.id, name: curTool.name, input });
+            toolUses.push({ id: curTool.id, name: curTool.name, input });
+            curTool = null;
+          } else if (curText) {
+            assistantBlocks.push({ type: 'text', text: curText });
+            curText = '';
+          }
+        } else if (event.type === 'message_delta') {
+          if (event.delta?.stop_reason) stopReason = event.delta.stop_reason;
         }
       }
 
-      if (!pendingCalls.length || !respId) break; // answered (or can't safely continue)
+      if (stopReason !== 'tool_use' || !toolUses.length || round === MAX_TOOL_ROUNDS) break;
 
       // Bridge the silence for slower tool calls so it never feels like a stall.
-      if (!fullText && !bridgeSent && pendingCalls.some((c) => !FAST_TOOLS.has(c.name))) {
+      if (!fullText && !bridgeSent && toolUses.some((c) => !FAST_TOOLS.has(c.name))) {
         bridgeSent = true;
         const filler = BRIDGE_PHRASES[Math.floor(Math.random() * BRIDGE_PHRASES.length)];
         send({ type: 'sentence', text: filler });
       }
 
-      const outputs: unknown[] = [];
-      for (const call of pendingCalls) {
-        let args: Record<string, unknown> = {};
-        try { args = JSON.parse(call.arguments || '{}'); } catch { /* keep {} */ }
-        const outcome = await executeTool(call.name, args);
+      messages.push({ role: 'assistant', content: assistantBlocks });
+      const toolResults: unknown[] = [];
+      for (const tu of toolUses) {
+        const outcome = await runToolCall(tu.name, tu.input || {});
         if (outcome.navigate) { send({ type: 'navigate', tab: outcome.navigate }); didNavigate = true; }
-        outputs.push({ type: 'function_call_output', call_id: call.call_id, output: JSON.stringify(outcome.result) });
+        toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(outcome.result) });
       }
-      previousResponseId = respId;
-      curInput = outputs;
+      messages.push({ role: 'user', content: toolResults });
     }
   } catch (err) {
     console.error('[Brain] stream error:', err instanceof Error ? err.message : err);
-    if (!fullText) send({ type: 'sentence', text: 'Give me a second on that, sir.' });
+    if (!fullText) send({ type: 'sentence', text: 'Give me a second on that, boss.' });
   }
 
   const tail = flushSentenceBuffer(sentenceBuffer);

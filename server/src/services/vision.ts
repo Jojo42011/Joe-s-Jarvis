@@ -1,5 +1,5 @@
-import OpenAI from 'openai';
-import { ARLO_MODEL } from '../config/models';
+import Anthropic from '@anthropic-ai/sdk';
+import { ANTHROPIC_MODEL } from '../config/models';
 import { ARLO_SYSTEM_PROMPT } from '../config/constants';
 import { insertFact, insertEpisode } from '../db/memory';
 import { embedText, vectorToBuffer } from './embeddings';
@@ -7,32 +7,47 @@ import { safeJsonParse } from '../utils/safeJson';
 import { broadcast } from '../ws/hub';
 
 /**
- * Arlo's eyes + document reading. gpt-4o is multimodal, so this is real:
+ * Jarvis's eyes + document reading. Claude is multimodal, so this is real:
  * - analyzeImage: look at a photo (job site, damage, a document photo, a
  *   whiteboard) and describe what matters to Joe, then remember it.
  * - ingestDocument: read pasted/uploaded text (contract, spec, email), summarize
  *   it, and store durable facts into memory with embeddings.
  */
 
+/** Turn a data URL or https URL into an Anthropic image content block. */
+function imageBlock(image: string): Record<string, unknown> {
+  const dataUrl = image.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/s);
+  if (dataUrl) {
+    return { type: 'image', source: { type: 'base64', media_type: dataUrl[1], data: dataUrl[2] } };
+  }
+  return { type: 'image', source: { type: 'url', url: image } };
+}
+
+function textFrom(resp: Anthropic.Message): string {
+  const block = resp.content.find((b) => b.type === 'text');
+  return block && block.type === 'text' ? block.text : '';
+}
+
 export async function analyzeImage(image: string, prompt?: string): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
-  const client = new OpenAI({ apiKey });
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
+  const client = new Anthropic({ apiKey });
 
   const ask = prompt?.trim() ||
     "Look at this image for Joe. Describe what's relevant to his landscaping, hardscaping, and excavating business — job-site conditions, damage, materials, measurements, equipment, or any document/text in it. Be concise and useful; if it's a document, pull the key details.";
 
-  const resp = await client.responses.create({
-    model: ARLO_MODEL,
-    instructions: `${ARLO_SYSTEM_PROMPT}\n\nJoe just shared an image with you. ${ask}`,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    input: [{ role: 'user', content: [
-      { type: 'input_text', text: ask },
-      { type: 'input_image', image_url: image },
-    ] }] as any,
+  const resp = await client.messages.create({
+    model: ANTHROPIC_MODEL,
+    max_tokens: 1024,
+    system: `${ARLO_SYSTEM_PROMPT}\n\nJoe just shared an image with you. ${ask}`,
+    messages: [{
+      role: 'user',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      content: [imageBlock(image) as any, { type: 'text', text: ask }],
+    }],
   });
 
-  const text = resp.output_text || '';
+  const text = textFrom(resp);
   if (text.trim()) {
     insertEpisode(`Joe shared an image. Jarvis saw: ${text.slice(0, 280)}`, undefined, 'neutral', undefined);
     broadcast({ type: 'memory_updated' });
@@ -43,22 +58,24 @@ export async function analyzeImage(image: string, prompt?: string): Promise<stri
 interface DocExtract { summary?: string; facts?: { content: string; importance?: number }[] }
 
 export async function ingestDocument(text: string, filename?: string, prompt?: string): Promise<{ summary: string; stored: number }> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
-  const client = new OpenAI({ apiKey });
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
+  const client = new Anthropic({ apiKey });
 
   const sys = `You are Jarvis, Joe's right hand. Read this document${filename ? ` ("${filename}")` : ''} and return ONLY JSON:
 {"summary":"2-4 sentence plain summary for Joe","facts":[{"content":"a durable fact worth remembering","importance":1-10}]}
 Pull anything Joe would want remembered — names, numbers, dates, terms, obligations. If nothing durable, facts:[].`;
 
-  const resp = await client.responses.create({
-    model: ARLO_MODEL,
-    instructions: sys,
-    input: (prompt ? `${prompt}\n\n` : '') + text.slice(0, 24000),
+  const resp = await client.messages.create({
+    model: ANTHROPIC_MODEL,
+    max_tokens: 1024,
+    system: sys,
+    messages: [{ role: 'user', content: (prompt ? `${prompt}\n\n` : '') + text.slice(0, 24000) }],
   });
 
-  const parsed = safeJsonParse<DocExtract>(resp.output_text || '') || {};
-  const summary = parsed.summary?.trim() || (resp.output_text || '').slice(0, 400);
+  const raw = textFrom(resp);
+  const parsed = safeJsonParse<DocExtract>(raw) || {};
+  const summary = parsed.summary?.trim() || raw.slice(0, 400);
 
   let stored = 0;
   for (const f of parsed.facts ?? []) {

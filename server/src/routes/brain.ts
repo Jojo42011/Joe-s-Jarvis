@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { runAgentLoop, streamAgentLoop } from '../brain/agentLoop';
 import { handleActivation } from '../services/crons';
-import { ARLO_MODEL } from '../config/models';
+import { ANTHROPIC_MODEL } from '../config/models';
 import { listPersonalities, setSelectedPersonality } from '../services/personality';
 import { analyzeImage, ingestDocument } from '../services/vision';
 
@@ -47,7 +47,7 @@ router.get('/status', (_req: Request, res: Response) => {
     ready: true,
     pipeline: {
       ears: 'elevenlabs-scribe',
-      brain: ARLO_MODEL,
+      brain: ANTHROPIC_MODEL,
       mouth: 'elevenlabs',
     },
   });

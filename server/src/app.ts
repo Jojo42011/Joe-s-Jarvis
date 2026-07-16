@@ -63,7 +63,7 @@ import { seedFounderMemory } from './seed/founderSeed';
 import { backfillEmbeddings } from './services/embeddings';
 
 import { ELEVENLABS_API_KEY, ELEVENLABS_STT_MODEL, ELEVENLABS_MODEL_ID } from './config/voice';
-import { ARLO_MODEL, ARLO_FAST_MODEL } from './config/models';
+import { ANTHROPIC_MODEL, ANTHROPIC_FAST_MODEL } from './config/models';
 
 
 
@@ -345,13 +345,13 @@ const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
 
-  console.log(`[Arlo] System online. Port ${PORT}.`);
+  console.log(`[Jarvis] System online. Port ${PORT}.`);
 
-  console.log('[Arlo] Pipeline: ElevenLabs Scribe → OpenAI → ElevenLabs TTS');
+  console.log('[Jarvis] Pipeline: ElevenLabs Scribe → Claude → ElevenLabs TTS');
 
-  console.log('[Brain] OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? `set (${process.env.OPENAI_API_KEY.length} chars)` : 'MISSING');
+  console.log('[Brain] ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? `set (${process.env.ANTHROPIC_API_KEY.length} chars)` : 'MISSING — brain will be unavailable');
 
-  console.log('[Brain] Models:', ARLO_MODEL, '(main)', '|', ARLO_FAST_MODEL, '(fast)');
+  console.log('[Brain] Models:', ANTHROPIC_MODEL, '(main)', '|', ANTHROPIC_FAST_MODEL, '(fast)');
 
   console.log('[Voice] STT path: /api/voice/deepgram/listen');
 

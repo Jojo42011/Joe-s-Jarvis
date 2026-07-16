@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
 import express from 'express';
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 import { getDb } from '../db/schema';
-import { ARLO_FAST_MODEL } from '../config/models';
+import { ANTHROPIC_FAST_MODEL } from '../config/models';
 import { safeJsonParse } from '../utils/safeJson';
 import { sendSms } from '../services/sms';
 import { createLead } from '../services/leadIntake';
@@ -134,29 +134,27 @@ async function extractCallLead(
     category: 'prospect',
   };
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey || !text.trim()) return defaults;
 
-  const client = new OpenAI({ apiKey });
+  const client = new Anthropic({ apiKey });
 
   try {
-    const response = await client.chat.completions.create({
-      model: ARLO_FAST_MODEL,
+    const response = await client.messages.create({
+      model: ANTHROPIC_FAST_MODEL,
       max_tokens: 512,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: EXTRACTION_SYSTEM_PROMPT },
-        { role: 'user', content: text },
-      ],
+      system: EXTRACTION_SYSTEM_PROMPT + '\nReturn JSON only — no prose, no code fences.',
+      messages: [{ role: 'user', content: text }],
     });
 
-    const raw = response.choices[0]?.message?.content ?? '';
+    const block = response.content.find((b) => b.type === 'text');
+    const raw = block && block.type === 'text' ? block.text : '';
     const parsed = safeJsonParse<ParsedLeadRaw>(raw);
     if (!parsed) return defaults;
 
     return normalizeExtractedFields(parsed, fallbackPhone);
   } catch (err) {
-    console.error('[Sofia] OpenAI lead extraction failed:', err);
+    console.error('[Sofia] lead extraction failed:', err);
     return defaults;
   }
 }

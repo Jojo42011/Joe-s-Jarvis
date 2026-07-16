@@ -5,14 +5,14 @@
  * moved row keeps its data and can be promoted back from the CRM).
  *
  * Runs once at boot (guarded by a system_state flag) and on demand via
- * POST /api/crm/cleanup. Requires OPENAI_API_KEY; without it, it no-ops.
+ * POST /api/crm/cleanup. Requires ANTHROPIC_API_KEY; without it, it no-ops.
  */
 
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 import { getDb } from '../db/schema';
 import { getSystemState, setSystemState } from '../db/queries';
 import { safeJsonParse } from '../utils/safeJson';
-import { ARLO_FAST_MODEL } from '../config/models';
+import { ANTHROPIC_FAST_MODEL } from '../config/models';
 
 export const CALL_CATEGORIES = ['prospect', 'client', 'vendor', 'spam', 'other'] as const;
 export type CallCategory = (typeof CALL_CATEGORIES)[number];
@@ -32,25 +32,20 @@ const BATCH_SIZE = 25;
 
 interface CandidateLead { id: number; name: string | null; phone: string | null; message: string | null }
 
-async function classifyBatch(client: OpenAI, batch: CandidateLead[]): Promise<Map<number, CallCategory>> {
+async function classifyBatch(client: Anthropic, batch: CandidateLead[]): Promise<Map<number, CallCategory>> {
   const listing = batch.map((l) => ({ id: l.id, name: l.name || '', phone: l.phone || '', notes: l.message || '' }));
-  const response = await client.chat.completions.create({
-    model: ARLO_FAST_MODEL,
+  const response = await client.messages.create({
+    model: ANTHROPIC_FAST_MODEL,
     max_tokens: 2048,
-    response_format: { type: 'json_object' },
-    messages: [
-      {
-        role: 'system',
-        content:
-          'You classify phone-call records for Totally Outdoors LLC, a landscaping, hardscaping, and excavating company in Millersburg, Ohio. ' +
-          'For EACH record, assign a category.\n' + CLASSIFY_RULES + '\n' +
-          'Return JSON only: {"classifications": [{"id": <number>, "category": "<category>"}, ...]} — one entry per input record.',
-      },
-      { role: 'user', content: JSON.stringify(listing) },
-    ],
+    system:
+      'You classify phone-call records for Totally Outdoors LLC, a landscaping, hardscaping, and excavating company in Millersburg, Ohio. ' +
+      'For EACH record, assign a category.\n' + CLASSIFY_RULES + '\n' +
+      'Return JSON only: {"classifications": [{"id": <number>, "category": "<category>"}, ...]} — one entry per input record. No prose, no code fences.',
+    messages: [{ role: 'user', content: JSON.stringify(listing) }],
   });
+  const textBlock = response.content.find((b) => b.type === 'text');
   const parsed = safeJsonParse<{ classifications?: { id?: unknown; category?: unknown }[] }>(
-    response.choices[0]?.message?.content ?? '',
+    textBlock && textBlock.type === 'text' ? textBlock.text : '',
   );
   const out = new Map<number, CallCategory>();
   for (const c of parsed?.classifications ?? []) {
@@ -69,8 +64,8 @@ async function classifyBatch(client: OpenAI, batch: CandidateLead[]): Promise<Ma
  * build stage are candidates, and anything unclassified stays a lead.
  */
 export async function cleanupJunkLeads(): Promise<{ examined: number; moved: number; note?: string }> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return { examined: 0, moved: 0, note: 'OPENAI_API_KEY not configured — cleanup skipped' };
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return { examined: 0, moved: 0, note: 'ANTHROPIC_API_KEY not configured — cleanup skipped' };
 
   const db = getDb();
   const candidates = db.prepare(`
@@ -83,7 +78,7 @@ export async function cleanupJunkLeads(): Promise<{ examined: number; moved: num
 
   if (!candidates.length) return { examined: 0, moved: 0 };
 
-  const client = new OpenAI({ apiKey });
+  const client = new Anthropic({ apiKey });
   let moved = 0;
 
   for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
