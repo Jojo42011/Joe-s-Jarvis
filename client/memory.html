@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>A.R.L.O // Neural Map</title>
+<title>J.A.R.V.I.S // Neural Map</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
@@ -112,7 +112,7 @@
 <body>
   <header id="topbar">
     <a href="/">← BACK TO CORE</a>
-    <div id="title">A.R.L.O // NEURAL MAP</div>
+    <div id="title">J.A.R.V.I.S // NEURAL MAP</div>
     <div id="topright">
       <button id="about-btn" type="button">ⓘ ABOUT</button>
       <span id="sync">SYNCING…</span>
@@ -123,18 +123,18 @@
     <div id="about-card">
       <button id="about-close" type="button" aria-label="Close">✕</button>
       <h2>THE NEURAL MAP</h2>
-      <p class="lede">This is Arlo's mind — a live picture of everything he knows about Joe and Totally Outdoors LLC. Every client, project, value, and decision is a <b>node</b>; every relationship is an <b>edge</b>. It grows after every conversation.</p>
+      <p class="lede">This is Jarvis's mind — a live picture of everything he knows about Joe and Totally Outdoors LLC. Every client, project, value, and decision is a <b>node</b>; every relationship is an <b>edge</b>. It grows after every conversation.</p>
 
       <h3>WHY IT MATTERS</h3>
-      <p>Tools are a commodity — memory is the moat. A generic AI forgets you the moment the chat ends. Arlo doesn't. This graph is the accumulated, private judgment of the founder: the one thing a competitor can't copy and that gets more valuable every week. When the identity bars fill in, that's the clone learning how Joe actually thinks — not just what the business does.</p>
+      <p>Tools are a commodity — memory is the moat. A generic AI forgets you the moment the chat ends. Jarvis doesn't. This graph is the accumulated, private judgment of the founder: the one thing a competitor can't copy and that gets more valuable every week. When the identity bars fill in, that's the clone learning how Joe actually thinks — not just what the business does.</p>
 
       <h3>HOW IT FUNCTIONS</h3>
       <ul>
         <li><b>Six memory layers</b> — working (the live conversation), episodic (session summaries), semantic (durable facts), relational (this graph), procedural (business rules), and self-evolving (weekly synthesis).</li>
-        <li><b>Hybrid recall</b> — before every reply Arlo retrieves memories by <i>meaning</i>, scoring each on relevance (semantic similarity), keyword match, strength, recency, and importance.</li>
-        <li><b>Reflection</b> — periodically Arlo reads his recent memories and writes back higher-level insights about Joe. Those conclusions become new nodes — this is how understanding forms, not just facts.</li>
+        <li><b>Hybrid recall</b> — before every reply Jarvis retrieves memories by <i>meaning</i>, scoring each on relevance (semantic similarity), keyword match, strength, recency, and importance.</li>
+        <li><b>Reflection</b> — periodically Jarvis reads his recent memories and writes back higher-level insights about Joe. Those conclusions become new nodes — this is how understanding forms, not just facts.</li>
         <li><b>Decay &amp; reinforcement</b> — memories he uses grow stronger; memories he never touches gently fade. He forgets by not remembering, the same way people do.</li>
-        <li><b>Curiosity</b> — after real conversations Arlo occasionally asks a deep question across 12 psychological dimensions. Every answer deepens the identity profile below.</li>
+        <li><b>Curiosity</b> — after real conversations Jarvis occasionally asks a deep question across 12 psychological dimensions. Every answer deepens the identity profile below.</li>
       </ul>
       <p class="foot">Nodes pulse in as they're created. Click any node to explore its connections; drag to reposition; scroll to zoom.</p>
     </div>
@@ -217,7 +217,7 @@
     const profile = data.identityProfile || [];
     const container = document.getElementById("identity-dims");
     if (!profile.length || profile.every(function (p) { return p.confidence === 0; })) {
-      container.innerHTML = "<p style='font-size:11px;color:var(--dim);'>No identity data yet.<br>Arlo will ask questions after sessions.</p>";
+      container.innerHTML = "<p style='font-size:11px;color:var(--dim);'>No identity data yet.<br>Jarvis will ask questions after sessions.</p>";
       return;
     }
     container.innerHTML = profile.map(function (p) {

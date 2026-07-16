@@ -34,7 +34,7 @@ export async function analyzeImage(image: string, prompt?: string): Promise<stri
 
   const text = resp.output_text || '';
   if (text.trim()) {
-    insertEpisode(`Joe shared an image. Arlo saw: ${text.slice(0, 280)}`, undefined, 'neutral', undefined);
+    insertEpisode(`Joe shared an image. Jarvis saw: ${text.slice(0, 280)}`, undefined, 'neutral', undefined);
     broadcast({ type: 'memory_updated' });
   }
   return text;
@@ -47,7 +47,7 @@ export async function ingestDocument(text: string, filename?: string, prompt?: s
   if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
   const client = new OpenAI({ apiKey });
 
-  const sys = `You are Arlo, Joe's right hand. Read this document${filename ? ` ("${filename}")` : ''} and return ONLY JSON:
+  const sys = `You are Jarvis, Joe's right hand. Read this document${filename ? ` ("${filename}")` : ''} and return ONLY JSON:
 {"summary":"2-4 sentence plain summary for Joe","facts":[{"content":"a durable fact worth remembering","importance":1-10}]}
 Pull anything Joe would want remembered — names, numbers, dates, terms, obligations. If nothing durable, facts:[].`;
 

@@ -105,7 +105,7 @@ export async function createLead(input: LeadIntakeInput): Promise<LeadIntakeResu
     }
     logActivity(existingId, 'note', { direction: 'in', body: `Reached out again via ${source}${input.message?.trim() ? `: ${input.message.trim()}` : ''}` });
     if (source !== 'manual') {
-      sendSms(`Repeat lead (already in CRM):\nName: ${name}\nPhone: ${phone}`, 'Arlo');
+      sendSms(`Repeat lead (already in CRM):\nName: ${name}\nPhone: ${phone}`, 'Jarvis');
     }
     return { leadId: existingId, merged: true };
   }

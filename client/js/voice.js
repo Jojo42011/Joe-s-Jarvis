@@ -90,7 +90,7 @@
         }
         if (Date.now() >= deadline) {
           clearInterval(tick);
-          console.warn("[Arlo] STT ready timeout — continuing anyway");
+          console.warn("[Jarvis] STT ready timeout — continuing anyway");
           sessionReady = true;
           resolve();
         }
@@ -230,13 +230,13 @@
     } catch (_) { return; }
 
     if (msg.type === "ready" || msg.type === "Connected") {
-      console.log("[Arlo] STT ready signal:", msg.type, msg.source || "");
+      console.log("[Jarvis] STT ready signal:", msg.type, msg.source || "");
       onSttReady();
       return;
     }
 
     if (msg.type === "proxy_error") {
-      console.error("[Arlo] STT proxy error:", msg.code, msg.message || "");
+      console.error("[Jarvis] STT proxy error:", msg.code, msg.message || "");
       if (api.voiceNoteEl) {
         api.voiceNoteEl.textContent = "STT ERROR: " + (msg.message || msg.code || "proxy_error");
         api.voiceNoteEl.style.display = "block";
@@ -423,11 +423,11 @@
     try {
       ttsResults[seq] = await fetchTtsAudio(text, previousText);
     } catch (e) {
-      console.error("[Arlo] TTS fetch error, retrying once:", e);
+      console.error("[Jarvis] TTS fetch error, retrying once:", e);
       try {
         ttsResults[seq] = await fetchTtsAudio(text, previousText);
       } catch (e2) {
-        console.error("[Arlo] TTS retry failed:", e2);
+        console.error("[Jarvis] TTS retry failed:", e2);
         ttsResults[seq] = null; // mark failed so the player skips it in order
       }
     }
@@ -436,7 +436,7 @@
 
   // Fire-and-forget: never block the next turn on memory extraction. We capture and
   // clear the batch synchronously (no race with the next turn's pushes), then let
-  // the extraction run in the background while Arlo is already listening again.
+  // the extraction run in the background while Jarvis is already listening again.
   function flushTranscriptToMemory() {
     if (sessionTranscript.length < 2) {
       sessionTranscript = [];
@@ -451,7 +451,7 @@
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ transcript: batch, sessionStart: start, sessionEnd: new Date().toISOString() })
-    }).catch(function (e) { console.error("[Arlo] memory flush failed:", e); });
+    }).catch(function (e) { console.error("[Jarvis] memory flush failed:", e); });
   }
 
   async function runProcessingThenRespond(userText) {
@@ -492,17 +492,17 @@
           if ((data.type === "sentence" || data.type === "speech_chunk") && data.text) {
             fullText += (fullText ? " " : "") + data.text;
             enqueueTts(data.text).catch(function (e) {
-              console.error("[Arlo] TTS enqueue error:", e);
+              console.error("[Jarvis] TTS enqueue error:", e);
             });
           }
           if (data.type === "navigate" && data.tab) {
-            // Arlo pulls up an agent's dashboard in the shell (he keeps speaking over it).
+            // Jarvis pulls up an agent's dashboard in the shell (he keeps speaking over it).
             try { window.parent.postMessage({ type: "arlo-navigate", tab: data.tab }, "*"); } catch (_) {}
           }
           if (data.type === "curiosity" && data.question) {
             sessionTranscript.push({ role: "assistant", content: data.question, ts: Date.now() });
             enqueueTts(data.question).catch(function (e) {
-              console.error("[Arlo] Curiosity TTS error:", e);
+              console.error("[Jarvis] Curiosity TTS error:", e);
             });
           }
           if (data.type === "done" || data.type === "speech_complete") {
@@ -523,7 +523,7 @@
       // Background — do NOT block the next turn / mic resume on extraction.
       flushTranscriptToMemory();
     } catch (err) {
-      console.error("[Arlo] Brain pipeline error:", err);
+      console.error("[Jarvis] Brain pipeline error:", err);
       api.voiceNoteEl.textContent = "BRAIN UNAVAILABLE";
       api.voiceNoteEl.style.display = "block";
     } finally {
@@ -547,7 +547,7 @@
         // back to listening once the greeting finishes (otherwise it sticks on
         // RESPONDING and never starts listening).
         resetTts();
-        enqueueTts(data.speech).catch(function (e) { console.error("[Arlo] greeting TTS error:", e); });
+        enqueueTts(data.speech).catch(function (e) { console.error("[Jarvis] greeting TTS error:", e); });
         markTtsComplete();
       }
     } catch (_) {}
@@ -568,7 +568,7 @@
 
     return new Promise(function (resolve, reject) {
       const wsUrl = wsOrigin() + "/api/voice/deepgram/listen";
-      console.log("[Arlo] STT connecting:", wsUrl);
+      console.log("[Jarvis] STT connecting:", wsUrl);
       sttWs = new WebSocket(wsUrl);
       sttWs.binaryType = "arraybuffer";
 
@@ -577,7 +577,7 @@
       };
 
       sttWs.onerror = function (ev) {
-        console.error("[Arlo] STT WebSocket onerror", {
+        console.error("[Jarvis] STT WebSocket onerror", {
           readyState: sttWs ? sttWs.readyState : "null",
           url: wsUrl,
           event: ev,
@@ -587,7 +587,7 @@
 
       sttWs.onclose = function (ev) {
         sessionReady = false;
-        console.warn("[Arlo] STT WebSocket closed", {
+        console.warn("[Jarvis] STT WebSocket closed", {
           code: ev.code,
           reason: ev.reason || "(none)",
           wasClean: ev.wasClean,
@@ -599,7 +599,7 @@
       };
 
       sttWs.onopen = async function () {
-        console.log("[Arlo] STT WebSocket open — starting mic");
+        console.log("[Jarvis] STT WebSocket open — starting mic");
         try {
           await startCapture();
           await waitForSessionReady(10000);
@@ -611,7 +611,7 @@
         }
       };
     }).catch(function (err) {
-      console.error("[Arlo] Listen error:", err);
+      console.error("[Jarvis] Listen error:", err);
       api.voiceNoteEl.textContent = "MIC / STT UNAVAILABLE";
       api.voiceNoteEl.style.display = "block";
       voiceActive = false;
@@ -662,7 +662,7 @@
     const overlay = document.createElement("div");
     overlay.id = "audio-unlock";
     overlay.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.92);display:flex;align-items:center;justify-content:center;cursor:pointer;";
-    overlay.innerHTML = '<div style="font-family:monospace;color:#FF8C00;letter-spacing:0.3em;font-size:12px;text-transform:uppercase;">Tap to activate A.R.L.O</div>';
+    overlay.innerHTML = '<div style="font-family:monospace;color:#F5382A;letter-spacing:0.3em;font-size:12px;text-transform:uppercase;">Tap to activate J.A.R.V.I.S</div>';
     document.body.appendChild(overlay);
 
     overlay.addEventListener("click", function () {

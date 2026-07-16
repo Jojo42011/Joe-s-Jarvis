@@ -810,7 +810,7 @@
       }
       if (s.type === "leads") {
         if (!s.rows.length) {
-          return '<div class="d-section"><h3>' + esc(s.title) + '</h3><div class="list"><div class="empty-mini">No ad leads yet — form submissions sent to Arlo will show up here</div></div></div>';
+          return '<div class="d-section"><h3>' + esc(s.title) + '</h3><div class="list"><div class="empty-mini">No ad leads yet — form submissions sent to Jarvis will show up here</div></div></div>';
         }
         var ld = s.rows.map(function(r) {
           return '<div class="li" data-lead-id="' + r.id + '" style="cursor:pointer">'

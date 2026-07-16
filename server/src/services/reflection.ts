@@ -25,7 +25,7 @@ interface ReflectionOut {
   reflections?: { insight: string; importance?: number; keywords?: string }[];
 }
 
-const REFLECTION_PROMPT = `You are the reflective layer of Joe's digital twin (Arlo), owner of
+const REFLECTION_PROMPT = `You are the reflective layer of Joe's digital twin (Jarvis), owner of
 Totally Outdoors LLC, a landscaping, hardscaping, and excavating company in Millersburg, Ohio.
 
 Below are recent OBSERVATIONS (facts) and EPISODES from Joe's world. Step back

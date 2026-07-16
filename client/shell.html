@@ -3,15 +3,16 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-<title>Totally Outdoors OS — Arlo</title>
+<title>Totally Outdoors OS — Jarvis</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   :root {
     /* Totally Outdoors brand */
-    --red:#7a1f1f; --red-hover:#641717; --red-soft:rgba(122,31,31,0.08);
-    --teal:#15A6BC; --teal-deep:#0E8194; --teal-soft:rgba(21,166,188,0.10);
+    --red:#C81A10; --red-hover:#A01109; --red-soft:rgba(200,26,16,0.09);
+    /* Silver accent (was teal) — chrome to match the Totally Outdoors badge */
+    --teal:#AEB4BF; --teal-deep:#7F8792; --teal-soft:rgba(174,180,191,0.16);
     --navy:#0E1B24; --navy-2:#152A35; --navy-3:#1C3542;
     --app-bg:#F4F7F9;
     --text:#0E1B24; --muted:#6B7C86; --green:#12B76A;
@@ -50,7 +51,7 @@
   .nav-item .ic { flex:0 0 auto; width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; border:1px solid var(--side-line); color:var(--side-muted); background:rgba(255,255,255,0.02); transition:.15s; }
   .nav-item .ic svg { width:17px; height:17px; }
   .nav-item:hover .ic { color:var(--side-text); }
-  .nav-item.active .ic { background:var(--teal); border-color:var(--teal); color:#fff; }
+  .nav-item.active .ic { background:var(--teal); border-color:var(--teal); color:#1a1d22; }
   .nav-item .tx .l { font-size:13.5px; font-weight:600; color:var(--side-text); letter-spacing:.1px; }
   .nav-item .tx .s { font-size:11px; color:var(--side-muted); margin-top:1px; }
   .nav-item.active .tx .l { color:#fff; }
@@ -62,7 +63,7 @@
   #reopen { position:fixed; top:16px; left:16px; z-index:60; display:none; align-items:center; gap:9px; padding:8px 14px 8px 8px; border-radius:40px; background:var(--navy); border:1px solid rgba(255,255,255,0.1); cursor:pointer; box-shadow:0 8px 24px rgba(14,27,36,0.25); transition:transform .15s; }
   #reopen:hover { transform:scale(1.03); }
   #shell.collapsed #reopen { display:flex; }
-  #reopen .orb { width:22px; height:22px; border-radius:50%; background:radial-gradient(circle at 34% 30%, #3fc9dd, var(--teal-deep) 78%); }
+  #reopen .orb { width:22px; height:22px; border-radius:50%; background:radial-gradient(circle at 34% 30%, #eef1f5, var(--teal-deep) 78%); }
   #reopen .rl { font-size:11px; font-weight:600; letter-spacing:0.12em; color:#fff; text-transform:uppercase; }
 
   /* ── Main ── */
@@ -88,7 +89,7 @@
         <button id="collapse" title="Collapse (⌘\)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
       </div>
       <nav id="nav"></nav>
-      <div id="side-foot"><span class="live-dot"></span>Arlo online · secure</div>
+      <div id="side-foot"><span class="live-dot"></span>Jarvis online · secure</div>
     </aside>
 
     <div id="reopen"><span class="orb"></span><span class="rl">Menu</span></div>
@@ -115,8 +116,8 @@
     team:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>'
   };
   var TABS = [
-    { key:"arlo", label:"Arlo", sub:"Operator", src:"/arlo", home:true },
-    { key:"chat", label:"Chat", sub:"Text Arlo", src:"/chat" },
+    { key:"arlo", label:"Jarvis", sub:"Operator", src:"/arlo", home:true },
+    { key:"chat", label:"Chat", sub:"Text Jarvis", src:"/chat" },
     { key:"seo", label:"SEO", sub:"Lauren", src:"/atlas" },
     { key:"content", label:"Content", sub:"Paulie", src:"/ralph" },
     { key:"crm", label:"CRM", sub:"Leads", src:"/crm" },
@@ -155,12 +156,12 @@
     });
     current = key;
     // Tell each tab whether it's visible so background dashboards pause polling
-    // (frees the CPU for Arlo). Arlo's tab is event-driven and ignores this.
+    // (frees the CPU for Jarvis). Jarvis's tab is event-driven and ignores this.
     TABS.forEach(function(t){
       var fr = document.getElementById("frame-"+t.key);
       if (fr && fr.contentWindow) { try { fr.contentWindow.postMessage({ type:"shell-visibility", active: t.key===key }, "*"); } catch(_){} }
     });
-    if(viaArlo && key!=="arlo") toast('<b>Arlo</b> pulled up '+byKey[key].label+' — reading it over');
+    if(viaArlo && key!=="arlo") toast('<b>Jarvis</b> pulled up '+byKey[key].label+' — reading it over');
   }
 
   // Collapse → current tab goes full-screen

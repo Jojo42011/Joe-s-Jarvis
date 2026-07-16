@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>Arlo — Chat</title>
+<title>Jarvis — Chat</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
@@ -15,9 +15,9 @@
     --line: rgba(255,255,255,0.08);
     --text: #ECEFF1;
     --muted: #8B979E;
-    --accent: #CC5500;
-    --accent-bright: #FF8C00;
-    --accent-glow: rgba(255,140,0,0.45);
+    --accent: #C81A10;
+    --accent-bright: #F5382A;
+    --accent-glow: rgba(245,56,42,0.45);
     --column: 760px;
     --mono: 'JetBrains Mono', monospace;
     --sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -63,7 +63,7 @@
   .turn.bot { gap: 14px; align-items: flex-start; }
   .avatar {
     flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%; margin-top: 2px;
-    background: radial-gradient(circle at 38% 35%, rgba(255,140,0,0.9), rgba(204,85,0,0.3) 60%, transparent 75%);
+    background: radial-gradient(circle at 38% 35%, rgba(245,56,42,0.9), rgba(200,26,16,0.3) 60%, transparent 75%);
     box-shadow: 0 0 14px var(--accent-glow), inset 0 0 6px rgba(255,255,255,0.25);
   }
   .bot .body { font-size: 14.5px; line-height: 1.72; max-width: calc(100% - 46px); word-break: break-word; }
@@ -90,7 +90,7 @@
     background: var(--panel); border: 1px solid var(--line); border-radius: 26px; padding: 8px 8px 8px 20px;
     transition: border-color .15s, box-shadow .15s;
   }
-  #composer:focus-within { border-color: rgba(255,140,0,0.5); box-shadow: 0 0 0 3px rgba(255,140,0,0.12); }
+  #composer:focus-within { border-color: rgba(245,56,42,0.5); box-shadow: 0 0 0 3px rgba(245,56,42,0.12); }
   #input {
     flex: 1; background: none; border: none; outline: none; resize: none; color: var(--text);
     font-family: var(--sans); font-size: 14.5px; line-height: 1.55; padding: 8px 0; max-height: 160px;
@@ -119,7 +119,7 @@
 </head>
 <body>
   <header>
-    <div class="brand"><span class="dot"></span><span id="brand-name">ARLO</span></div>
+    <div class="brand"><span class="dot"></span><span id="brand-name">JARVIS</span></div>
     <button id="newchat">New chat</button>
   </header>
 
@@ -148,7 +148,7 @@
 
   /* ══ CONFIG — everything you'd ever touch ══════════════════════════════ */
   var CONFIG = {
-    brand: "ARLO",
+    brand: "JARVIS",
     emptyTitle: "What do you need?",
     emptySub: "Ask me anything.",
     placeholder: "Message",
@@ -277,7 +277,7 @@
       var reply = (r && r.text) || "…";
       history.push({ role: "assistant", text: reply });
       typeOut(body, reply);
-      // Arlo can steer the shell ("open the CRM") from chat, same as voice.
+      // Jarvis can steer the shell ("open the CRM") from chat, same as voice.
       if (r && r.navigate && window.parent !== window) {
         window.parent.postMessage({ type: "arlo-navigate", tab: r.navigate }, "*");
       }

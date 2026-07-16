@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Arlo // Inbox</title>
+<title>Jarvis // Inbox</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
@@ -240,7 +240,7 @@
         (e.summary?'<div class="summary">'+esc(e.summary)+'</div>':"")+
         '<div class="body">'+esc(res.body||e.snippet||"")+'</div>'+
         '<div class="draftlabel">Reply — in Joe\'s voice'+(e.draft_status==="sent"?" (SENT)":e.draft_status==="dismissed"?" (dismissed)":"")+'</div>'+
-        '<textarea id="draft-box" placeholder="Write a reply, or edit Arlo\'s draft…">'+esc(draft)+'</textarea>'+
+        '<textarea id="draft-box" placeholder="Write a reply, or edit Jarvis\'s draft…">'+esc(draft)+'</textarea>'+
         '<div class="dactions">'+
           '<button class="btn ok" id="send-btn">✓ Approve &amp; Send</button>'+
           '<button class="btn" id="save-btn">Save draft</button>'+
