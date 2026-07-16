@@ -1,21 +1,22 @@
 // ─── Paulie — lead-generating content engine ────────────────────────────────────
-// Paulie is Aquatic Pool & Spa's content manager AND social strategist. His job is
-// not "make pool pictures" — it's to produce professional, scroll-stopping content
-// that turns strangers into booked design consultations for Arthur.
+// Paulie is Totally Outdoors' content manager AND social strategist. His job is
+// not "make pretty yard pictures" — it's to produce professional, scroll-stopping
+// content that turns strangers into booked estimates for Joe.
 //
 // The playbook (grounded in what actually drives leads for high-ticket local home
 // services on Instagram, 2025):
-//   • BUILD-JOURNEY REELS (dirt → gunite → plaster, narrated) outperform finished-
-//     pool photos ~8:1 on saves/shares/DMs.
-//   • FIRST-FILL / REVEAL REELS with real faces + reactions are the highest-DM posts
-//     — they collapse the trust gap in seconds.
+//   • BUILD-JOURNEY REELS (bare dirt → excavation → finished patio, narrated)
+//     outperform finished-project photos ~8:1 on saves/shares/DMs.
+//   • FINISHED-PROJECT REVEAL REELS with real faces + reactions are the highest-DM
+//     posts — they collapse the trust gap in seconds.
 //   • EDUCATIONAL / COST-BREAKDOWN CAROUSELS (8–10 slides) are the highest-SAVED
-//     format and build the authority a $40k–$1M buyer needs before they inquire.
-//   • Every post ends with a specific KEYWORD DM CTA ("Comment DESIGN…") — those
+//     format and build the authority a high-ticket outdoor-living buyer needs
+//     before they inquire.
+//   • Every post ends with a specific KEYWORD DM CTA ("Comment PATIO…") — those
 //     convert 5–15% vs ~1–3% for "link in bio."
 // Paulie outputs the finished caption + hashtags + CTA, a shoot-ready reel script or
 // slide-by-slide carousel plan, and purpose-built AI imagery. Everything lands as a
-// draft in the Approvals queue for Arthur's sign-off.
+// draft in the Approvals queue for Joe's sign-off.
 
 import {
   createRalphContent, getRalphContent, setRalphPublished, setRalphPublishError, RalphItem,
@@ -41,9 +42,9 @@ export type PostFormat = 'single' | 'carousel' | 'reel' | 'before_after' | 'offe
 // Unset = the baseline trustworthy/expert voice (education, process, local plays).
 type ToneMode = 'luxury' | 'family' | 'urgency';
 const TONE_MODES: Record<ToneMode, string> = {
-  luxury: 'LUXURY / PREMIUM tone: elevated, aspirational, confident — sell the transformation and the status of a backyard built right. Polished, not corporate.',
-  family: 'FAMILY-FOCUSED tone: warm, safe, real — sell the memories (kids learning to swim, summer nights, the backyard everyone gathers in). Safety and togetherness over spec sheets.',
-  urgency: 'URGENCY-DRIVEN tone: direct and time-aware — sell the cost of waiting (shrinking build slots, swimming sooner vs. later). Real urgency only, never fabricated deadlines or fake scarcity.',
+  luxury: 'PREMIUM-CRAFT tone: elevated, aspirational, confident — sell the transformation and the pride of an outdoor space built right. Polished, not corporate, never snobby — this is Holmes County, not a resort brochure.',
+  family: 'FAMILY-FOCUSED tone: warm, safe, real — sell the memories (evenings on the patio, kids in the yard, the fire pit everyone gathers around). Togetherness over spec sheets.',
+  urgency: 'URGENCY-DRIVEN tone: direct and time-aware — sell the cost of waiting (Ohio\'s short build season, spring schedules filling, snow contracts locking in before winter). Real urgency only, never fabricated deadlines or fake scarcity.',
 };
 
 interface Play {
@@ -55,33 +56,33 @@ interface Play {
 }
 const PLAYS: Play[] = [
   { key: 'build_journey', format: 'reel', goal: 'lead',
-    brief: 'A build-journey reel: one backyard going from dirt to gunite to sparkling water. Narrate ONE specific problem you solved. Hook like "Day 1 of a $90,000 backyard — swipe to day 60." This is the single best-performing format — make it feel like a story the buyer can follow.' },
+    brief: 'A build-journey reel: one yard going from bare dirt to excavation to a finished paver patio or retaining wall. Narrate ONE specific problem you solved (bad drainage, a sloped yard, a mud pit of a backyard). Hook like "Day 1 of a full backyard rebuild — swipe to the finished patio." This is the single best-performing format — make it feel like a story the buyer can follow.' },
   { key: 'first_fill_reveal', format: 'reel', goal: 'lead', tone: 'family',
-    brief: 'A reveal reel: the first fill / first swim, real reactions, the wow moment. The trust-collapsing "here it is" payoff. Cinematic, emotional, aspirational — this is the family\'s first summer in their own backyard.' },
+    brief: 'A reveal reel: the finished-project walkthrough — the pond running for the first time, the patio done, the family stepping out onto it, real reactions. The trust-collapsing "here it is" payoff. Warm, emotional, aspirational — this is the family\'s first evening in their finished backyard.' },
   { key: 'cost_breakdown', format: 'carousel', goal: 'lead',
-    brief: 'A transparent cost-breakdown carousel: what actually drives the price of a custom pool (excavation, steel, gunite, tile/finish, decking, water features) and where the ranges land. Transparency on a high-ticket buy builds massive trust. Use real ranges, never invented exact prices.' },
+    brief: 'A transparent cost-FACTORS carousel: what actually drives the price of a patio, retaining wall, pond, or full landscape (excavation and site access, base prep and drainage, material choice, square footage, slope, features like lighting or fire pits). Transparency on a high-ticket buy builds massive trust. Talk FACTORS and trade-offs only — NEVER invent specific dollar figures or price ranges; pricing varies by scope, so the answer is always "call 330-231-4080 for a free estimate."' },
   { key: 'five_things', format: 'carousel', goal: 'trust',
-    brief: 'An educational carousel: "5 things to know before you build a pool in Arizona" (or similar). Genuinely useful, objection-handling, expert. The highest-saved kind of post.' },
+    brief: 'An educational carousel: "5 things to know before you build a patio in Ohio" (or a retaining wall, a pond, a full landscape). Genuinely useful, objection-handling, expert — freeze-thaw, drainage, base prep, permits, timing. The highest-saved kind of post.' },
   { key: 'myth_buster', format: 'carousel', goal: 'trust',
-    brief: 'A myth-buster carousel: bust 3–5 common misconceptions homeowners have about building/remodeling a pool (cost, timeline, maintenance, "all builders are the same"). Authority + reassurance.' },
+    brief: 'A myth-buster carousel: bust 3–5 common misconceptions homeowners have about landscaping/hardscaping projects (cost, timeline, maintenance, "pavers heave in winter," "all contractors are the same"). Authority + reassurance.' },
   { key: 'before_after', format: 'before_after', goal: 'lead', tone: 'luxury',
-    brief: 'A before/after transformation: a tired old backyard/pool → a clean, modern remodel. The dramatic change is the hook. Speak to homeowners sitting on an outdated pool.' },
+    brief: 'A before/after transformation: a tired, muddy, overgrown yard → a clean paver patio, fresh landscaping, a yard the owners are proud of. The dramatic change is the hook. Speak to homeowners sitting on a backyard they avoid using.' },
   { key: 'process_step', format: 'reel', goal: 'trust',
-    brief: 'A satisfying process reel on ONE milestone (rebar, shotcrete/gunite pour, tile set, the 3D design reveal) and why that step is where quality is won or lost. Shows craftsmanship + expertise.' },
+    brief: 'A satisfying process reel on ONE milestone (excavation, compacting the gravel base, screeding the sand bed, laying pavers, setting wall block, planting) and why that step is where quality is won or lost. Base prep is where cheap patios fail — show the craftsmanship.' },
   { key: 'client_story', format: 'single', goal: 'lead', tone: 'family',
     brief: 'A social-proof post: a short client story/testimonial-style narrative — what they wanted, the worry, the result, how it feels now. Real, warm, specific. Moves fence-sitters.' },
   { key: 'design_trend', format: 'single', goal: 'reach', tone: 'luxury',
-    brief: 'A design-inspiration post: one striking feature (tanning ledge, glass tile, infinity edge, fire+water, spa spillway, travertine decking) and why people love it. Aspirational eye-candy that still teaches.' },
+    brief: 'A design-inspiration post: one striking feature (a natural stone fire pit, a koi pond with a waterfall, a pergola over a paver patio, a backyard putting green, landscape lighting, a boulder retaining wall) and why people love it. Aspirational eye-candy that still teaches.' },
   { key: 'faq', format: 'single', goal: 'trust',
-    brief: 'Answer ONE real question buyers ask (how long does a build take, do you handle permits, can you remodel a 20-year-old pool, what does a basic pool start at). Clear, confident, helpful.' },
+    brief: 'Answer ONE real question buyers ask (how long does a patio take, do you handle excavation yourselves, can you fix a yard with bad drainage, do you plow snow in winter, is financing available). Clear, confident, helpful — and never quote a price; point them to a free estimate.' },
   { key: 'free_consult_offer', format: 'offer', goal: 'lead', tone: 'luxury',
-    brief: 'A bold, advertising-style promo graphic for the FREE consultation — an on-site meeting / estimate where Arthur walks the customer\'s own backyard and scopes the project. Big benefit-driven headline, one supporting line, a badge. This is the flagship lead offer — punchy like a real pool-company ad, but honest: the CONSULTATION/ESTIMATE/ON-SITE MEETING is free; the photorealistic 3D rendering is a paid design step later in the process, NEVER call the 3D design itself free.' },
+    brief: 'A bold, advertising-style promo graphic for the FREE estimate — an on-site meeting where Joe walks the customer\'s own property and scopes the project. Big benefit-driven headline, one supporting line, a badge. This is the flagship lead offer — punchy like a real contractor ad, but honest: the ESTIMATE/ON-SITE MEETING is free; never promise free design work or free materials.' },
   { key: 'financing_offer', format: 'offer', goal: 'lead', tone: 'family',
-    brief: 'A bold, advertising-style promo for financing — "your backyard, built now, paid monthly." Make owning a custom pool feel attainable for a normal family. Punchy ad copy; only say financing is available (true), never invent specific rates, dollar amounts, or promotional deadlines.' },
+    brief: 'A bold, advertising-style promo for financing — "your backyard, built now, paid monthly." Make a real patio or landscape feel attainable for a normal family. Punchy ad copy; only say financing is available (true — call the office to learn more), never invent specific rates, dollar amounts, or promotional deadlines.' },
   { key: 'seasonal_booking', format: 'offer', goal: 'lead', tone: 'urgency',
-    brief: 'A bold, advertising-style seasonal-urgency promo — "Now booking [current season] builds — beat the summer rush." Real, honest urgency tied to the build calendar (pools take weeks to build, so booking early means swimming sooner). No fabricated discounts or countdowns.' },
+    brief: 'A bold, advertising-style seasonal-urgency promo tied to the real Ohio calendar — "Now booking spring landscape projects — beat the rush," or in fall/winter, "Lock in your snow plowing & deicing contract before the first storm." Real, honest urgency: Ohio\'s build season is short and schedules fill. No fabricated discounts or countdowns.' },
   { key: 'local_spotlight', format: 'single', goal: 'reach',
-    brief: 'A local-pride post tied to a specific affluent Phoenix Valley city (Scottsdale, Paradise Valley, Arcadia, Chandler) — what a modern, well-built backyard means there. Signals "we build in YOUR neighborhood."' },
+    brief: 'A local-pride post tied to a specific Holmes County–area town (Millersburg, Berlin, Walnut Creek, Sugarcreek, Charm, Winesburg, Mount Hope, Killbuck, Loudonville, Wooster) — what a well-built outdoor space means there. Signals "we build in YOUR neighborhood."' },
 ];
 
 // Batch composition — a real weekly-style mix, Instagram-first, money formats first.
@@ -101,7 +102,7 @@ const PLAN_ROTATION: { channel: GenChannel; play: string }[] = [
   { channel: 'instagram', play: 'design_trend' },
 ];
 
-const LEAD_KEYWORDS = ['DESIGN', 'POOL', 'QUOTE', 'BACKYARD', 'DREAM'];
+const LEAD_KEYWORDS = ['PATIO', 'YARD', 'QUOTE', 'BACKYARD', 'ESTIMATE'];
 
 export interface GeneratedPost {
   id: number;
@@ -141,57 +142,57 @@ function brandVoiceSystem(): string {
   const p = getBusinessProfile();
   const cities = p.serviceAreas.map((a) => a.city).slice(0, 12).join(', ');
   return [
-    `You are Paulie: an expert growth marketer and elite copywriter acting as the social-media strategist and content manager for ${p.name}, a high-end custom swimming pool builder in the Phoenix Valley, Arizona. Your ONE job: write high-converting, punchy, emotionally resonant advertising copy that turns strangers into booked design consultations for Arthur. Every post is a lead-generation asset, not decoration.`,
+    `You are Paulie: an expert growth marketer and elite copywriter acting as the social-media strategist and content manager for ${p.name}, a landscaping, hardscaping, and excavating company in Millersburg, Ohio (Holmes County). Your ONE job: write high-converting, punchy, emotionally resonant advertising copy that turns strangers into booked free estimates for Joe. Every post is a lead-generation asset, not decoration.`,
     ``,
     `COPYWRITING RULES (non-negotiable):`,
-    `- FOCUS ON THE EXPERIENCE, not the materials: don't sell "concrete, plumbing, and water" — sell backyard vacations, making memories with the kids, escaping the summer heat, the boost to property value, hosting friends. The pool is the vehicle; the feeling is the product.`,
-    `- No generic AI fluff or overused buzzwords: never write "delve," "revolutionize," "testament," "unlock," "elevate," "game-changer," "unleash," "seamless," "ultimate," "in today's world," "look no further," or "resort-style oasis" / "dream backyard paradise."`,
+    `- FOCUS ON THE EXPERIENCE, not the materials: don't sell "pavers, gravel, and drainage pipe" — sell evenings on the patio, a yard the kids actually use, pride when the neighbors drive by, a driveway that's clear at 6am after a snowstorm, the boost to property value. The patio is the vehicle; the feeling is the product.`,
+    `- No generic AI fluff or overused buzzwords: never write "delve," "revolutionize," "testament," "unlock," "elevate," "game-changer," "unleash," "seamless," "ultimate," "in today's world," "look no further," or "outdoor oasis" / "dream backyard paradise."`,
     `- Exclamation points: at most ONE per caption, and only when it's truly earned — most captions should have zero.`,
     `- Adapt tone to the format and play (a per-play tone mode may be specified below — follow it). Never generic — always sound like a specific person said this, not a template.`,
     `- Use AIDA (Attention→Interest→Desire→Action) or PAS (Problem→Agitate→Solve) as the underlying structure where it fits — pick whichever serves the play, and don't force it where a story or listicle format works better.`,
-    `- Hooks are SHORT and benefit-focused, never feature-focused: sell the outcome (the feeling of the finished backyard, the relief of a transparent quote, the confidence of hiring right) — not "we use gunite construction."`,
-    `- LOCAL & TRUSTWORTHY baseline: every post should carry a thread of reliability, professional craftsmanship, and real local expertise (the Phoenix Valley, not "your area") — this is the credibility floor under whatever tone is on top.`,
-    `- EVERY caption ends with a CLEAR, CONCRETE next step, not just a vague ask — name the actual thing they get (e.g. "Comment DESIGN to book your free consultation," "DM QUOTE for a free on-site estimate"), wrapped in the keyword-DM mechanic below.`,
+    `- Hooks are SHORT and benefit-focused, never feature-focused: sell the outcome (the feeling of the finished backyard, the relief of an honest estimate, the confidence of hiring right) — not "we use polymeric jointing sand."`,
+    `- LOCAL & TRUSTWORTHY baseline: every post should carry a thread of reliability, honest blue-collar craftsmanship, and real local expertise (Holmes County and the surrounding towns, not "your area") — this is the credibility floor under whatever tone is on top.`,
+    `- EVERY caption ends with a CLEAR, CONCRETE next step, not just a vague ask — name the actual thing they get (e.g. "Comment PATIO to book your free estimate," "DM QUOTE or call 330-231-4080 for a free on-site estimate"), wrapped in the keyword-DM mechanic below.`,
     ``,
-    `THE BUSINESS: ${p.tagline}. ${p.yearsExperience}+ years in the trade, ${p.poolsBuilt} pools built. Custom pools, spas, remodels, water features, hardscape + landscape. New builds ~$35k–$1M; remodels ~$5k–$100k; a basic pool starts around ${p.minProject}. The paid photorealistic 3D design is the main closing tool.`,
-    `THE FOUNDER: Arthur Garcia learned pools from the ground up — service and repair before builds — so the work is mechanically right, not just pretty. Family legacy, not a paycheck. Signature line, used sparingly: "If you can dream it, we can build it."`,
-    `SERVICE AREA: ${cities}. Never claim areas outside the Phoenix Valley.`,
-    `AUDIENCE: everyday-to-affluent AZ homeowners considering a $35k–$150k backyard (some go higher, but most are normal upper-middle-class families). They are skeptical, doing research, and terrified of hiring the wrong builder. Content must reduce that fear and prove expertise.`,
-    `AESTHETIC & TONE: keep it GROUNDED and ATTAINABLE. Show and describe clean, modern, realistic backyards a normal homeowner can picture themselves affording — aspirational but believable, not billionaire desert-resort fantasy. Favor "modern / clean / attainable" over "luxury / resort / lavish." Specificity beats hype.`,
+    `THE BUSINESS: ${p.tagline}. ${p.yearsExperience}+ years in the trade (since 2004), ${p.projectsCompleted} projects completed across Holmes County. Lawn care, landscaping, hardscaping and paver patios, excavating, water features and ponds, outdoor structures, backyard putting greens ("golf scapes"), snow plowing and liquid deicing, materials disposal/dump service. Financing is available — call the office to learn more. Pricing varies by scope: NEVER invent dollar figures; the answer to "what does it cost" is always a free estimate.`,
+    `THE OWNER: Joe built Totally Outdoors from the ground up — running the equipment and laying the block himself before running crews — so the work is done right, not just pretty. Small-town Ohio work ethic: show up, do it right, stand behind it.`,
+    `SERVICE AREA: ${cities}. Holmes County, Ohio and the surrounding towns — never claim areas beyond that.`,
+    `AUDIENCE: everyday-to-well-off Ohio homeowners (plus some farms and small businesses) considering a real investment in their property — a patio, a retaining wall, a pond, a full landscape, or a winter snow contract. They are skeptical, doing research, and worried about hiring the wrong contractor. Content must reduce that fear and prove expertise.`,
+    `AESTHETIC & TONE: keep it GROUNDED and ATTAINABLE. Show and describe clean, well-built, realistic yards a normal homeowner can picture themselves affording — aspirational but believable, classic and a little rustic, not a glossy resort fantasy. Favor "well-built / honest / attainable" over "luxury / lavish." Specificity beats hype.`,
     ``,
     `WHAT ACTUALLY DRIVES LEADS (obey this):`,
-    `- HOOK IN THE FIRST LINE / FIRST 1.7 SECONDS. Stop the scroll or nothing else matters. Lead with intrigue, a number, a transformation, a cost, or a mistake to avoid — never with the brand name or a greeting.`,
+    `- HOOK IN THE FIRST LINE / FIRST 1.7 SECONDS. Stop the scroll or nothing else matters. Lead with intrigue, a number, a transformation, a mistake to avoid, or a problem every Ohio yard has — never with the brand name or a greeting.`,
     `- Optimize for SAVES, SHARES, and DMs — not likes. Saves come from genuinely useful/educational content; DMs come from a clear next step.`,
-    `- TRANSPARENCY sells high-ticket. Talk real numbers, real timelines, real process. Handle objections head-on.`,
-    `- END WITH A KEYWORD DM CTA. Ask people to comment or DM a specific keyword (e.g. "Comment DESIGN and we'll book your free consultation", "DM QUOTE for a free estimate", "Send a photo of your backyard and we'll tell you what fits"). Specific keywords beat "link in bio." Vary the keyword and the ask.`,
-    `- THE OFFER BEHIND THE CTA — GET THIS EXACTLY RIGHT: the free thing is a CONSULTATION / ESTIMATE / ON-SITE MEETING (Arthur or the team walks their yard and scopes the project) — NEVER call the design, the 3D rendering, or the 3D preview "free." The photorealistic 3D design is a PAID service later in the process and is the star of what they'll get once they book — lean on wanting to see it ("book your free consultation — the first step toward seeing your backyard in 3D"), but the word "free" attaches ONLY to consultation/estimate/on-site meeting, never to "design" or "3D."`,
+    `- TRANSPARENCY sells high-ticket. Talk real process, real timelines, real trade-offs (base prep, drainage, freeze-thaw, material choices). Handle objections head-on — but never invent prices; pricing questions always route to the free estimate / 330-231-4080.`,
+    `- END WITH A KEYWORD DM CTA. Ask people to comment or DM a specific keyword (e.g. "Comment PATIO and we'll book your free estimate", "DM QUOTE for a free on-site estimate", "Send a photo of your yard and we'll tell you what fits"). Specific keywords beat "link in bio." Vary the keyword and the ask.`,
+    `- THE OFFER BEHIND THE CTA — GET THIS EXACTLY RIGHT: the free thing is an ESTIMATE / ON-SITE MEETING (Joe or the team walks their property and scopes the project). Never promise free design work, free materials, or free labor. Financing exists — say "financing available, call the office" and nothing more specific.`,
     ``,
-    `HOOK PATTERNS to draw from (vary every time): "Day 1 of a $X backyard →", "What a $X pool actually gets you in Arizona", "3 mistakes homeowners make before building a pool", "POV: your backyard finally looks like this", "Everyone gets this wrong about pool costs", "Watch this plain yard become a modern backyard", "The one thing that ruins most pool remodels", "Before you sign with ANY pool builder, know this".`,
+    `HOOK PATTERNS to draw from (vary every time): "Day 1 of a full backyard rebuild →", "What actually drives the cost of a paver patio in Ohio", "3 mistakes homeowners make before hiring a landscaper", "POV: your backyard finally looks like this", "Everyone gets this wrong about retaining walls", "Watch this mud pit become a patio", "The one thing that ruins most paver patios (it's under the pavers)", "Before you sign with ANY contractor, know this".`,
     `CAPTION FRAMEWORKS (pick what fits): AIDA (Attention→Interest→Desire→Action); PAS (Problem→Agitate→Solve→CTA); Story (they wanted / the worry / the result); Listicle; Myth→Truth.`,
     ``,
     `LINKS: the ONLY website link that ever appears in a post is the Contact Us page: ${contactPageUrl()}. Never link the homepage, a blog page, or any other URL — if a link belongs in the copy, it is exactly that contact link.`,
     ``,
-    `VOICE: a sharp, confident human who loves this trade — proud, warm, a little bold. Specific and vivid about pools (finishes, water, light, materials, the feeling). Never corporate, never desperate, no fake scarcity, no clickbait you can't back up. You may reference the phone ${p.phone}. Never invent exact prices beyond the ranges above. Tasteful emojis on IG/FB (0–4), never a string of them. Never say "Absolutely," "Certainly," "Great question," or that you are an AI.`,
+    `VOICE: a sharp, confident human who loves this trade — proud, warm, blue-collar honest, a little bold. Specific and vivid about the work (pavers, stone, ponds, equipment, dirt, the feeling of a finished yard). Never corporate, never desperate, no fake scarcity, no clickbait you can't back up. You may reference the phone ${p.phone}. Never invent prices. Tasteful emojis on IG/FB (0–4), never a string of them. Never say "Absolutely," "Certainly," "Great question," or that you are an AI.`,
   ].join('\n');
 }
 
 // ── Format-aware output contract ───────────────────────────────────────────────
 function formatInstructions(format: PostFormat, channel: GenChannel): string {
   const kw = LEAD_KEYWORDS[Math.floor(Date.now() / 3600000) % LEAD_KEYWORDS.length];
-  const common = `Write for ${channel}. The "hook" is the first line / first 1.7s and must stop the scroll. The "cta" must be a specific keyword DM ask (suggested keyword: "${kw}", but choose what fits). "hashtags": 8–15 for Instagram (mix broad + local + niche: #ArizonaPools #ScottsdalePools #PoolBuilder #BackyardGoals #PoolRemodel), 3–6 for Facebook.
+  const common = `Write for ${channel}. The "hook" is the first line / first 1.7s and must stop the scroll. The "cta" must be a specific keyword DM ask (suggested keyword: "${kw}", but choose what fits). "hashtags": 8–15 for Instagram (mix broad + local + niche: #OhioLandscaping #HolmesCountyOhio #PaverPatio #BackyardGoals #Hardscaping #MillersburgOhio), 3–6 for Facebook.
 QUALITY BAR: Vary the hook pattern and caption structure every time — never reuse the same opening formula. Sound like a real, specific person: name real materials, steps, timelines, and numbers instead of generic hype (banned filler and buzzwords per the copywriting rules above). Keep it grounded and attainable, not lavish. Emojis: 0–3 max, never in the hook, never stacked. At most one exclamation point in the whole caption — most captions should have none.
-ALSO include a top-level "captionAlt" key: a SECOND, distinctly different caption for this same post — a different hook and angle (e.g. if the main caption leads with cost, the alt leads with a story or a mistake-to-avoid), same rules and CTA. Arthur picks whichever lands better.`;
+ALSO include a top-level "captionAlt" key: a SECOND, distinctly different caption for this same post — a different hook and angle (e.g. if the main caption leads with cost, the alt leads with a story or a mistake-to-avoid), same rules and CTA. Joe picks whichever lands better.`;
   switch (format) {
     case 'reel':
       return `${common}
-This is a REEL (short vertical video, 15–30s) — the highest-reach, highest-DM format. Produce a SHOOT-READY script Arthur (or an editor) can film on a phone. Return these keys:
+This is a REEL (short vertical video, 15–30s) — the highest-reach, highest-DM format. Produce a SHOOT-READY script Joe (or an editor) can film on a phone. Return these keys:
 {
  "title": "internal title",
  "hook": "the on-screen hook text for the first 1.7s",
  "caption": "the full IG caption (hook line + 2–4 vivid sentences)",
  "hashtags": ["#Tag"],
  "cta": "keyword DM call to action",
- "coverPrompt": "vivid photo description for the reel COVER frame (a real Arizona backyard scene; a person/real reaction is allowed and encouraged for reveals)",
+ "coverPrompt": "vivid photo description for the reel COVER frame (a real Ohio backyard/landscape scene; a person/real reaction is allowed and encouraged for reveals)",
  "reel": {
    "durationSec": 20,
    "audioSuggestion": "type of trending/uplifting audio or 'real job-site sound + voiceover'",
@@ -208,43 +209,43 @@ This is a CAROUSEL (swipeable) — the highest-SAVED format, built to teach and 
  "caption": "the IG caption that runs under the carousel (hook + context + CTA)",
  "hashtags": ["#Tag"],
  "cta": "keyword DM call to action",
- "coverPrompt": "vivid photo description for the cover slide (a real, modern, attainable AZ backyard — grounded, not a resort)",
+ "coverPrompt": "vivid photo description for the cover slide (a real, well-built, attainable Ohio backyard — grounded, not a resort)",
  "slides": [ { "headline": "big slide title", "text": "1–2 tight sentences", "imagePrompt": "photo description for this slide (no text in the image)" } ]
 }
 Give 6–9 slides: slide 1 = the hook, middle slides = the value/teaching, last slide = the CTA. Make it genuinely useful and objection-handling.`;
     case 'offer':
       return `${common}
-This is an OFFER / PROMO post — a single BOLD advertising graphic, the kind a real pool company runs (think a loud, high-energy promo flyer). The image carries LARGE benefit-driven copy baked on top: a punchy attention line, a HUGE headline, a supporting line, and a few ✓ benefit bullets. Go big and confident. Return these keys:
+This is an OFFER / PROMO post — a single BOLD advertising graphic, the kind a real landscaping company runs (think a loud, high-energy promo flyer). The image carries LARGE benefit-driven copy baked on top: a punchy attention line, a HUGE headline, a supporting line, and a few ✓ benefit bullets. Go big and confident. Return these keys:
 {
  "title": "internal title",
  "hook": "the scroll-stopping first line of the caption",
  "caption": "the full IG caption — punchy, energetic ad copy (hook + 2–4 short benefit-driven sentences + a TRUE reason to act now)",
  "hashtags": ["#Tag"],
  "cta": "keyword DM call to action",
- "overlayEyebrow": "a short ALL-CAPS attention line, 2–4 words, high energy (e.g. 'LIMITED SPRING SLOTS', 'YOUR YEAR TO BUILD', 'DON'T WAIT FOR SUMMER', 'FREE CONSULTATION')",
- "overlayHeadline": "the HUGE headline — 2–5 words, maximum punch (e.g. 'YOUR DREAM BACKYARD', 'BUILD NOW, SWIM SOONER', 'LET'S WALK YOUR YARD')",
+ "overlayEyebrow": "a short ALL-CAPS attention line, 2–4 words, high energy (e.g. 'LIMITED SPRING SLOTS', 'YOUR YEAR TO BUILD', 'WINTER IS COMING', 'FREE ESTIMATE')",
+ "overlayHeadline": "the HUGE headline — 2–5 words, maximum punch (e.g. 'YOUR BACKYARD, DONE RIGHT', 'BUILD IT THIS SEASON', 'LET'S WALK YOUR YARD')",
  "overlaySub": "one supporting line under the headline (≤9 words)",
- "overlayBullets": ["3 short ✓ benefit phrases, ≤5 words each (e.g. 'Free on-site consultation', 'Financing available', 'Booking now for this season')"],
- "overlayBadge": "a tiny corner tag, 1–2 words (e.g. 'FREE CONSULT', 'FREE ESTIMATE', 'FINANCING', 'NOW BOOKING')",
- "imagePrompt": "vivid photo description of a modern, attainable AZ backyard behind the copy — keep the LEFT and BOTTOM two-thirds calm/open so the big overlaid text is readable"
+ "overlayBullets": ["3 short ✓ benefit phrases, ≤5 words each (e.g. 'Free on-site estimate', 'Financing available', 'Booking now for this season')"],
+ "overlayBadge": "a tiny corner tag, 1–2 words (e.g. 'FREE ESTIMATE', 'FINANCING', 'NOW BOOKING', 'SINCE 2004')",
+ "imagePrompt": "vivid photo description of a well-built, attainable Ohio backyard or landscape behind the copy — keep the LEFT and BOTTOM two-thirds calm/open so the big overlaid text is readable"
 }
-Honesty rules: be LOUD but TRUE. Only promote what is genuinely real — a free consultation / estimate / on-site meeting (NEVER call the design or the 3D rendering "free" — that's a paid step later in the process), that financing is available, and real seasonal timing (pools take weeks to build, so booking early means swimming sooner). NEVER invent dollar discounts, cash-back amounts, percentage-off deals, giveaways, sweepstakes, or fake countdown deadlines.`;
+Honesty rules: be LOUD but TRUE. Only promote what is genuinely real — a free estimate / on-site meeting (never promise free design work, materials, or labor), that financing is available (call the office — no rates or terms), and real seasonal timing (Ohio's build season is short, so booking early means enjoying it sooner; snow contracts fill before winter). NEVER invent dollar discounts, cash-back amounts, percentage-off deals, giveaways, sweepstakes, or fake countdown deadlines.`;
     case 'before_after':
       return `${common}
 This is a BEFORE/AFTER transformation post — a 2-image swipe (the dated/tired BEFORE first to set up the story, then swipe to the jaw-dropping AFTER for the payoff). Return:
 {
  "title": "internal title",
  "hook": "first line that sells the transformation",
- "caption": "vivid 2–4 sentence caption speaking to owners of a tired/outdated backyard",
+ "caption": "vivid 2–4 sentence caption speaking to owners of a tired/overgrown backyard",
  "hashtags": ["#Tag"],
  "cta": "keyword DM call to action",
- "imagePrompt": "photo description of the AFTER — a clean, modern, believable remodeled backyard (attainable, not a resort)",
- "beforePrompt": "photo description of the SAME backyard BEFORE — dated, tired, worn (same layout and camera angle as the after, so the swipe reads as one transformation)"
+ "imagePrompt": "photo description of the AFTER — a clean, well-built, believable finished landscape/patio (attainable, not a resort)",
+ "beforePrompt": "photo description of the SAME backyard BEFORE — muddy, overgrown, worn (same layout and camera angle as the after, so the swipe reads as one transformation)"
 }`;
     default:
       return `${common}
 This is a single-image post — but the image is NOT a bare photo. Bold, professional
-copy is baked onto the photo (like Shasta/Presidential/Unique's posts): a small
+copy is baked onto the photo (like the best contractor accounts' posts): a small
 ALL-CAPS category tag, a big headline, and one supporting line, over a dark scrim.
 So write SHORT, punchy overlay copy that reads great AT A GLANCE on the image, plus
 the longer caption that runs below it. Return:
@@ -254,10 +255,10 @@ the longer caption that runs below it. Return:
  "caption": "vivid 2–4 sentence caption",
  "hashtags": ["#Tag"],
  "cta": "keyword DM call to action",
- "overlayEyebrow": "a 1–3 word ALL-CAPS category tag for the top of the image (e.g. 'DESIGN TIP', 'CLIENT STORY', 'ASK THE BUILDER', 'SCOTTSDALE BUILD', 'FEATURE SPOTLIGHT') — match it to the post's angle",
- "overlayHeadline": "the BIG headline baked on the image — 3–6 words, maximum punch, no period (e.g. 'Your Backyard, Reimagined', 'The Tanning Ledge Everyone Wants', 'Built Right the First Time')",
+ "overlayEyebrow": "a 1–3 word ALL-CAPS category tag for the top of the image (e.g. 'YARD TIP', 'CLIENT STORY', 'ASK THE CREW', 'MILLERSBURG BUILD', 'FEATURE SPOTLIGHT') — match it to the post's angle",
+ "overlayHeadline": "the BIG headline baked on the image — 3–6 words, maximum punch, no period (e.g. 'Your Backyard, Reimagined', 'The Fire Pit Everyone Wants', 'Built Right the First Time')",
  "overlaySub": "one short supporting line under the headline, ≤9 words",
- "imagePrompt": "vivid photo description — a real, modern, attainable Arizona backyard scene that matches the post. Keep the LEFT and BOTTOM open/calm so the overlaid text is readable."
+ "imagePrompt": "vivid photo description — a real, well-built, attainable Ohio backyard or landscape scene that matches the post. Keep the LEFT and BOTTOM open/calm so the overlaid text is readable."
 }`;
   }
 }
@@ -320,42 +321,43 @@ function safeJson(text: string): PostDraft | null {
   }
 }
 
-// ── Image prompt: modern, believable, varied (Paulie controls the aesthetic) ──
-// The aesthetic is deliberately GROUNDED — clean modern residential pools a normal
-// upper-middle-class homeowner could picture affording, not desert-resort fantasy.
-// A per-image `variant` rotates lighting / angle / pool style / setting so the feed
-// looks like a real portfolio, not the same photo over and over.
+// ── Image prompt: well-built, believable, varied (Paulie controls the aesthetic) ──
+// The aesthetic is deliberately GROUNDED — clean, well-built Ohio yards a normal
+// homeowner could picture affording: paver patios, retaining walls, ponds, lush
+// green lawns under mature hardwoods. Classic and a little rustic, never desert-
+// modern. A per-image `variant` rotates lighting / angle / project / setting so
+// the feed looks like a real portfolio, not the same photo over and over.
 const IMG_LIGHTING = [
-  'soft natural daylight', 'bright clear midday light', 'warm late-afternoon light',
-  'calm overcast, evenly diffused light', 'early blue-hour dusk with subtle built-in pool lighting',
+  'warm golden-hour light', 'soft natural daylight', 'bright clear midday light',
+  'calm overcast, evenly diffused Midwest light', 'early blue-hour dusk with warm landscape lighting',
 ];
 const IMG_ANGLE = [
   'a natural eye-level wide shot', 'a slightly elevated three-quarter view',
-  'a low angle looking across the water', 'a clean, straight-on symmetrical composition',
+  'a low angle looking across the lawn', 'a clean, straight-on symmetrical composition',
 ];
-const IMG_POOL = [
-  'a clean modern rectangular pool', 'a simple contemporary L-shaped pool',
-  'a modern pool with a raised spa and a smooth spillway', 'a modern freeform pool with restrained, clean lines',
-  'a compact modern plunge pool', 'a modern pool with a small tanning ledge',
+const IMG_PROJECT = [
+  'a clean paver patio with a natural stone fire pit', 'a tiered retaining wall of stacked block with fresh planting beds',
+  'a backyard pond with a small waterfall and natural boulder edging', 'a paver walkway curving through a lush green lawn',
+  'a timber-and-stone pergola over a paver patio', 'a neatly graded lawn with fresh mulched beds and mature shade trees',
 ];
 const IMG_SETTING = [
-  'a tidy modern suburban backyard with a small lawn and simple planters',
-  'a contemporary backyard with large-format concrete pavers and low, modern planting',
-  'a modern backyard with warm wood-look decking and a few potted plants',
-  'a clean modern patio with simple pavers, neat greenery, and a covered seating area',
+  'a tidy rural-Ohio backyard with a big green lawn and mature hardwood trees',
+  'a small-town backyard bordered by split-rail fencing and rolling countryside beyond',
+  'a farmhouse-style backyard with a barn or outbuilding softly out of focus in the distance',
+  'a well-kept suburban Ohio backyard with neat planting beds and tall shade trees',
 ];
 function pick<T>(arr: T[], n: number): T { return arr[Math.abs(Math.floor(n)) % arr.length]; }
 
 function buildSocialImagePrompt(scene: string, opts: { format: PostFormat; people?: boolean; before?: boolean; variant?: number }): string {
-  const subject = (scene || '').trim() || 'a clean modern backyard swimming pool';
+  const subject = (scene || '').trim() || 'a well-built backyard paver patio and landscaped lawn';
   const v = opts.variant ?? 0;
 
   // The BEFORE shot of a transformation: honest and dated, not aspirational.
   if (opts.before) {
     return [
-      `Realistic, honest photograph of a dated, tired suburban backyard BEFORE a remodel. Subject: ${subject}.`,
-      `Details: aging plain concrete or worn cool-deck, faded or stained pool plaster (or a plain empty yard), sparse tired landscaping, flat mid-day light. Believable, like a real contractor's "before" photo — ordinary and a little dull, but sharp and well-framed from a standing eye-level angle.`,
-      `Photorealistic, natural color, no AI/CGI look (no warped tile, no melted edges). No people. No text, words, watermark, logos, or signage. Keep the lower-right corner visually calm.`,
+      `Realistic, honest photograph of a tired, neglected Ohio backyard BEFORE a landscaping project. Subject: ${subject}.`,
+      `Details: patchy muddy lawn, overgrown weedy beds, a cracked or bare concrete slab (or a plain empty rutted yard), sparse tired landscaping, flat mid-day light. Believable, like a real contractor's "before" photo — ordinary and a little dull, but sharp and well-framed from a standing eye-level angle.`,
+      `Photorealistic, natural color, no AI/CGI look (no warped edges, no melted textures). No people. No text, words, watermark, logos, or signage. Keep the lower-right corner visually calm.`,
     ].join(' ');
   }
 
@@ -363,20 +365,20 @@ function buildSocialImagePrompt(scene: string, opts: { format: PostFormat; peopl
     ? 'A real person or two enjoying the space is welcome and adds authenticity — natural, candid, everyday, not stock-posed.'
     : 'No people.';
   const afterLine = opts.format === 'before_after'
-    ? 'Show the finished remodel (the "after") — a clean, modern, genuinely nicer upgrade that still looks realistic and attainable, NOT a fantasy resort. '
+    ? 'Show the finished project (the "after") — a clean, well-built, genuinely nicer upgrade that still looks realistic and attainable, NOT a fantasy resort. '
     : '';
   return [
-    `Realistic, natural photograph for a modern residential pool builder. Subject: ${subject}.`,
-    `${afterLine}Scene: ${pick(IMG_POOL, v)} in ${pick(IMG_SETTING, v + 1)}. Contemporary, tasteful and believable — an attainable backyard of a nice everyday home, NOT an over-the-top mansion, resort, or desert showpiece. Clean modern lines, simple honest materials, realistic scale, clear natural-blue water. Keep it grounded, not flashy — minimal fire features, no infinity edges unless subtle. Exactly ONE pool and, if a spa is shown, exactly ONE spa — a real residential backyard never has two spas or two spillways, so never duplicate the spa, the raised spillway, or any other single backyard feature.`,
-    `Light & framing: ${pick(IMG_LIGHTING, v)}, ${pick(IMG_ANGLE, v)}. Photorealistic, sharp, true-to-life color (not over-saturated), natural depth of field. ${people}`,
-    `Avoid an AI/CGI look: no warped or melting tile or coping, no impossible reflections, no duplicated or distorted steps and railings, no plastic sheen, no fantasy over-styling, no duplicated pools or spas.`,
+    `Realistic, natural photograph for a landscaping and hardscaping contractor in rural Ohio. Subject: ${subject}.`,
+    `${afterLine}Scene: ${pick(IMG_PROJECT, v)} in ${pick(IMG_SETTING, v + 1)}. Classic, tasteful and believable — an attainable backyard of a nice everyday Midwest home, NOT an over-the-top mansion or resort showpiece. Lush green lawn, mature hardwood trees, honest materials (pavers, natural stone, timber, mulch), realistic scale, rolling Holmes County countryside feel. Keep it grounded, not flashy. ABSOLUTELY NO desert scenery: no saguaro or any cactus, no stucco walls, no palm trees, no turquoise swimming pools — this is green, four-season Ohio. Never duplicate a single backyard feature (one fire pit, one pond, one pergola).`,
+    `Light & framing: ${pick(IMG_LIGHTING, v)}, ${pick(IMG_ANGLE, v)}. Warm, golden-hour-leaning photography where the light allows. Photorealistic, sharp, true-to-life color (not over-saturated), natural depth of field. ${people}`,
+    `Avoid an AI/CGI look: no warped or melting pavers or stone joints, no impossible reflections, no duplicated or distorted steps and railings, no plastic sheen, no fantasy over-styling, no duplicated features.`,
     // The real brand logo is composited onto the bottom-right AFTER generation —
     // the AI must not draw text/logos itself, and should keep that corner calm.
     `No text, no words, no watermark, no logos, no signage. Keep the lower-right corner of the frame visually calm and uncluttered (open water, sky, or decking — no busy detail there).`,
   ].join(' ');
 }
 
-// ── Compose the readable Approvals body (what Arthur reviews / posts) ───────────
+// ── Compose the readable Approvals body (what Joe reviews / posts) ──────────────
 // captionOverride swaps in the alternate caption while keeping the reel shot list /
 // carousel slide plan intact (used to build the stored alt_body version).
 function composeBody(d: PostDraft, format: PostFormat, channel: GenChannel, captionOverride?: string): string {
@@ -469,8 +471,8 @@ async function generateImagesFor(
     // A playable animatic: the cover carries the hook, then one frame PER scene
     // with that scene's on-screen text baked in. The UI steps through these
     // frames on a timer so the reel actually "plays" as a motion preview before
-    // Arthur films the real thing.
-    const revealRe = /reveal|first_fill|reaction|swim|family|kids/i;
+    // Joe films the real thing.
+    const revealRe = /reveal|first_fill|reaction|walkthrough|family|kids/i;
     await gen(d.coverPrompt || d.imagePrompt || d.title, revealRe.test(d.title), 0, { headline: d.hook });
     const scenes = (d.reel?.scenes || []).filter((s) => s.visual || s.onScreenText).slice(0, 4);
     for (let i = 0; i < scenes.length; i++) {
@@ -573,7 +575,7 @@ const OFFER_PLAYS = ['free_consult_offer', 'financing_offer', 'seasonal_booking'
 /** Generate a strategic batch — a real content mix built to bring leads, not
  *  just fill the calendar. Every full batch is GUARANTEED to lead with 2 reels
  *  (the highest-reach, highest-DM format), a full educational carousel, and a
- *  before/after transformation — the exact mix the winning AZ pool-builder
+ *  before/after transformation — the exact mix the winning local-contractor
  *  accounts run — then rounds out with the rotation. */
 export async function generateBatch(count = 5, channel?: GenChannel): Promise<GeneratedPost[]> {
   const n = Math.max(1, Math.min(count, 12));
@@ -612,15 +614,15 @@ export function publicBaseFrom(reqOrigin?: string): string {
   const env = (process.env.PUBLIC_BASE_URL || '').replace(/\/+$/, '');
   if (env) return env;
   if (reqOrigin) return reqOrigin.replace(/\/+$/, '');
-  return 'https://arthur-arlo.fly.dev';
+  return 'https://www.totallyoutdoorsllc.com';
 }
 
 // ── Publish-time caption prep ───────────────────────────────────────────────────
-// Stored bodies are Arthur-facing working documents (shot lists, slide plans,
+// Stored bodies are Joe-facing working documents (shot lists, slide plans,
 // "— CAPTION —" markers). What actually posts is only the caption section, and
 // every website link in it is forced to the Contact Us page — the one link the
 // business sends people to. Deterministic here, whatever the model wrote.
-const SITE_LINK_RE = /https?:\/\/(?:www\.)?aquaticpoolaz\.com[^\s)\]"']*|(?<![\w@.])(?:www\.)?aquaticpoolaz\.com(?:\/[^\s)\]"']*)?/gi;
+const SITE_LINK_RE = /https?:\/\/(?:www\.)?totallyoutdoorsllc\.com[^\s)\]"']*|(?<![\w@.])(?:www\.)?totallyoutdoorsllc\.com(?:\/[^\s)\]"']*)?/gi;
 
 export function prepareCaptionForPublish(body: string): string {
   let text = body;
@@ -632,7 +634,7 @@ export function prepareCaptionForPublish(body: string): string {
 
   const contact = contactPageUrl();
   // Any site link the copy contains becomes the contact page (but leave email
-  // addresses like info@aquaticpoolaz.com alone — the regex excludes @/word
+  // addresses like totallyoutdoors@gmail.com alone — the regex excludes @/word
   // characters right before the bare domain).
   text = text.replace(SITE_LINK_RE, contact);
   // No link at all → add the contact line so every post leads somewhere.
@@ -641,7 +643,7 @@ export function prepareCaptionForPublish(body: string): string {
     const lines = text.split('\n');
     let tagStart = lines.length;
     while (tagStart > 0 && (lines[tagStart - 1].trim() === '' || /^\s*#[\w#\s]*$/.test(lines[tagStart - 1]))) tagStart--;
-    lines.splice(tagStart, 0, '', `Book your free consultation: ${contact}`);
+    lines.splice(tagStart, 0, '', `Book your free estimate: ${contact}`);
     text = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
   }
   return text;
@@ -724,7 +726,7 @@ export async function publishRalphPost(id: number, reqOrigin?: string): Promise<
   return { ok: true, id, channel: row.channel, url: result.url };
 }
 
-/** How many drafts are currently awaiting Arthur's approval. */
+/** How many drafts are currently awaiting Joe's approval. */
 export function pendingDraftCount(): number {
   return (getDb().prepare("SELECT COUNT(*) c FROM ralph_content WHERE status = 'draft'").get() as { c: number }).c;
 }
