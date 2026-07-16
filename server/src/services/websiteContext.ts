@@ -7,7 +7,7 @@ const TAG = '[SEO Agent]';
 async function fetchPageHtml(url: string): Promise<string | null> {
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AquaticSEOBot/1.0)' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; TotallyOutdoorsSEOBot/1.0)' },
       signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) return null;
@@ -113,7 +113,7 @@ export async function analyzeAndStoreBrandBrief(): Promise<string> {
   if (!hasGeminiKey()) return raw.slice(0, 12000);
 
   const pages = getExistingSitePages();
-  const prompt = `Analyze this Aquatic Pool and Spa website and extract a DESIGN-TOKEN guide so new
+  const prompt = `Analyze this Totally Outdoors LLC website and extract a DESIGN-TOKEN guide so new
 pages feel on-brand while using their OWN clean layout (we do NOT clone the homepage).
 
 PAGES: ${pages.slice(0, 40).join(', ')}
@@ -132,7 +132,7 @@ NOT be copied onto new pages.`;
 
   try {
     const result = await geminiSeoGenerate(prompt, {
-      system: 'Front-end lead for Aquatic Pool and Spa. Report design tokens (colors, fonts, class names, spacing, voice) only — never structural header/nav/footer markup.',
+      system: 'Front-end lead for Totally Outdoors LLC. Report design tokens (colors, fonts, class names, spacing, voice) only — never structural header/nav/footer markup.',
       maxTokens: 4096,
       useGoogleSearch: false,
     });

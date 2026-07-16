@@ -9,7 +9,7 @@
 import { getDb } from '../db/schema';
 
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
-const UA = 'AquaticOS-CRM/1.0 (aquaticpoolaz.com)';
+const UA = 'TotallyOutdoorsCRM/1.0 (totallyoutdoorsllc.com)';
 const MAX_PER_SWEEP = 3;
 
 interface GeoRow { id: number; address: string | null; lat: number | null; lng: number | null; geocoded_addr: string | null }
@@ -17,8 +17,8 @@ interface GeoRow { id: number; address: string | null; lat: number | null; lng: 
 async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   const q = address.trim();
   if (!q) return null;
-  // Bias to Arizona — every job is in the Phoenix metro area.
-  const url = `${NOMINATIM}?format=json&limit=1&countrycodes=us&q=${encodeURIComponent(/\baz\b|arizona/i.test(q) ? q : `${q}, Arizona`)}`;
+  // Bias to Ohio — every job is in the Millersburg / Holmes County area.
+  const url = `${NOMINATIM}?format=json&limit=1&countrycodes=us&q=${encodeURIComponent(/\boh\b|ohio/i.test(q) ? q : `${q}, Ohio`)}`;
   const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
   if (!res.ok) return null;
   const data = await res.json() as { lat?: string; lon?: string }[];

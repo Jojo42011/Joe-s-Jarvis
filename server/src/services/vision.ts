@@ -20,11 +20,11 @@ export async function analyzeImage(image: string, prompt?: string): Promise<stri
   const client = new OpenAI({ apiKey });
 
   const ask = prompt?.trim() ||
-    "Look at this image for Arthur. Describe what's relevant to his pool business — job-site conditions, damage, materials, measurements, equipment, or any document/text in it. Be concise and useful; if it's a document, pull the key details.";
+    "Look at this image for Joe. Describe what's relevant to his landscaping, hardscaping, and excavating business — job-site conditions, damage, materials, measurements, equipment, or any document/text in it. Be concise and useful; if it's a document, pull the key details.";
 
   const resp = await client.responses.create({
     model: ARLO_MODEL,
-    instructions: `${ARLO_SYSTEM_PROMPT}\n\nArthur just shared an image with you. ${ask}`,
+    instructions: `${ARLO_SYSTEM_PROMPT}\n\nJoe just shared an image with you. ${ask}`,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     input: [{ role: 'user', content: [
       { type: 'input_text', text: ask },
@@ -34,7 +34,7 @@ export async function analyzeImage(image: string, prompt?: string): Promise<stri
 
   const text = resp.output_text || '';
   if (text.trim()) {
-    insertEpisode(`Arthur shared an image. Arlo saw: ${text.slice(0, 280)}`, undefined, 'neutral', undefined);
+    insertEpisode(`Joe shared an image. Arlo saw: ${text.slice(0, 280)}`, undefined, 'neutral', undefined);
     broadcast({ type: 'memory_updated' });
   }
   return text;
@@ -47,9 +47,9 @@ export async function ingestDocument(text: string, filename?: string, prompt?: s
   if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
   const client = new OpenAI({ apiKey });
 
-  const sys = `You are Arlo, Arthur Garcia's right hand. Read this document${filename ? ` ("${filename}")` : ''} and return ONLY JSON:
-{"summary":"2-4 sentence plain summary for Arthur","facts":[{"content":"a durable fact worth remembering","importance":1-10}]}
-Pull anything Arthur would want remembered — names, numbers, dates, terms, obligations. If nothing durable, facts:[].`;
+  const sys = `You are Arlo, Joe's right hand. Read this document${filename ? ` ("${filename}")` : ''} and return ONLY JSON:
+{"summary":"2-4 sentence plain summary for Joe","facts":[{"content":"a durable fact worth remembering","importance":1-10}]}
+Pull anything Joe would want remembered — names, numbers, dates, terms, obligations. If nothing durable, facts:[].`;
 
   const resp = await client.responses.create({
     model: ARLO_MODEL,
@@ -69,7 +69,7 @@ Pull anything Arthur would want remembered — names, numbers, dates, terms, obl
     insertFact(content, 'document', filename || 'document', 1.0, importance, vec ? vectorToBuffer(vec) : null);
     stored++;
   }
-  if (summary) insertEpisode(`Arthur shared a document${filename ? ` (${filename})` : ''}: ${summary.slice(0, 260)}`, undefined, 'neutral', undefined);
+  if (summary) insertEpisode(`Joe shared a document${filename ? ` (${filename})` : ''}: ${summary.slice(0, 260)}`, undefined, 'neutral', undefined);
   if (stored || summary) broadcast({ type: 'memory_updated' });
 
   return { summary, stored };

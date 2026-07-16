@@ -1,10 +1,10 @@
 /**
  * Google (Gmail + Calendar) configuration.
  *
- * One OAuth client (a Google Cloud "Web application" credential) authorizes all
- * three Aquatic mailboxes individually. Tokens are stored per-account in the DB,
- * so account 2 and 3 are just extra trips through the consent screen — no code
- * changes. Everything degrades gracefully when the secrets are absent.
+ * One OAuth client (a Google Cloud "Web application" credential) authorizes each
+ * Totally Outdoors mailbox individually. Tokens are stored per-account in the DB,
+ * so adding another mailbox later is just an extra trip through the consent
+ * screen — no code changes. Everything degrades gracefully when the secrets are absent.
  */
 
 export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
@@ -34,11 +34,9 @@ export interface KnownAccount {
   label: string;
 }
 
-/** The three mailboxes Arlo watches, kept separate so he can speak per-inbox. */
+/** The mailboxes Arlo watches, kept separate so he can speak per-inbox. Add more entries as needed. */
 export const GOOGLE_ACCOUNTS: KnownAccount[] = [
-  { email: 'arthur.garcia@aquaticpoolaz.com', label: 'Arthur (Primary)' },
-  { email: 'info@aquaticpoolaz.com', label: 'Info / New Leads' },
-  { email: 'support@aquaticpoolaz.com', label: 'Support' },
+  { email: 'totallyoutdoors@gmail.com', label: 'Office / New Leads' },
 ];
 
 export function labelForEmail(email: string): string {

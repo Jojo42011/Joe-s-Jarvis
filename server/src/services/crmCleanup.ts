@@ -21,10 +21,10 @@ export type CallCategory = (typeof CALL_CATEGORIES)[number];
 // cleanup sweep classify identically.
 export const CLASSIFY_RULES =
   '"category" must be exactly one of:\n' +
-  '- "prospect": a homeowner (or their representative) interested in pool/backyard work — new build, remodel, repair quote, pricing, booking an estimate. When unsure, choose prospect.\n' +
+  '- "prospect": a homeowner or property owner (or their representative) interested in outdoor work — landscaping, hardscaping, a patio or retaining wall, lawn care, excavating, drainage, a pond, snow plowing, pricing, or booking an estimate. When unsure, choose prospect.\n' +
   '- "client": an existing client, or someone calling about a project already underway.\n' +
   '- "vendor": a subcontractor, supplier, distributor, or delivery about materials/work FOR the business.\n' +
-  '- "spam": telemarketing/robocalls — loans, financing offers TO the business, tax relief, credit cards, insurance, marketing/SEO/web-design pitches, donations, surveys, anything unrelated to buying pool work.\n' +
+  '- "spam": telemarketing/robocalls — loans, financing offers TO the business, tax relief, credit cards, insurance, marketing/SEO/web-design pitches, donations, surveys, anything unrelated to buying landscaping, hardscaping, excavating, lawn care, or snow plowing work.\n' +
   '- "other": misdials, job applicants, no-info hangups, or calls where the "caller" is just the business\'s own assistant with no real person captured.';
 
 const CLEANUP_FLAG = 'crm_junk_cleanup_v1';
@@ -42,7 +42,7 @@ async function classifyBatch(client: OpenAI, batch: CandidateLead[]): Promise<Ma
       {
         role: 'system',
         content:
-          'You classify phone-call records for Aquatic Pool & Spa, a custom pool builder in Phoenix. ' +
+          'You classify phone-call records for Totally Outdoors LLC, a landscaping, hardscaping, and excavating company in Millersburg, Ohio. ' +
           'For EACH record, assign a category.\n' + CLASSIFY_RULES + '\n' +
           'Return JSON only: {"classifications": [{"id": <number>, "category": "<category>"}, ...]} — one entry per input record.',
       },

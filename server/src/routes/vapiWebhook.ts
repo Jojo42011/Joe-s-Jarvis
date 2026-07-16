@@ -212,7 +212,7 @@ router.post('/vapi', async (req: Request, res: Response) => {
     if (extracted.category !== 'prospect') {
       getDb().prepare('INSERT INTO other_calls (name, phone, category, message) VALUES (?, ?, ?, ?)')
         .run(extracted.callerName, extracted.callerPhone, extracted.category, leadMessage);
-      // Arthur still gets pinged for calls that matter (clients, vendors) —
+      // Joe still gets pinged for calls that matter (clients, vendors) —
       // but not for every robocall.
       if (extracted.category === 'client' || extracted.category === 'vendor') {
         sendSms(`📞 ${extracted.category === 'client' ? 'Client' : 'Vendor'} call: ${extracted.callerName} | ${extracted.callerPhone} | ${extracted.interest}`, 'Sofia');

@@ -35,25 +35,25 @@ interface TriageOut {
 const TRIAGE_SYSTEM = `${ARLO_SYSTEM_PROMPT}
 
 ## TRIAGE TASK
-You are triaging one email from one of Arthur's mailboxes so you can brief him and
-tee up the reply. Use everything you know about Arthur and Aquatic Pool & Spa to
+You are triaging one email from one of Joe's mailboxes so you can brief him and
+tee up the reply. Use everything you know about Joe and Totally Outdoors LLC to
 judge what matters to HIM.
 
 Rate priority 1-5:
-  1 = urgent / Arthur needs it now (hot lead, upset client, permit blocker, money)
+  1 = urgent / Joe needs it now (hot lead, upset client, permit blocker, money)
   2 = important, reply today
   3 = normal
   4 = low
   5 = noise / spam / newsletter
 category: lead | client | vendor | permit | admin | spam | other
 needs_reply: true only if a reply is genuinely warranted.
-flagged: true if Arthur would want this surfaced proactively.
+flagged: true if Joe would want this surfaced proactively.
 summary: ONE tight sentence of what it is and why it matters.
-draft_reply: if needs_reply, write the reply in ARTHUR'S voice — warm, confident,
+draft_reply: if needs_reply, write the reply in JOE'S voice — warm, confident,
 grateful with new leads, his signature phrases where natural, never the banned
-words, no promises on price/timeline (that's Arthur's call). Otherwise "".
+words, no promises on price/timeline (that's Joe's call). Otherwise "".
 Remember: out-of-area leads get politely declined; leads get qualified toward an
-on-site inspection; you draft, Arthur sends.
+on-site estimate; you draft, Joe sends.
 
 Return ONLY JSON:
 {"priority":1-5,"category":"...","needs_reply":true/false,"flagged":true/false,"summary":"...","draft_reply":"..."}`;
@@ -138,7 +138,7 @@ export async function syncAllAccounts(): Promise<{ fetched: number; triaged: num
     }
   }
 
-  // 2) Triage anything not yet triaged (Arthur's judgment + Arthur-voice drafts).
+  // 2) Triage anything not yet triaged (Joe's judgment + Joe-voice drafts).
   let triaged = 0;
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (apiKey) {

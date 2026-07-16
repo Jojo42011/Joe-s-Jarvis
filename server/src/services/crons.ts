@@ -14,9 +14,9 @@ import { isZernioChannel, hasZernio } from './zernio';
 
 const LAST_BRIEFED_KEY = 'last_briefed_date';
 
-function getArizonaDateString(): string {
+function getOhioDateString(): string {
   return new Date().toLocaleDateString('en-US', {
-    timeZone: 'America/Phoenix',
+    timeZone: 'America/New_York',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -26,7 +26,7 @@ function getArizonaDateString(): string {
 export function getTimeAwareGreeting(): string {
   const hour = parseInt(
     new Date().toLocaleString('en-US', {
-      timeZone: 'America/Phoenix',
+      timeZone: 'America/New_York',
       hour: 'numeric',
       hour12: false,
     }),
@@ -38,7 +38,7 @@ export function getTimeAwareGreeting(): string {
 }
 
 export async function handleActivation(): Promise<string> {
-  const today = getArizonaDateString();
+  const today = getOhioDateString();
   const lastBriefed = getSystemState(LAST_BRIEFED_KEY);
 
   if (today !== lastBriefed) {
@@ -67,7 +67,7 @@ async function generateMorningBrief(): Promise<string> {
       "SELECT COUNT(*) AS c FROM seo_content WHERE committed = 0 AND status IN ('pending_review','ready')",
     ).get() as { c: number };
     if (pending?.c > 0) {
-      seoQueueNote = `\n\nLauren has ${pending.c} page(s) generated and waiting on Arthur's approval in the Atlas queue.`;
+      seoQueueNote = `\n\nLauren has ${pending.c} page(s) generated and waiting on Joe's approval in the Atlas queue.`;
     }
   } catch {
     // non-critical — brief still works without this note
@@ -77,7 +77,7 @@ async function generateMorningBrief(): Promise<string> {
     const response = await client.messages.create({
       model: ANTHROPIC_FAST_MODEL,
       max_tokens: 256,
-      system: `${ARLO_SYSTEM_PROMPT}\n\n## MEMORY\n${packet.text}${seoQueueNote}\n\nGenerate a morning brief for Arthur. Max 4 sentences. Most urgent first. Open with a time-aware greeting. Mention the SEO approval queue if noted above. If nothing new, say all clear and ask what he needs.`,
+      system: `${ARLO_SYSTEM_PROMPT}\n\n## MEMORY\n${packet.text}${seoQueueNote}\n\nGenerate a morning brief for Joe. Max 4 sentences. Most urgent first. Open with a time-aware greeting. Mention the SEO approval queue if noted above. If nothing new, say all clear and ask what he needs.`,
       messages: [{ role: 'user', content: 'Morning brief.' }],
     });
     const block = response.content.find((b) => b.type === 'text');
@@ -137,7 +137,7 @@ export function scheduleWeeklySynthesis(): void {
       const response = await client.messages.create({
         model: ANTHROPIC_FAST_MODEL,
         max_tokens: 1024,
-        system: 'Synthesize weekly patterns, risks, and recommendations for Arthur Garcia. Be concise.',
+        system: 'Synthesize weekly patterns, risks, and recommendations for Joe. Be concise.',
         messages: [{ role: 'user', content: context }],
       });
       const block = response.content.find((b) => b.type === 'text');
@@ -221,7 +221,7 @@ export function scheduleSeoPublish(): void {
 // First pass 10 min after boot (once seed/conversation exists), then every 12h.
 const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
-// Inbox + calendar monitor: pulls all three mailboxes, triages with Arthur's
+// Inbox + calendar monitor: pulls the connected mailboxes, triages with Joe's
 // judgment, drafts replies, and refreshes the calendar cache — on a timely loop.
 const INBOX_SYNC_MS = parseInt(process.env.GOOGLE_SYNC_MS || String(15 * 60 * 1000), 10);
 
@@ -232,7 +232,7 @@ export function scheduleInboxSync(): void {
   // First sweep 90s after boot (gives OAuth/secrets time), then on interval.
   setTimeout(run, 90 * 1000);
   setInterval(run, INBOX_SYNC_MS);
-  console.log(`[Inbox] Monitor scheduled — every ${Math.round(INBOX_SYNC_MS / 60000)} min across the three mailboxes`);
+  console.log(`[Inbox] Monitor scheduled — every ${Math.round(INBOX_SYNC_MS / 60000)} min across the connected mailboxes`);
 }
 
 export function scheduleReflection(): void {

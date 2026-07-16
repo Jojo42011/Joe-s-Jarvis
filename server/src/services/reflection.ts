@@ -10,7 +10,7 @@ import { broadcast } from '../ws/hub';
  * The Reflection Engine — the difference between a memory pile and a mind.
  *
  * Periodically Arlo reads his recent raw memories (facts + episodes) and asks
- * himself: "What higher-level truths about Arthur and the business do these
+ * himself: "What higher-level truths about Joe and the business do these
  * imply?" Those inferences are written back as first-class memories
  * (category 'reflection'), so future recall surfaces UNDERSTANDING, not just
  * observations — and reflections can themselves be reflected upon over time.
@@ -25,10 +25,10 @@ interface ReflectionOut {
   reflections?: { insight: string; importance?: number; keywords?: string }[];
 }
 
-const REFLECTION_PROMPT = `You are the reflective layer of Arthur Garcia's digital twin (Arlo), operator of
-Aquatic Pool & Spa in Phoenix, Arizona.
+const REFLECTION_PROMPT = `You are the reflective layer of Joe's digital twin (Arlo), owner of
+Totally Outdoors LLC, a landscaping, hardscaping, and excavating company in Millersburg, Ohio.
 
-Below are recent OBSERVATIONS (facts) and EPISODES from Arthur's world. Step back
+Below are recent OBSERVATIONS (facts) and EPISODES from Joe's world. Step back
 and infer higher-level insights: patterns in how he decides, recurring risks,
 what clients/subs/vendors reliably do, seasonal or operational tendencies, and
 implications he may not have stated outright. Prefer non-obvious synthesis over
