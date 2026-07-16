@@ -64,7 +64,7 @@ function serviceNode(p: BusinessProfile, ctx: SchemaContext): Record<string, unk
   return {
     '@type': 'Service',
     '@id': `${ctx.pageUrl}#service`,
-    serviceType: ctx.keyword || 'Custom Pool Construction',
+    serviceType: ctx.keyword || 'Landscaping',
     name: ctx.title,
     description: ctx.description,
     provider: { '@id': `${p.url}/#business` },

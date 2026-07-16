@@ -3,12 +3,12 @@ import { getDb } from '../db/schema';
 const TAG = '[SEO Agent]';
 
 export const SEED_COMPETITORS: { domain: string; title: string }[] = [
-  { domain: 'shastapools.com', title: 'Shasta Pools' },
-  { domain: 'codyspools.com', title: 'Cody Pools' },
-  { domain: 'presidentialpools.com', title: 'Presidential Pools' },
-  { domain: 'calpool.com', title: 'California Pools & Landscape' },
-  { domain: 'lakukypools.com', title: 'L.A. Kukuk Pools' },
-  { domain: 'precisepoolsaz.com', title: 'Precise Pools' },
+  { domain: 'holmeslandscaping.com', title: 'Holmes Landscaping' },
+  { domain: 'buckeyelandscapes.com', title: 'Buckeye Landscapes' },
+  { domain: 'countrysidelawnandlandscape.com', title: 'Countryside Lawn & Landscape' },
+  { domain: 'hillsidehardscapes.com', title: 'Hillside Hardscapes' },
+  { domain: 'greenacreslawncareohio.com', title: 'Green Acres Lawn Care' },
+  { domain: 'valleyviewexcavating.com', title: 'Valley View Excavating' },
 ];
 
 export function normalizeDomain(input: string): string {
@@ -38,7 +38,7 @@ export function seedCompetitorsIfEmpty(): number {
   if (count > 0) return count;
 
   for (const c of SEED_COMPETITORS) storeCompetitor(c.domain, c.title);
-  console.log(TAG, `Seeded ${SEED_COMPETITORS.length} Phoenix pool builder competitors`);
+  console.log(TAG, `Seeded ${SEED_COMPETITORS.length} Holmes County landscaping competitors`);
   return SEED_COMPETITORS.length;
 }
 
@@ -54,7 +54,7 @@ export function storeKeywordsFromDomains(
   );
   let n = 0;
   domains.slice(0, 10).forEach((domain, i) => {
-    const keyword = queries[i % queries.length] ?? 'pool builder phoenix az';
+    const keyword = queries[i % queries.length] ?? 'landscaping millersburg ohio';
     stmt.run(keyword, domain, 'top 10', 'unknown', 0.7 - i * 0.03);
     n++;
   });

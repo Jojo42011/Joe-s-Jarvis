@@ -32,9 +32,9 @@ export function buildRelatedBlock(opts: { type: string; citySlug?: string }): st
   if (opts.type === 'city_page' && opts.citySlug) {
     inner.push(`<a href="/service-areas">All ${p.stateFull} Service Areas</a>`);
     for (const s of siblingCities(opts.citySlug, 3)) {
-      inner.push(`<a href="${cityToUrl(s.slug)}">Pool Builder in ${s.city}</a>`);
+      inner.push(`<a href="${cityToUrl(s.slug)}">Landscaping in ${s.city}</a>`);
     }
-    inner.push(`<a href="/contact">Free Design Consultation</a>`);
+    inner.push(`<a href="/contact">Free Estimate</a>`);
   } else {
     inner.push(`<a href="/">${p.name}</a>`);
     inner.push(`<a href="/service-areas">Service Areas</a>`);

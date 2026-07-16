@@ -1,19 +1,19 @@
 const TAG = '[SEO Agent]';
 
-const AZ_CITIES = [
-  'Paradise Valley', 'Scottsdale', 'Chandler', 'Phoenix', 'Gilbert', 'Mesa', 'Tempe',
-  'Glendale', 'Peoria', 'Goodyear', 'Buckeye', 'Surprise', 'Sun City', 'Avondale', 'Ahwatukee',
+const OH_CITIES = [
+  'Millersburg', 'Berlin', 'Walnut Creek', 'Sugarcreek', 'Mount Hope', 'Charm', 'Winesburg',
+  'Killbuck', 'Fredericksburg', 'Apple Creek', 'Wooster', 'Dover', 'New Philadelphia', 'Loudonville', 'Holmesville',
 ];
 
 export function extractCitySlug(keyword?: string, task?: string): string {
   const hay = `${task || ''} ${keyword || ''}`;
-  const sorted = [...AZ_CITIES].sort((a, b) => b.length - a.length);
+  const sorted = [...OH_CITIES].sort((a, b) => b.length - a.length);
   for (const city of sorted) {
     if (hay.toLowerCase().includes(city.toLowerCase())) {
       return city.toLowerCase().replace(/\s+/g, '-');
     }
   }
-  return 'phoenix';
+  return 'millersburg';
 }
 
 function escapeHtml(s: string): string {

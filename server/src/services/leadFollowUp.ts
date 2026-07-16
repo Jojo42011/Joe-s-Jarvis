@@ -24,7 +24,7 @@ interface StaleLead {
 
 function followUpMessage(name: string): string {
   const first = name.trim().split(/\s+/)[0] || name.trim();
-  return `Hi ${first}, just checking in from Totally Outdoors LLC — still want to talk through your pool project? Reply here or call us anytime.`;
+  return `Hi ${first}, just checking in from Totally Outdoors — still want to talk through your outdoor project? Reply here or call us anytime at 330-231-4080.`;
 }
 
 function isDue(lead: StaleLead): boolean {

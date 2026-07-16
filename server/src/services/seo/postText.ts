@@ -1,6 +1,6 @@
 // ─── Text overlays for Paulie's post imagery ────────────────────────────────────
-// The accounts that win local pool-builder Instagram (Shasta, Presidential,
-// Unique, Dolphin) bake bold copy straight onto their carousel slides, reel
+// The accounts that win local contractor Instagram bake bold copy
+// straight onto their carousel slides, reel
 // covers, and promo graphics — the image IS the hook. AI image models garble
 // rendered text, so the copy is composited server-side with sharp/SVG: crisp
 // headline + supporting line on a bottom scrim, plus an optional corner badge.
@@ -8,7 +8,7 @@
 // Two modes:
 //   • Standard (carousel slides / reel covers / before-after): headline + body.
 //   • Offer (big=true): a full promo graphic — punchy eyebrow, HUGE headline,
-//     subline, and ✓ benefit bullets, all oversized like a real pool-company ad.
+//     subline, and ✓ benefit bullets, all oversized like a real contractor ad.
 //
 // Layout contract (shared with brandLogo.ts): the brand logo occupies the
 // bottom-right ~26% of the frame, so text is left-aligned and the badge sits

@@ -43,7 +43,7 @@ export async function generateTtsPcm(text: string, previousText?: string): Promi
     throw new Error('ElevenLabs TTS not configured');
   }
 
-  // Niche-word respelling (gunite, travertine, ROC, AZ…) — audio path only;
+  // Niche-word respelling (trade terms, abbreviations…) — audio path only;
   // the displayed transcript keeps the real spelling. previous_text gets the
   // same treatment so cross-sentence context matches what was actually spoken.
   text = respellForTts(text);

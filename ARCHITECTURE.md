@@ -10,8 +10,8 @@
 ## 1. What this is
 
 **Joe-Arlo** is an "Aethon Intelligence" — an AI operations platform for a single
-business: **Totally Outdoors LLC**, a custom pool builder in the Phoenix Valley, AZ,
-owned by **Joe**. It is not one chatbot; it's a set of named AI "employees"
+business: **Totally Outdoors LLC**, a landscaping/hardscaping/excavating company in
+Millersburg, Ohio (Holmes County), owned by **Joe**. It is not one chatbot; it's a set of named AI "employees"
 sharing one backend and one SQLite brain:
 
 | Persona | Role | UI tab | Engine |
@@ -328,7 +328,7 @@ until social accounts are connected** (Layer 2).
 **Layer 1 — LIVE (lead-generating content engine).** `services/ralphContent.ts` is a
 social **strategist**, not a caption bot. It's grounded in what actually drives leads for
 high-ticket local home services on Instagram (2025 research): build-journey reels
-(~8:1 over finished-pool photos on saves/shares/DMs), reveal reels with real reactions,
+(~8:1 over finished-project photos on saves/shares/DMs), reveal reels with real reactions,
 educational/cost-breakdown carousels (highest-saved format), and a **keyword DM CTA** on
 every post (converts 5–15% vs ~1–3% for "link in bio").
   - **Content FORMATS** (`format` column: single | carousel | reel | before_after). The
@@ -391,7 +391,7 @@ Bearer $ZERNIO_API_KEY`), the connection layer to Joe's already-linked **Instagr
 to comment/DM a keyword; to turn that into real leads for Joe we watch the connected
 inbox and respond. Zernio exposes `/inbox/conversations`, `/comments` (reply), and
 `/inbox/messages` (send DM) on the same key. Planned: a keyword listener that auto-replies
-to "DESIGN/QUOTE/POOL" comments with a DM, captures the contact into `leads`, and pings
+to "DESIGN/QUOTE/PATIO" comments with a DM, captures the contact into `leads`, and pings
 Joe/Sofia. Also: follower-history/demographics charts and scheduled auto-posting.
 
 ---

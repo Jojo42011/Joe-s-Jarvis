@@ -13,7 +13,7 @@ function clean(s: string): string {
   return (s || '').replace(/\s+/g, ' ').trim();
 }
 
-const STOP_WORDS = new Set(['the', 'and', 'for', 'with', 'near', 'best', 'top', 'your', 'our', 'pool', 'pools']);
+const STOP_WORDS = new Set(['the', 'and', 'for', 'with', 'near', 'best', 'top', 'your', 'our', 'landscaping', 'landscaper']);
 
 /** Significant tokens of a keyword (drops stop/filler words, keeps the rest). */
 export function keywordTokens(keyword?: string): string[] {
@@ -39,15 +39,15 @@ function titleCaseWord(s: string): string {
 export function buildMetaTitle(opts: { type: string; keyword?: string; city?: string; task?: string }): string {
   const p = getBusinessProfile();
   const brand = p.name.replace(/ and /i, ' & ');
-  const kw = clean(opts.keyword || opts.task || 'Custom Pools');
+  const kw = clean(opts.keyword || opts.task || 'Landscaping');
 
   let core: string;
   if (opts.type === 'city_page' && opts.city) {
-    // Strip the city out of the keyword so we don't get "...Scottsdale in Scottsdale".
+    // Strip the city out of the keyword so we don't get "...Millersburg in Millersburg".
     const kwNoCity = clean(kw.replace(new RegExp(opts.city, 'ig'), ''));
-    const subject = kwNoCity && /pool|builder|spa|design|remodel|contractor/i.test(kwNoCity)
+    const subject = kwNoCity && /landscap|hardscap|patio|lawn|excavat|design|contractor|snow/i.test(kwNoCity)
       ? titleCaseWord(kwNoCity)
-      : 'Pool Builder';
+      : 'Landscaping';
     core = `${subject} in ${opts.city}, ${p.state}`;
   } else if (opts.type === 'blog') {
     core = titleCaseWord(kw);
@@ -66,17 +66,17 @@ export function buildMetaTitle(opts: { type: string; keyword?: string; city?: st
 /** Build an optimized meta description with keyword + local proof + CTA + phone. */
 export function buildMetaDescription(opts: { type: string; keyword?: string; city?: string; task?: string }): string {
   const p = getBusinessProfile();
-  const where = opts.city ? `${opts.city}, ${p.stateFull}` : `the Phoenix Valley`;
+  const where = opts.city ? `${opts.city}, ${p.stateFull}` : `Holmes County`;
   const proof = `${p.yearsExperience}+ years, ${p.projectsCompleted} projects completed`;
 
   let desc: string;
   if (opts.type === 'city_page') {
-    desc = `Luxury custom pool builder in ${where}. ${proof}, family owned. Free design consultation — call ${p.phone}.`;
+    desc = `Landscaping, hardscaping & excavating in ${where}. ${proof}, family owned. Free estimate — call ${p.phone}.`;
   } else if (opts.type === 'blog') {
-    const topic = clean(opts.task || opts.keyword || 'pool building');
+    const topic = clean(opts.task || opts.keyword || 'landscaping');
     desc = `${titleCaseWord(topic)} — expert guidance from ${p.name}. ${proof} across ${p.stateFull}. Call ${p.phone}.`;
   } else {
-    desc = `${p.name} — ${p.tagline}. ${proof}. Call ${p.phone} for a free consultation.`;
+    desc = `${p.name} — ${p.tagline}. ${proof}. Call ${p.phone} for a free estimate.`;
   }
 
   desc = clean(desc);

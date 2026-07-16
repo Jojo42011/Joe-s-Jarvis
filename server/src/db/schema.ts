@@ -341,7 +341,7 @@ export function initDb(): Database.Database {
     CREATE TABLE IF NOT EXISTS lead_payments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       lead_id INTEGER NOT NULL,
-      label TEXT,                          -- "Deposit", "Gunite draw", "Final"
+      label TEXT,                          -- "Deposit (50%)", "Final payment (50%)"
       amount_cents INTEGER NOT NULL DEFAULT 0,
       method TEXT,                         -- cash | check | card | financing | other
       status TEXT DEFAULT 'paid',          -- paid | pending

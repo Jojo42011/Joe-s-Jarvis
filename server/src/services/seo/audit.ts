@@ -156,19 +156,19 @@ export function auditPage(html: string, opts: AuditOptions = {}): SeoReport {
   // ── Local SEO signals (10) ──
   const hasPhone = bodyLower.includes(p.phoneDigits) || new RegExp(p.phone.replace(/[()\-.\s]/g, '[()\\-.\\s]*')).test(body);
   const hasCity = !!opts.city && bodyLower.includes(opts.city.toLowerCase());
-  const hasState = bodyLower.includes('arizona') || /\baz\b/i.test(body);
+  const hasState = bodyLower.includes('ohio') || /\boh\b/i.test(body);
   const hasServiceArea = /service area|serving|areas we serve|proudly serve/i.test(bodyLower);
   const hasNap = hasPhone && (hasCity || bodyLower.includes(p.city.toLowerCase()));
   let localPts = 0;
   if (hasPhone) localPts += 4; else issues.push({ level: 'error', msg: 'No phone number on page (local trust signal)' });
   if (hasCity || type !== 'city_page') localPts += 3; else issues.push({ level: 'warn', msg: 'Target city not mentioned in copy' });
-  if (hasState) localPts += 2; else issues.push({ level: 'warn', msg: 'State (Arizona/AZ) not referenced' });
+  if (hasState) localPts += 2; else issues.push({ level: 'warn', msg: 'State (Ohio/OH) not referenced' });
   if (hasServiceArea) localPts += 1;
   localPts = Math.min(10, localPts);
   dims.push({ label: 'Local signals', score: localPts, max: 10 });
 
   // ── E-E-A-T (10) ──
-  const experience = /\b\d+\+?\s*(years|pools)\b/i.test(body) || bodyLower.includes('we built') || bodyLower.includes('our team');
+  const experience = /\b\d+\+?\s*(years|projects)\b/i.test(body) || bodyLower.includes('we built') || bodyLower.includes('our team');
   const expertise = new RegExp(`${p.projectsCompleted.replace('+', '\\+?')}|licensed|certified|design`, 'i').test(body);
   const authority = /award|featured|review|rated|testimonial|reputation/i.test(bodyLower) || (getBusinessProfile().socials.length > 0);
   const trust = hasPhone && /family owned|licensed|insured|warranty|guarantee|free consultation/i.test(bodyLower);

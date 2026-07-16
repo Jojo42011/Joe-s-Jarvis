@@ -119,7 +119,7 @@ export const FUNCTION_TOOLS = [
   {
     type: 'function' as const,
     name: 'search_email',
-    description: "Search across all of Joe's mailboxes for a specific email by keyword (sender, subject, or content) — use when he asks about something older than the recent snapshot you're already given, e.g. 'did that vendor ever reply about the tile order'.",
+    description: "Search across all of Joe's mailboxes for a specific email by keyword (sender, subject, or content) — use when he asks about something older than the recent snapshot you're already given, e.g. 'did that vendor ever reply about the mulch order'.",
     parameters: {
       type: 'object',
       properties: {
