@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Sofia — Call Metrics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #F4F7F9;
+    --panel: #FFFFFF;
+    --card-2: #F8FAFB;
+    --crimson: #15A6BC;
+    --crimson-bright: #0E8194;
+    --text: #0E1B24;
+    --muted: #6B7C86;
+    --label: #9AA9B2;
+    --line: #E5EBEF;
+    --line-strong: #D3DDE3;
+    --green: #12B76A;
+    --danger: #E5484D;
+    --shadow-sm: 0 1px 2px rgba(14,27,36,0.06);
+    --shadow: 0 1px 3px rgba(14,27,36,0.07), 0 10px 26px -16px rgba(14,27,36,0.22);
+    --shadow-lg: 0 24px 60px -20px rgba(14,27,36,0.28);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  html, body { width: 100%; min-height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+  body {
+    overflow-x: hidden;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--bg);
+  }
+  #app { max-width: 1100px; margin: 0 auto; padding: 0 28px 80px; }
+  * { scrollbar-width: thin; scrollbar-color: #CBD5DB transparent; }
+
+  #topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px; border-bottom: 1px solid var(--line); margin-bottom: 40px;
+  }
+  .back {
+    display: flex; align-items: center; gap: 9px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--muted); text-decoration: none; transition: color 0.2s;
+    min-height: 44px; padding: 8px 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .back:hover { color: var(--crimson-bright); }
+  #clock { font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; color: var(--crimson-bright); }
+
+  #hero { margin-bottom: 30px; display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  #hero .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.42em; text-transform: uppercase; color: var(--crimson-bright); margin-bottom: 14px; }
+  #hero h1 { font-size: 40px; font-weight: 700; letter-spacing: -0.02em; }
+  #hero p { margin-top: 12px; color: var(--muted); font-size: 15px; max-width: 520px; }
+
+  .conn {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+    padding: 9px 14px; border-radius: 100px; border: 1px solid var(--line); color: var(--muted);
+    white-space: nowrap;
+  }
+  .conn .led { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .conn.live { color: var(--green); border-color: rgba(18,183,106,0.35); background: rgba(18,183,106,0.08); }
+  .conn.live .led { background: var(--green); box-shadow: 0 0 0 3px rgba(18,183,106,0.16); animation: blink 2s ease-in-out infinite; }
+  .conn.off { color: var(--danger); border-color: rgba(229,72,77,0.35); background: rgba(229,72,77,0.06); }
+  .conn.off .led { background: var(--danger); }
+  @keyframes blink { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+  #stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 16px; margin-bottom: 44px; }
+  .stat {
+    border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px;
+    background: var(--panel); box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s, transform 0.2s;
+  }
+  .stat:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+  .stat .k { font-family: var(--mono); font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--label); }
+  .stat .v { margin-top: 10px; font-size: 32px; font-weight: 700; letter-spacing: -0.02em; }
+  .stat .v.accent { color: var(--crimson-bright); }
+  .stat .v.good { color: var(--green); }
+  .stat .v.cost { color: var(--text); font-size: 26px; }
+
+  .section-label {
+    display: flex; align-items: center; gap: 14px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.34em; text-transform: uppercase; color: var(--label); margin-bottom: 20px;
+  }
+  .section-label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+  .call-list { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--panel); box-shadow: var(--shadow-sm); }
+
+  .call-row { border-bottom: 1px solid var(--line); cursor: pointer; transition: background 0.15s; -webkit-tap-highlight-color: transparent; }
+
+  .call-header {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 18px;
+    min-height: 44px;
+  }
+
+  .ch-primary {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .ch-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ch-tags .meta { font-size: 13px; color: var(--muted); }
+  .ch-tags .cost-cell { font-family: var(--mono); font-size: 12px; color: var(--crimson-bright); margin-left: auto; }
+
+  .call-header .num { font-weight: 600; font-size: 14px; word-break: break-all; }
+  .call-row:last-child { border-bottom: none; }
+  .call-row:hover { background: rgba(21, 166, 188, 0.05); }
+  .call-row.open { background: rgba(21, 166, 188, 0.07); }
+  .call-row:active { background: rgba(21, 166, 188, 0.10); }
+  .call-header .cname { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .chevron { color: var(--label); transition: transform 0.2s; font-size: 14px; text-align: center; flex-shrink: 0; padding-top: 2px; min-width: 28px; min-height: 28px; display: flex; align-items: center; justify-content: center; }
+  .call-row.open .chevron { transform: rotate(180deg); color: var(--crimson-bright); }
+
+  .pill { font-family: var(--mono); font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; padding: 4px 9px; border-radius: 100px; border: 1px solid var(--line); display: inline-block; }
+  .pill.in { color: var(--green); border-color: rgba(18,183,106,0.35); background: rgba(18,183,106,0.08); }
+  .pill.out { color: var(--crimson-bright); border-color: rgba(21,166,188,0.4); background: rgba(21,166,188,0.08); }
+  .pill.miss { color: var(--danger); border-color: rgba(229,72,77,0.32); background: rgba(229,72,77,0.06); }
+  .pill.booked { color: var(--green); border-color: rgba(18,183,106,0.4); background: rgba(18,183,106,0.12); }
+
+  .call-detail {
+    display: none;
+    padding: 0 18px 22px 18px;
+    border-top: 1px solid var(--line);
+  }
+  .call-row.open .call-detail { display: block; }
+
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 18px; }
+  @media (max-width: 700px) { .detail-grid { grid-template-columns: 1fr; } }
+
+  .detail-card {
+    border: 1px solid var(--line); border-radius: 10px; padding: 16px;
+    background: var(--card-2);
+  }
+  .detail-card.full { grid-column: 1 / -1; }
+  .detail-card h3 {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase;
+    color: var(--label); margin-bottom: 12px;
+  }
+
+  .detail-card audio { width: 100%; height: 38px; border-radius: 6px; outline: none; }
+  .no-recording { color: var(--label); font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+
+  .summary-text { color: var(--muted); font-size: 14px; line-height: 1.6; }
+
+  .cost-table { width: 100%; }
+  .cost-table tr td { padding: 5px 0; font-size: 13px; }
+  .cost-table tr td:first-child { color: var(--muted); text-transform: capitalize; }
+  .cost-table tr td:last-child { text-align: right; font-family: var(--mono); font-size: 12px; color: var(--text); }
+  .cost-total td { border-top: 1px solid var(--line); padding-top: 8px; font-weight: 600; }
+  .cost-total td:last-child { color: var(--crimson-bright); }
+
+  .transcript-wrap { max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .msg { padding: 10px 14px; border-radius: 10px; font-size: 13px; line-height: 1.55; max-width: 88%; }
+  .msg.bot { background: rgba(21, 166, 188, 0.08); border: 1px solid rgba(21,166,188,0.18); align-self: flex-start; }
+  .msg.user { background: var(--card-2); border: 1px solid var(--line); align-self: flex-end; }
+  .msg .role-tag { font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--label); margin-bottom: 5px; }
+  .msg.bot .role-tag { color: var(--crimson-bright); }
+  .msg.user .role-tag { color: var(--green); }
+  .transcript-raw { white-space: pre-wrap; color: var(--muted); font-size: 13px; line-height: 1.6; max-height: 400px; overflow-y: auto; }
+
+  .meta-row { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 12px; }
+  .meta-item { font-size: 12px; color: var(--muted); }
+  .meta-item span { color: var(--text); font-weight: 500; }
+
+  .empty { padding: 56px 20px; text-align: center; }
+  .empty .big { font-family: var(--mono); font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--crimson-bright); }
+  .empty .small { margin-top: 12px; color: var(--muted); font-size: 13px; }
+  .empty code { font-family: var(--mono); color: var(--text); background: rgba(21,166,188,0.10); padding: 2px 7px; border-radius: 5px; font-size: 12px; }
+
+  .call-list-head { display: none; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #CBD5DB; border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background: #AEBCC4; }
+
+  @media (max-width: 640px) {
+    #app {
+      padding: 0 max(16px, env(safe-area-inset-left)) max(48px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-right));
+    }
+
+    #topbar {
+      height: auto;
+      min-height: 52px;
+      padding: 10px 0;
+      margin-bottom: 28px;
+    }
+
+    .back { font-size: 10px; letter-spacing: 0.16em; }
+
+    #hero {
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    #hero .eyebrow { font-size: 10px; letter-spacing: 0.28em; margin-bottom: 10px; }
+    #hero h1 { font-size: 28px; }
+    #hero p { font-size: 14px; }
+
+    .conn { font-size: 9px; letter-spacing: 0.14em; padding: 8px 12px; }
+
+    #stats {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .stat { padding: 16px 14px; border-radius: 12px; }
+    .stat .k { font-size: 9px; letter-spacing: 0.18em; }
+    .stat .v { font-size: 26px; margin-top: 8px; }
+    .stat .v.cost { font-size: 22px; }
+
+    .section-label { font-size: 10px; letter-spacing: 0.22em; margin-bottom: 14px; }
+
+    .call-list { border-radius: 12px; }
+    .call-header { padding: 14px 14px; }
+    .call-detail { padding: 0 14px 18px 14px; }
+
+    .detail-card { padding: 14px; }
+    .detail-card audio { height: 44px; }
+
+    .meta-row { gap: 12px 16px; }
+    .meta-item { font-size: 11px; flex: 1 1 45%; }
+
+    .msg { max-width: 95%; font-size: 14px; padding: 12px 14px; }
+    .transcript-wrap { max-height: 320px; }
+
+    .empty { padding: 40px 16px; }
+    .empty .big { font-size: 11px; letter-spacing: 0.14em; }
+  }
+
+  @media (max-width: 380px) {
+    #stats { grid-template-columns: 1fr 1fr; }
+    #hero h1 { font-size: 24px; }
+    .ch-tags .cost-cell { margin-left: 0; width: 100%; margin-top: 4px; }
+  }
+</style>
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <a class="back" href="/">&larr; Command Deck</a>
+      <span id="clock">--:--:--</span>
+    </header>
+
+    <section id="hero">
+      <div>
+        <div class="eyebrow">Sofia &middot; Call Receptionist</div>
+        <h1>Call Metrics</h1>
+        <p>All-time inbound &amp; outbound call history — every call since day one, updated live as calls come in.</p>
+      </div>
+      <div class="conn" id="conn"><span class="led"></span><span id="conn-text">Checking…</span></div>
+    </section>
+
+    <div id="stats">
+      <div class="stat"><div class="k">Total Calls</div><div class="v" id="s-total">--</div></div>
+      <div class="stat"><div class="k">Connected</div><div class="v accent" id="s-connected">--</div></div>
+      <div class="stat"><div class="k">Avg Duration</div><div class="v" id="s-avg">--</div></div>
+      <div class="stat"><div class="k">Booked</div><div class="v good" id="s-booked">--</div></div>
+      <div class="stat"><div class="k">Total Cost</div><div class="v cost" id="s-cost">--</div></div>
+    </div>
+
+    <div class="section-label">Recent Calls</div>
+    <div class="call-list" id="call-list">
+      <div id="rows">
+        <div class="empty"><div class="big">Loading…</div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    "use strict";
+    var clockEl = document.getElementById("clock");
+    function tick() {
+      var d = new Date(), p = function(n) { return String(n).padStart(2, "0"); };
+      clockEl.textContent = p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+    }
+    tick(); setInterval(tick, 1000);
+
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
+        return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+      });
+    }
+    function fmtDur(sec) {
+      sec = Number(sec || 0);
+      if (!sec) return "\u2014";
+      var m = Math.floor(sec / 60), s = sec % 60;
+      return m + "m " + String(s).padStart(2, "0") + "s";
+    }
+    function fmtTime(s) {
+      if (!s) return "\u2014";
+      var d = new Date(s);
+      if (isNaN(d)) return esc(s);
+      return d.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    }
+    function fmtCost(n) {
+      if (!n && n !== 0) return "\u2014";
+      return "$" + Number(n).toFixed(2);
+    }
+    function fmtCost4(n) {
+      if (!n && n !== 0) return "$0.00";
+      return "$" + Number(n).toFixed(4);
+    }
+    function setConn(state, text) {
+      var el = document.getElementById("conn");
+      el.className = "conn " + state;
+      document.getElementById("conn-text").textContent = text;
+    }
+
+    function notConnected(reason) {
+      setConn("off", "Vapi Not Connected");
+      ["s-total", "s-connected", "s-avg", "s-booked", "s-cost"].forEach(function(id) {
+        document.getElementById(id).textContent = "\u2014";
+      });
+      document.getElementById("rows").innerHTML =
+        '<div class="empty">'
+        + '<div class="big">Awaiting Vapi Connection</div>'
+        + '<div class="small">Add <code>VAPI_API_KEY</code> to start streaming call metrics.'
+        + (reason ? '<br>' + esc(reason) : '') + '</div>'
+        + '</div>';
+    }
+
+    function buildTranscript(c) {
+      if (c.messages && c.messages.length) {
+        var visible = c.messages.filter(function(m) {
+          var role = (m.role || "").toLowerCase();
+          return role !== "system" && role !== "tool" && role !== "function";
+        });
+        if (!visible.length) return '<div class="no-recording">No transcript available</div>';
+        return '<div class="transcript-wrap">' + visible.map(function(m) {
+          var role = (m.role || "").toLowerCase();
+          var isBot = role === "bot" || role === "assistant";
+          var cls = isBot ? "bot" : "user";
+          var label = isBot ? "Sofia" : "Caller";
+          return '<div class="msg ' + cls + '"><div class="role-tag">' + esc(label) + '</div>' + esc(m.text) + '</div>';
+        }).join("") + '</div>';
+      }
+      if (c.transcript) {
+        return '<div class="transcript-raw">' + esc(c.transcript) + '</div>';
+      }
+      return '<div class="no-recording">No transcript available</div>';
+    }
+
+    function buildRecording(c) {
+      if (c.recordingUrl && typeof c.recordingUrl === "string") {
+        // Placeholder only — the real <audio> is injected the first time the row
+        // is expanded. Rendering audio for every row made the browser preload
+        // hundreds of recordings at once through the server proxy, which
+        // flooded the VM's sockets and starved the Vapi sync itself.
+        var proxied = "/api/calls/recording?url=" + encodeURIComponent(c.recordingUrl);
+        return '<div class="rec-slot" data-src="' + esc(proxied) + '"><span class="no-recording">Expand to load recording</span></div>';
+      }
+      return '<div class="no-recording">No recording available</div>';
+    }
+
+    // Called when a row toggles open: swap the placeholder for a live player.
+    function hydrateRecording(row) {
+      var slot = row.querySelector(".rec-slot");
+      if (!slot || slot.querySelector("audio")) return;
+      var a = document.createElement("audio");
+      a.controls = true;
+      a.preload = "metadata";
+      a.src = slot.getAttribute("data-src");
+      slot.innerHTML = "";
+      slot.appendChild(a);
+    }
+    window.__toggleCallRow = function (headerEl) {
+      var row = headerEl.parentElement;
+      row.classList.toggle("open");
+      if (row.classList.contains("open")) hydrateRecording(row);
+    };
+
+    function buildCostBreakdown(c) {
+      if (!c.costBreakdown || !Object.keys(c.costBreakdown).length) {
+        return '<div style="font-size:20px;font-weight:700;color:var(--crimson-bright)">' + fmtCost(c.cost) + '</div>'
+          + '<div style="margin-top:6px;font-size:12px;color:var(--label)">No breakdown available</div>';
+      }
+      var html = '<table class="cost-table">';
+      var entries = Object.entries(c.costBreakdown).filter(function(e) { return e[0] !== "total"; });
+      entries.forEach(function(e) {
+        html += '<tr><td>' + esc(e[0]) + '</td><td>' + fmtCost4(e[1]) + '</td></tr>';
+      });
+      html += '<tr class="cost-total"><td>Total</td><td>' + fmtCost(c.cost) + '</td></tr></table>';
+      return html;
+    }
+
+    function buildCallRow(c) {
+      var dirPill = c.direction === "inbound" ? '<span class="pill in">Inbound</span>'
+        : c.direction === "outbound" ? '<span class="pill out">Outbound</span>'
+        : '<span class="pill miss">\u2014</span>';
+      var LIVE_STATES = { "in-progress": 1, "ringing": 1, "queued": 1, "forwarding": 1 };
+      var outcome = c.booked ? '<span class="pill booked">Booked</span>'
+        : c.connected ? '<span class="pill out">Connected</span>'
+        : LIVE_STATES[(c.endedReason || "").toLowerCase()] ? '<span class="pill in">In Progress</span>'
+        : '<span class="pill miss">' + esc(c.endedReason || "Missed") + '</span>';
+
+      var nameHtml = c.customerName ? '<div class="cname">' + esc(c.customerName) + '</div>' : '';
+
+      var headerHtml = '<div class="call-header" onclick="window.__toggleCallRow(this)">'
+        + '<div class="ch-primary">'
+        + '<div><div class="num">' + esc(c.number) + '</div>' + nameHtml + '</div>'
+        + '<div class="chevron">&#9660;</div>'
+        + '</div>'
+        + '<div class="ch-tags">'
+        + dirPill + ' ' + outcome
+        + '<span class="meta">' + fmtDur(c.durationSec) + '</span>'
+        + '<span class="cost-cell">' + fmtCost(c.cost) + '</span>'
+        + '</div>'
+        + '</div>';
+
+      var detailHtml = '<div class="call-detail">'
+        + '<div class="meta-row">'
+        + '<div class="meta-item">Time: <span>' + fmtTime(c.startedAt) + '</span></div>'
+        + '<div class="meta-item">Duration: <span>' + fmtDur(c.durationSec) + '</span></div>'
+        + '<div class="meta-item">Ended: <span>' + esc(c.endedReason) + '</span></div>'
+        + '<div class="meta-item">Cost: <span>' + fmtCost(c.cost) + '</span></div>'
+        + '</div>'
+        + '<div class="detail-grid">'
+        + '<div class="detail-card"><h3>Recording</h3>' + buildRecording(c) + '</div>'
+        + '<div class="detail-card"><h3>Cost Breakdown</h3>' + buildCostBreakdown(c) + '</div>'
+        + (c.summary ? '<div class="detail-card full"><h3>Summary</h3><div class="summary-text">' + esc(c.summary) + '</div></div>' : '')
+        + '<div class="detail-card full"><h3>Transcript</h3>' + buildTranscript(c) + '</div>'
+        + '</div>'
+        + '</div>';
+
+      return '<div class="call-row">' + headerHtml + detailHtml + '</div>';
+    }
+
+    async function load() {
+      try {
+        var res = await fetch("/api/calls");
+        var data = await res.json();
+        if (!data.connected) { notConnected(data.reason); return; }
+
+        // Show real sync freshness, not just "key exists". Stale = the server
+        // hasn't managed a successful Vapi sync in over 10 minutes.
+        var age = data.syncAgeSec;
+        if (age == null) {
+          setConn("live", "Vapi Live");
+        } else if (age > 600) {
+          setConn("off", "Sync Stale · " + Math.round(age / 60) + "m ago");
+        } else {
+          setConn("live", "Vapi Live · synced " + (age < 90 ? "just now" : Math.round(age / 60) + "m ago"));
+        }
+        var stats = data.stats || {};
+        document.getElementById("s-total").textContent = Number(stats.total || 0);
+        document.getElementById("s-connected").textContent = Number(stats.connected || 0);
+        document.getElementById("s-avg").textContent = fmtDur(stats.avgDurationSec);
+        document.getElementById("s-booked").textContent = Number(stats.booked || 0);
+        document.getElementById("s-cost").textContent = fmtCost(stats.totalCost);
+
+        var calls = data.calls || [];
+        var rowsEl = document.getElementById("rows");
+        if (!calls.length) {
+          rowsEl.innerHTML = '<div class="empty"><div class="big">No calls yet</div><div class="small">Sofia is standing by.</div></div>';
+          return;
+        }
+
+        // Never rebuild the list while a recording is mid-playback — replacing the
+        // <audio> element would interrupt it (this was the "recording gets stuck" bug).
+        var playing = false;
+        rowsEl.querySelectorAll("audio").forEach(function(a) {
+          if (!a.paused && !a.ended && a.currentTime > 0) playing = true;
+        });
+        if (playing) return; // stats already updated above; refresh rows next cycle
+
+        var openIds = {};
+        rowsEl.querySelectorAll(".call-row.open").forEach(function(el) {
+          var id = el.getAttribute("data-id");
+          if (id) openIds[id] = true;
+        });
+
+        rowsEl.innerHTML = calls.map(function(c) {
+          return buildCallRow(c);
+        }).join("");
+
+        rowsEl.querySelectorAll(".call-row").forEach(function(el, i) {
+          var id = calls[i] && calls[i].id;
+          if (id) {
+            el.setAttribute("data-id", id);
+            if (openIds[id]) { el.classList.add("open"); hydrateRecording(el); }
+          }
+        });
+      } catch (e) {
+        notConnected("Failed to load metrics");
+      }
+    }
+    load();
+    var shellActive = true;
+    window.addEventListener("message", function(e){
+      var d = e.data || {};
+      if (d.type === "shell-visibility") { var was = shellActive; shellActive = !!d.active; if (shellActive && !was) load(); }
+    });
+    setInterval(function(){ if (shellActive) load(); }, 8000);
+  })();
+  </script>
+</body>
+</html>

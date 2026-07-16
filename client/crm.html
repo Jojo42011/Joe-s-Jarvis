@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lead CRM — Arlo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --app-bg:#F4F7F9; --card:#FFFFFF; --card-2:#F8FAFB;
+    --border:#E5EBEF; --border-strong:#D3DDE3;
+    --text:#0E1B24; --body:#33454F; --muted:#6B7C86; --faint:#9AA9B2;
+    --red:#D9301B; --red-hover:#BC2714; --red-soft:rgba(217,48,27,0.08);
+    --teal:#15A6BC; --teal-deep:#0E8194; --teal-soft:rgba(21,166,188,0.10);
+    --accent:#15A6BC; --success:#12B76A; --danger:#E5484D; --info:#2563EB;
+    --shadow-sm:0 1px 2px rgba(14,27,36,0.06);
+    --shadow:0 1px 3px rgba(14,27,36,0.07), 0 10px 26px -16px rgba(14,27,36,0.22);
+    --shadow-lg:0 24px 60px -20px rgba(14,27,36,0.28);
+    --mono:'JetBrains Mono',monospace;
+    --sans:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    --ease-out:cubic-bezier(.22,.9,.3,1); --ease-pop:cubic-bezier(.34,1.4,.64,1);
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { min-height:100%; background:var(--app-bg); color:var(--text); font-family:var(--sans); }
+  body { overflow-y:auto; overflow-x:hidden; position:relative; -webkit-font-smoothing:antialiased; }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration:.001s !important; } }
+
+  .container { position:relative; z-index:1; max-width:1240px; margin:0 auto; padding:24px 24px 60px; }
+
+  /* ── Header ── */
+  header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; padding-bottom:18px; border-bottom:1px solid var(--border); }
+  .head-left { display:flex; align-items:center; gap:13px; }
+  .orb { position:relative; width:30px; height:30px; border-radius:50%; background:radial-gradient(circle at 34% 30%, #3fc9dd, var(--teal-deep) 78%); flex:0 0 auto; }
+  .orb::after { content:""; position:absolute; left:7px; top:6px; width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.85); }
+  h1 { font-size:20px; font-weight:700; letter-spacing:-0.01em; }
+  .head-sub { font-size:11px; font-weight:500; letter-spacing:.02em; color:var(--muted); margin-top:2px; }
+  .header-right { display:flex; gap:12px; align-items:center; }
+  #liveTag { display:flex; align-items:center; gap:8px; font-size:11px; font-weight:600; letter-spacing:.02em; color:var(--muted); padding:8px 13px; border:1px solid var(--border); border-radius:30px; background:var(--card); box-shadow:var(--shadow-sm); }
+  #liveTag .dot { width:7px; height:7px; border-radius:50%; background:var(--success); box-shadow:0 0 0 3px rgba(18,183,106,0.16); animation:blink 2.4s infinite; }
+  #liveTag.stale .dot { background:var(--faint); box-shadow:none; animation:none; }
+  @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+  .theme-toggle { display:none; }
+
+  /* ── KPI cards ── */
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; margin-bottom:24px; }
+  .stat-card { position:relative; overflow:hidden; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px 20px; box-shadow:var(--shadow-sm);
+    opacity:0; animation:rise .5s var(--ease-out) both; animation-delay:calc(var(--i) * 60ms); transition:box-shadow .2s, transform .2s; }
+  .stat-card:hover { box-shadow:var(--shadow); transform:translateY(-2px); }
+  @keyframes rise { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+  .stat-head { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+  .stat-head svg { width:15px; height:15px; color:var(--teal); flex:0 0 auto; }
+  .stat-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); }
+  .stat-value { font-size:32px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; line-height:1; letter-spacing:-0.02em; }
+  .stat-subtext { font-size:12px; color:var(--muted); margin-top:8px; }
+
+  /* ── Controls ── */
+  .controls { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; opacity:0; animation:rise .5s var(--ease-out) .2s both; }
+  .btn { padding:9px 15px; border-radius:9px; border:1px solid var(--border); background:var(--card); color:var(--body); cursor:pointer; font-size:13.5px; font-weight:500; font-family:var(--sans); transition:.15s var(--ease-out); box-shadow:var(--shadow-sm); }
+  .btn:hover { border-color:var(--border-strong); background:var(--card-2); }
+  .btn.active { background:var(--teal-soft); border-color:var(--teal); color:var(--teal-deep); font-weight:600; }
+  .btn .n { font-size:11px; font-weight:600; margin-left:7px; padding:1px 7px; border-radius:20px; background:var(--card-2); color:var(--muted); }
+  .btn.active .n { background:rgba(21,166,188,0.16); color:var(--teal-deep); }
+  .btn-primary { background:var(--red); color:#fff; border-color:transparent; font-weight:600; box-shadow:0 1px 2px rgba(217,48,27,0.3); }
+  .btn-primary:hover { background:var(--red-hover); box-shadow:0 4px 14px -4px rgba(217,48,27,0.5); }
+  .search-box { flex:1; min-width:220px; position:relative; }
+  .search-box svg { position:absolute; left:13px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--faint); pointer-events:none; }
+  .search-box input { width:100%; padding:10px 12px 10px 38px; border:1px solid var(--border); border-radius:9px; background:var(--card); color:var(--text); font-size:13.5px; font-family:var(--sans); transition:.15s; box-shadow:var(--shadow-sm); }
+  .search-box input:focus { outline:none; border-color:var(--teal); box-shadow:0 0 0 3px var(--teal-soft); }
+  .search-box input::placeholder { color:var(--faint); }
+
+  /* ── Table ── */
+  .table-wrap { border:1px solid var(--border); border-radius:14px; overflow:hidden; background:var(--card); box-shadow:var(--shadow-sm); opacity:0; animation:rise .5s var(--ease-out) .28s both; }
+  .table-scroll { overflow-x:auto; }
+  .leads-table { width:100%; border-collapse:collapse; min-width:860px; }
+  .leads-table thead th { padding:12px 16px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:600; border-bottom:1px solid var(--border); background:var(--card-2); }
+  .leads-table td { padding:13px 16px; border-top:1px solid var(--border); font-size:13.5px; color:var(--body); }
+  .leads-table tbody tr { transition:background .12s; opacity:0; animation:rowIn .35s var(--ease-out) both; animation-delay:calc(var(--i) * 22ms); }
+  @keyframes rowIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+  .leads-table tbody tr:hover { background:var(--card-2); }
+  .leads-table tbody tr.flash { animation:flashNew 1.8s var(--ease-out) both; }
+  @keyframes flashNew { 0% { background:var(--teal-soft); } 100% { background:transparent; } }
+  .lead-name { font-weight:600; color:var(--text); }
+  .lead-phone { font-size:13px; color:var(--teal-deep); font-variant-numeric:tabular-nums; }
+  .lead-phone a { color:inherit; text-decoration:none; }
+  .lead-phone a:hover { text-decoration:underline; }
+  .dim { font-size:13px; color:var(--muted); }
+  .status-badge { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; letter-spacing:0.01em; }
+  .status-badge::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .status-pending { background:rgba(37,99,235,0.10); color:var(--info); }
+  .status-called { background:rgba(18,183,106,0.12); color:var(--success); }
+  .status-booked { background:var(--red-soft); color:var(--red); }
+  .lead-actions { display:flex; gap:6px; }
+  .lead-actions button { padding:6px 11px; font-size:12px; font-family:var(--sans); font-weight:600; border:1px solid var(--border); background:var(--card); color:var(--body); border-radius:7px; cursor:pointer; transition:.13s var(--ease-out); }
+  .lead-actions button:hover { border-color:var(--teal); color:var(--teal-deep); background:var(--teal-soft); }
+  .lead-actions button.done { background:var(--red-soft); color:var(--red); border-color:transparent; cursor:default; }
+  .lead-actions button.done:hover { background:var(--red-soft); }
+  .lead-actions button.del:hover { border-color:var(--danger); color:var(--danger); background:rgba(229,72,77,0.06); }
+
+  .empty-state { text-align:center; padding:54px 20px; color:var(--muted); }
+  .empty-state .es-orb { width:44px; height:44px; margin:0 auto 14px; border-radius:50%; border:1px dashed var(--border-strong); display:flex; align-items:center; justify-content:center; color:var(--teal); font-size:18px; }
+  .empty-state p { font-size:14px; }
+
+  /* skeleton shimmer for first load */
+  .skel { padding:16px; }
+  .skel .row { height:44px; border-radius:9px; margin-bottom:9px; background:linear-gradient(90deg, #EEF2F5 25%, #E2E8ED 50%, #EEF2F5 75%); background-size:600px 100%; animation:shimmer 1.3s linear infinite; }
+  @keyframes shimmer { from { background-position:-600px 0; } to { background-position:600px 0; } }
+
+  /* ── Modal ── */
+  .modal { display:none; position:fixed; inset:0; background:rgba(14,27,36,0.42); z-index:100; align-items:center; justify-content:center; backdrop-filter:blur(2px); }
+  .modal.active { display:flex; }
+  .modal-content { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:28px; max-width:520px; width:92%; max-height:88vh; overflow-y:auto; box-shadow:var(--shadow-lg); animation:modalPop .3s var(--ease-pop) both; }
+  @keyframes modalPop { from { opacity:0; transform:scale(.94) translateY(10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+  .modal-title { font-size:17px; font-weight:700; color:var(--text); margin-bottom:20px; }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .form-group { margin-bottom:2px; }
+  .form-group.full { grid-column:1 / -1; }
+  .form-group label { display:block; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); margin-bottom:6px; }
+  .form-group input, .form-group select { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:9px; background:var(--card); color:var(--text); font-size:13.5px; font-family:var(--sans); transition:.15s; }
+  .form-group input:focus, .form-group select:focus { outline:none; border-color:var(--teal); box-shadow:0 0 0 3px var(--teal-soft); }
+  .form-actions { display:flex; gap:12px; margin-top:22px; }
+  .form-actions button { flex:1; padding:12px; border-radius:9px; border:1px solid var(--border); cursor:pointer; font-size:13.5px; font-weight:600; font-family:var(--sans); transition:.15s var(--ease-out); }
+  .form-actions button.cancel { background:var(--card); color:var(--body); }
+  .form-actions button.cancel:hover { background:var(--card-2); border-color:var(--border-strong); }
+  .form-actions button.submit { background:var(--red); color:#fff; border-color:transparent; }
+  .form-actions button.submit:hover { background:var(--red-hover); }
+
+  /* ── Source badges ── */
+  .src { display:inline-block; padding:3px 9px; border-radius:6px; font-size:10px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; border:1px solid var(--border); color:var(--muted); background:var(--card-2); }
+  .src-sofia { color:#7C3AED; border-color:rgba(124,58,237,0.25); background:rgba(124,58,237,0.07); }
+  .src-ads { color:#2563EB; border-color:rgba(37,99,235,0.25); background:rgba(37,99,235,0.07); }
+  .src-ralph { color:var(--red); border-color:rgba(217,48,27,0.25); background:var(--red-soft); }
+  .src-website { color:#0E8194; border-color:rgba(14,129,148,0.25); background:rgba(14,129,148,0.07); }
+  .src-referral { color:#B7791F; border-color:rgba(183,121,31,0.25); background:rgba(183,121,31,0.07); }
+  .src-manual { color:var(--muted); }
+  .src-sofia_call { color:#7C3AED; border-color:rgba(124,58,237,0.25); background:rgba(124,58,237,0.07); }
+
+  /* ── Source breakdown ── */
+  .source-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px 20px; box-shadow:var(--shadow-sm); margin-bottom:16px; opacity:0; animation:rise .5s var(--ease-out) .16s both; }
+  .source-card .sc-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .source-card .stat-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); }
+  .source-bar { display:flex; height:10px; border-radius:6px; overflow:hidden; background:var(--card-2); margin-bottom:12px; }
+  .source-bar span { height:100%; }
+  .source-legend { display:flex; flex-wrap:wrap; gap:8px 18px; }
+  .source-legend .sl-item { display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--body); cursor:pointer; }
+  .source-legend .sl-item.dim-off { opacity:.4; }
+  .source-legend .dot { width:8px; height:8px; border-radius:50%; flex:0 0 auto; }
+  .source-legend b { font-variant-numeric:tabular-nums; }
+
+  /* ── Blueprint: alerts strip + project section ── */
+  .alert-row { display:flex; align-items:center; gap:9px; padding:7px 2px; font-size:13px; color:var(--body); cursor:pointer; border-top:1px solid var(--border); }
+  .alert-row:first-child { border-top:none; }
+  .alert-row .ai { width:8px; height:8px; border-radius:50%; flex:0 0 auto; }
+  .alert-row.pay .ai { background:var(--red); box-shadow:0 0 0 3px var(--red-soft); }
+  .alert-row.sub .ai { background:#B7791F; box-shadow:0 0 0 3px rgba(183,121,31,0.15); }
+  .alert-row:hover { color:var(--text); }
+  .proj-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .proj-grid label { display:block; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .proj-grid input, .proj-grid select { width:100%; margin-top:5px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); font-size:13px; font-family:var(--sans); }
+  .scope-row { display:flex; flex-wrap:wrap; gap:8px 16px; margin-top:12px; }
+  .scope-row label { display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--body); cursor:pointer; text-transform:none; letter-spacing:0; }
+  .insp-row { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:13px; color:var(--body); }
+  .insp-row input { accent-color:var(--teal); }
+  .insp-row .when { margin-left:auto; font-size:11.5px; color:var(--faint); }
+  .sub-row, .file-row, .est-row { display:flex; align-items:center; gap:8px; padding:6px 0; border-top:1px solid var(--border); font-size:13px; color:var(--body); flex-wrap:wrap; }
+  .sub-row:first-child, .file-row:first-child, .est-row:first-child { border-top:none; }
+  .sub-status { font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; padding:2px 8px; border-radius:12px; }
+  .sub-status.assigned { background:var(--card-2); color:var(--muted); }
+  .sub-status.notified { background:rgba(183,121,31,0.12); color:#B7791F; }
+  .sub-status.confirmed { background:rgba(18,183,106,0.12); color:var(--success); }
+  .mini-act { padding:4px 9px; font-size:11.5px; font-weight:600; border:1px solid var(--border); background:var(--card); color:var(--body); border-radius:6px; cursor:pointer; }
+  .mini-act:hover { border-color:var(--teal); color:var(--teal-deep); }
+  .file-thumb { width:44px; height:44px; object-fit:cover; border-radius:7px; border:1px solid var(--border); }
+  .kind-tag { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); background:var(--card-2); padding:2px 7px; border-radius:5px; }
+  .est-total { padding:8px 0 2px; font-size:13px; color:var(--text); font-weight:600; }
+
+  /* ── Other calls (non-prospect bucket) ── */
+  .oc-row { display:flex; align-items:center; gap:10px; padding:8px 2px; border-top:1px solid var(--border); font-size:13px; color:var(--body); flex-wrap:wrap; }
+  .oc-row:first-child { border-top:none; }
+  .oc-cat { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; padding:2px 8px; border-radius:10px; flex:0 0 auto; }
+  .oc-cat.spam { background:rgba(229,72,77,0.09); color:var(--danger); }
+  .oc-cat.vendor { background:rgba(183,121,31,0.12); color:#B7791F; }
+  .oc-cat.client { background:rgba(18,183,106,0.12); color:var(--success); }
+  .oc-cat.other { background:var(--card-2); color:var(--muted); }
+  .oc-msg { color:var(--muted); font-size:12px; flex:1; min-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* ── Two-pane CRM: leads list on the left, full lead detail on the right ── */
+  .crm-split { display:flex; gap:16px; align-items:flex-start; }
+  .lead-pane { flex:0 0 300px; width:300px; background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; max-height:calc(100vh - 60px); position:sticky; top:16px; overflow:hidden; }
+  .lp-top { display:flex; gap:8px; padding:12px 12px 8px; }
+  .lp-top .search-box { flex:1; min-width:0; }
+  .lp-top .search-box input { padding:9px 10px 9px 34px; font-size:13px; }
+  .lp-top .btn-primary { padding:9px 12px; white-space:nowrap; }
+  .lp-filters { display:flex; gap:6px; padding:0 12px 10px; flex-wrap:wrap; border-bottom:1px solid var(--border); }
+  .chip { padding:5px 10px; border-radius:20px; border:1px solid var(--border); background:var(--card); color:var(--muted); cursor:pointer; font-size:11.5px; font-weight:600; font-family:var(--sans); transition:.13s; }
+  .chip .n { font-size:10px; opacity:.75; margin-left:3px; }
+  .chip:hover { border-color:var(--border-strong); }
+  .chip.active { background:var(--teal-soft); border-color:var(--teal); color:var(--teal-deep); }
+  .lp-list { flex:1; overflow-y:auto; padding:6px; }
+  .lead-item { padding:11px 12px; border-radius:10px; cursor:pointer; transition:background .12s; border:1px solid transparent; }
+  .lead-item:hover { background:var(--card-2); }
+  .lead-item.selected { background:var(--teal-soft); border-color:var(--teal); }
+  .lead-item .li-top { display:flex; align-items:center; gap:8px; }
+  .lead-item .li-name { font-weight:600; font-size:13.5px; color:var(--text); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lead-item .li-sub { display:flex; align-items:center; gap:8px; margin-top:4px; font-size:12px; color:var(--muted); }
+  .lead-item .src { font-size:9px; padding:2px 7px; }
+  .lead-item.flash { animation:flashNew 1.8s var(--ease-out) both; }
+  .main-pane { flex:1; min-width:0; }
+  #overviewStack .source-card { margin-bottom:16px; }
+  .pick-hint { text-align:center; color:var(--faint); font-size:13.5px; padding:34px 12px; border:1px dashed var(--border-strong); border-radius:14px; }
+
+  /* Detail pane: the old slide-over drawer, now a normal in-page card (these
+     override the fixed-overlay rules further down) */
+
+  /* ── Lead drawer ── */
+  #drawerWrap { position:fixed; inset:0; z-index:90; display:none; }
+  #drawerWrap.active { display:block; }
+  #drawerScrim { position:absolute; inset:0; background:rgba(14,27,36,0.38); backdrop-filter:blur(2px); animation:fadeIn .2s both; }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+  #drawer { position:absolute; top:0; right:0; bottom:0; width:min(560px, 96vw); background:var(--card); border-left:1px solid var(--border); box-shadow:var(--shadow-lg); display:flex; flex-direction:column; animation:slideIn .3s var(--ease-out) both; }
+  @keyframes slideIn { from { transform:translateX(40px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+  .dr-head { padding:22px 24px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+  .dr-name { font-size:21px; font-weight:700; color:var(--text); }
+  .dr-meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:9px; align-items:center; }
+  .dr-close { width:32px; height:32px; flex:0 0 auto; border-radius:9px; border:1px solid var(--border); background:var(--card); color:var(--muted); cursor:pointer; font-size:16px; transition:.15s; }
+  .dr-close:hover { color:var(--danger); border-color:var(--danger); background:rgba(229,72,77,0.06); }
+  .dr-contact { padding:16px 24px; border-bottom:1px solid var(--border); display:grid; grid-template-columns:1fr 1fr; gap:12px 18px; }
+  .dr-contact .kv .k { font-size:10px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin-bottom:3px; }
+  .dr-contact .kv .v { font-size:13.5px; color:var(--body); }
+  .dr-actions { padding:14px 24px; border-bottom:1px solid var(--border); display:flex; gap:9px; flex-wrap:wrap; align-items:center; }
+  .dr-actions .pipe-sel { padding:9px 12px; border-radius:9px; border:1px solid var(--teal); background:var(--teal-soft); color:var(--teal-deep); font-family:var(--sans); font-size:12px; font-weight:600; cursor:pointer; }
+  .dr-body { flex:1; overflow-y:auto; padding:20px 24px 30px; }
+  .dr-sec { margin-bottom:24px; }
+  .dr-sec h3 { font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; display:flex; align-items:center; gap:10px; }
+  .dr-sec h3::after { content:""; flex:1; height:1px; background:var(--border); }
+  .pay-row { display:flex; align-items:center; gap:10px; padding:11px 13px; border:1px solid var(--border); border-radius:10px; margin-bottom:8px; background:var(--card-2); }
+  .pay-row .pl { flex:1; font-size:13.5px; color:var(--text); font-weight:500; }
+  .pay-row .pl .pm { font-size:11px; color:var(--muted); margin-top:2px; font-weight:400; }
+  .pay-row .amt { font-weight:700; font-size:14px; color:var(--success); font-variant-numeric:tabular-nums; }
+  .pay-row.pending .amt { color:var(--info); }
+  .pay-row .pst { font-size:10px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; padding:3px 9px; border-radius:12px; cursor:pointer; border:1px solid var(--border); background:var(--card); color:var(--muted); }
+  .pay-row .pst:hover { border-color:var(--teal); color:var(--teal-deep); }
+  .pay-row .px { border:none; background:none; color:var(--faint); cursor:pointer; font-size:15px; }
+  .pay-row .px:hover { color:var(--danger); }
+  .pay-total { text-align:right; font-size:12px; color:var(--muted); margin-top:8px; }
+  .pay-total b { color:var(--success); }
+  .add-inline { display:grid; grid-template-columns:1.3fr .9fr .8fr auto; gap:7px; margin-top:10px; }
+  .add-inline input, .add-inline select { min-width:0; width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); font-size:12.5px; font-family:var(--sans); }
+  .add-inline input:focus, .add-inline select:focus { outline:none; border-color:var(--teal); box-shadow:0 0 0 3px var(--teal-soft); }
+  .add-inline button { padding:9px 14px; border-radius:8px; border:none; background:var(--red); color:#fff; font-weight:600; font-size:12.5px; cursor:pointer; }
+  .add-inline button:hover { background:var(--red-hover); }
+  .tl { position:relative; padding-left:20px; }
+  .tl::before { content:""; position:absolute; left:5px; top:6px; bottom:6px; width:2px; background:var(--border); }
+  .tl-item { position:relative; margin-bottom:16px; opacity:0; animation:rise .35s var(--ease-out) both; animation-delay:calc(var(--i) * 35ms); }
+  .tl-item::before { content:""; position:absolute; left:-19px; top:4px; width:9px; height:9px; border-radius:50%; background:var(--card); border:2px solid var(--teal); }
+  .tl-item.t-sms::before { border-color:#7C3AED; }
+  .tl-item.t-email::before { border-color:var(--info); }
+  .tl-item.t-payment::before { border-color:var(--success); }
+  .tl-item.t-note::before { border-color:#B7791F; }
+  .tl-item .tt { font-size:10px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--faint); margin-bottom:3px; }
+  .tl-item .tb { font-size:13px; line-height:1.55; white-space:pre-wrap; word-break:break-word; color:var(--body); }
+  .tl-item .ts { font-size:12.5px; font-weight:600; color:var(--text); margin-bottom:2px; }
+  .note-add { display:flex; gap:8px; margin-top:10px; }
+  .note-add input { flex:1; padding:9px 11px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); font-size:12.5px; font-family:var(--sans); }
+  .note-add input:focus { outline:none; border-color:var(--teal); box-shadow:0 0 0 3px var(--teal-soft); }
+  .note-add button { padding:9px 14px; border-radius:8px; border:1px solid var(--teal); background:var(--teal-soft); color:var(--teal-deep); font-weight:600; font-size:12.5px; cursor:pointer; }
+  .note-add button:hover { background:rgba(21,166,188,0.18); }
+  .form-group textarea { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:9px; background:var(--card); color:var(--text); font-size:13.5px; font-family:var(--sans); resize:vertical; min-height:110px; }
+  .form-group textarea:focus { outline:none; border-color:var(--teal); box-shadow:0 0 0 3px var(--teal-soft); }
+  .form-group select { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:9px; background:var(--card); color:var(--text); font-size:13.5px; font-family:var(--sans); }
+
+  /* ── Toast ── */
+  #toast { position:fixed; bottom:92px; left:50%; transform:translateX(-50%) translateY(20px); z-index:120; background:var(--text); border:1px solid var(--text); color:#fff; font-size:13px; font-weight:500; padding:12px 20px; border-radius:12px; opacity:0; pointer-events:none; box-shadow:var(--shadow-lg); transition:opacity .25s, transform .3s var(--ease-pop); }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  #toast b { color:#5FD3E4; }
+
+  /* scrollbars */
+  * { scrollbar-width:thin; scrollbar-color:#CBD5DB transparent; }
+  *::-webkit-scrollbar { width:9px; height:9px; }
+  *::-webkit-scrollbar-thumb { background:#CBD5DB; border-radius:8px; }
+  *::-webkit-scrollbar-thumb:hover { background:#AEBCC4; }
+  *::-webkit-scrollbar-track { background:transparent; }
+
+  /* two-pane overrides for the old overlay drawer */
+  #drawerWrap { position:static !important; inset:auto !important; z-index:auto; }
+  #drawerScrim { display:none; }
+  #drawer { position:static !important; width:auto !important; border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow-sm); animation:rise .35s var(--ease-out) both; overflow:hidden; }
+  .dr-body { overflow-y:visible; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="head-left">
+        <span class="orb"></span>
+        <div>
+          <h1>Lead CRM</h1>
+          <div class="head-sub">Aquatic OS · Pipeline</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div id="liveTag"><span class="dot"></span><span id="liveText">Connecting…</span></div>
+      </div>
+    </header>
+
+    <div class="stats">
+      <div class="stat-card" style="--i:0">
+        <div class="stat-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="stat-label">Total Leads</span>
+        </div>
+        <div class="stat-value" id="statTotal">—</div>
+        <div class="stat-subtext">All time</div>
+      </div>
+      <div class="stat-card" style="--i:1">
+        <div class="stat-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6 6l1.1-1.1a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2z"/></svg>
+          <span class="stat-label">Called</span>
+        </div>
+        <div class="stat-value" id="statCalled">—</div>
+        <div class="stat-subtext" id="statCalledPct"></div>
+      </div>
+      <div class="stat-card" style="--i:2">
+        <div class="stat-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></svg>
+          <span class="stat-label">Booked</span>
+        </div>
+        <div class="stat-value" id="statBooked">—</div>
+        <div class="stat-subtext" id="statBookedPct"></div>
+      </div>
+      <div class="stat-card" style="--i:3">
+        <div class="stat-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></svg>
+          <span class="stat-label">Conversion</span>
+        </div>
+        <div class="stat-value" id="statConversion">—</div>
+        <div class="stat-subtext" id="statConversionNote"></div>
+      </div>
+      <div class="stat-card" style="--i:4">
+        <div class="stat-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <span class="stat-label">Collected</span>
+        </div>
+        <div class="stat-value" id="statRevenue">—</div>
+        <div class="stat-subtext" id="statRevenueNote"></div>
+      </div>
+    </div>
+
+    <div id="alertsCard" class="source-card" style="display:none">
+      <div class="sc-head"><span class="stat-label">Action Needed</span></div>
+      <div id="alertsList"></div>
+    </div>
+
+    <div class="crm-split">
+      <aside class="lead-pane">
+        <div class="lp-top">
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+            <input type="text" id="searchInput" placeholder="Search leads…" />
+          </div>
+          <button class="btn btn-primary" id="newLeadBtn">+ New</button>
+        </div>
+        <div class="lp-filters">
+          <button class="chip active" data-filter="all">All <span class="n" id="nAll">0</span></button>
+          <button class="chip" data-filter="pending">Pending <span class="n" id="nPending">0</span></button>
+          <button class="chip" data-filter="called">Called <span class="n" id="nCalled">0</span></button>
+          <button class="chip" data-filter="booked">Booked <span class="n" id="nBooked">0</span></button>
+        </div>
+        <div id="leadsContainer" class="lp-list">
+          <div class="skel"><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div></div>
+        </div>
+      </aside>
+
+      <main class="main-pane">
+        <div id="overviewStack">
+          <div class="source-card">
+            <div class="sc-head"><span class="stat-label">Leads by Source</span></div>
+            <div class="source-bar" id="sourceBar"></div>
+            <div class="source-legend" id="sourceLegend"></div>
+          </div>
+          <div id="otherCallsCard" class="source-card" style="display:none">
+            <div class="sc-head">
+              <span class="stat-label">Other Calls <span class="dim" id="ocCount"></span></span>
+              <span class="dim" style="font-size:11.5px">vendors, clients, spam &amp; misdials Sofia fielded — promote anything that's really a lead</span>
+            </div>
+            <div id="ocList" style="max-height:340px;overflow-y:auto"></div>
+          </div>
+          <div class="pick-hint">← Pick a lead from the list to see everything about it here</div>
+        </div>
+
+  <!-- Lead drawer: full profile, outreach, payments, timeline -->
+  <div id="drawerWrap">
+    <div id="drawer">
+      <div class="dr-head">
+        <div>
+          <div class="dr-name" id="drName">—</div>
+          <div class="dr-meta" id="drMeta"></div>
+        </div>
+        <button class="dr-close" id="drClose">×</button>
+      </div>
+      <div class="dr-contact" id="drContact"></div>
+      <div class="dr-actions">
+        <select class="pipe-sel" id="drPipe"></select>
+        <button class="btn" id="drTextBtn">✉ Text</button>
+        <button class="btn" id="drEmailBtn">@ Email</button>
+        <button class="btn" id="drEditBtn">Edit</button>
+        <button class="btn" id="drDeleteBtn" style="margin-left:auto;color:var(--danger)">Delete</button>
+      </div>
+      <div class="dr-body">
+        <div class="dr-sec">
+          <h3>Project</h3>
+          <div class="proj-grid">
+            <label>Tier
+              <select id="prTier"><option value="">—</option><option value="standard">Standard (~$60k)</option><option value="luxury">Luxury ($100k+)</option></select>
+            </label>
+            <label>City / Jurisdiction
+              <input type="text" id="prJurisdiction" placeholder="Goodyear, Buckeye…" />
+            </label>
+            <label>Permit
+              <select id="prPermit"><option value="none">None</option><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="approved">Approved</option></select>
+            </label>
+            <label>Design (3D rendering)
+              <select id="prDesign"><option value="none">None</option><option value="agreement_sent">Agreement sent</option><option value="paid">Paid</option><option value="delivered">Delivered</option></select>
+            </label>
+            <label>Project value
+              <input type="text" id="prValue" placeholder="$120,000" />
+            </label>
+            <label>Referred by
+              <input type="text" id="prReferredBy" placeholder="Client name (if referral)" />
+            </label>
+          </div>
+          <div class="scope-row" id="prScope">
+            <label><input type="checkbox" data-scope="pool" /> Pool & water features</label>
+            <label><input type="checkbox" data-scope="hardscape" /> Hardscape</label>
+            <label><input type="checkbox" data-scope="landscape" /> Landscaping</label>
+            <label><input type="checkbox" data-scope="structures" /> Bar / gazebo / pergola</label>
+            <label><input type="checkbox" data-scope="lighting" /> Lighting</label>
+          </div>
+          <button class="btn" id="prSave" style="margin-top:10px">Save project details</button>
+        </div>
+        <div class="dr-sec">
+          <h3>Build Stage</h3>
+          <select class="pipe-sel" id="drBuildStage"></select>
+          <div id="drInspections" style="margin-top:10px"></div>
+        </div>
+        <div class="dr-sec">
+          <h3>Milestones & Payments</h3>
+          <div class="add-inline" style="margin-bottom:8px">
+            <button class="btn" id="msGenerate" title="Creates Arthur's 10/25/30/30/5 draw schedule from the project value">Generate 10/25/30/30/5 schedule</button>
+          </div>
+          <div id="drPayments"></div>
+          <div class="add-inline">
+            <input type="text" id="payLabel" placeholder="Deposit, final draw…" />
+            <input type="text" id="payAmount" placeholder="$ amount" />
+            <select id="payMethod"><option value="check">Check</option><option value="card">Card</option><option value="cash">Cash</option><option value="financing">Financing</option><option value="other">Other</option></select>
+            <button id="payAdd">Add</button>
+          </div>
+        </div>
+        <div class="dr-sec">
+          <h3>Subcontractors</h3>
+          <div id="drSubs"></div>
+          <div class="add-inline">
+            <select id="subPick"></select>
+            <select id="subStage"></select>
+            <input type="text" id="subDate" placeholder="Date (7/21)" />
+            <button id="subAssign">Assign</button>
+          </div>
+          <div class="add-inline" style="margin-top:6px">
+            <input type="text" id="newSubName" placeholder="New sub: name" />
+            <select id="newSubTrade"></select>
+            <input type="text" id="newSubPhone" placeholder="Phone" />
+            <button id="newSubAdd">Save sub</button>
+          </div>
+        </div>
+        <div class="dr-sec">
+          <h3>Project Vault</h3>
+          <div id="drFiles"></div>
+          <div class="add-inline">
+            <select id="fileKind">
+              <option value="inspiration">Inspiration</option>
+              <option value="design">Design / render</option>
+              <option value="contract">Contract</option>
+              <option value="permit">Permit</option>
+              <option value="field" selected>Field photo</option>
+            </select>
+            <input type="file" id="fileInput" accept="image/*,.pdf" capture="environment" />
+          </div>
+        </div>
+        <div class="dr-sec">
+          <h3>Estimate</h3>
+          <div id="drEstimate"></div>
+          <div class="add-inline">
+            <input type="text" id="estLabel" placeholder="Line item (Gunite…)" />
+            <input type="text" id="estQty" placeholder="Qty" style="max-width:60px" />
+            <input type="text" id="estUnit" placeholder="Unit" style="max-width:60px" />
+            <input type="text" id="estCost" placeholder="$/unit" style="max-width:80px" />
+            <input type="text" id="estMarkup" placeholder="Markup %" style="max-width:80px" />
+            <button id="estAdd">Add</button>
+          </div>
+          <button class="btn" id="estApply" style="margin-top:8px">Apply total as project value</button>
+        </div>
+        <div class="dr-sec">
+          <h3>Notes</h3>
+          <div class="note-add"><input type="text" id="noteInput" placeholder="Add a note to the timeline…" /><button id="noteAdd">Save</button></div>
+        </div>
+        <div class="dr-sec">
+          <h3>Timeline</h3>
+          <div class="tl" id="drTimeline"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="modal" id="editModal">
+    <div class="modal-content">
+      <div class="modal-title" id="modalTitle">New Lead</div>
+      <form id="leadForm">
+        <div class="form-grid">
+          <div class="form-group"><label>Name</label><input type="text" id="formName" required /></div>
+          <div class="form-group"><label>Phone</label><input type="tel" id="formPhone" required /></div>
+          <div class="form-group full"><label>Email</label><input type="email" id="formEmail" /></div>
+          <div class="form-group full"><label>Address</label><input type="text" id="formAddress" /></div>
+          <div class="form-group"><label>Project Type</label><input type="text" id="formProjectType" placeholder="Pool, remodel, spa…" /></div>
+          <div class="form-group"><label>Budget</label><input type="text" id="formBudget" placeholder="$60k–$90k" /></div>
+          <div class="form-group"><label>Timeline</label><input type="text" id="formTimeline" placeholder="ASAP, 3–6 months…" /></div>
+          <div class="form-group"><label>Source</label>
+            <select id="formSource">
+              <option value="manual">Manual entry</option>
+              <option value="website">Website</option>
+              <option value="referral">Referral</option>
+              <option value="ads">Ads</option>
+              <option value="ralph">Social (Paulie)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="cancel" id="cancelBtn">Cancel</button>
+          <button type="submit" class="submit">Save Lead</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Compose: SMS -->
+  <div class="modal" id="smsModal">
+    <div class="modal-content">
+      <div class="modal-title">Text <span id="smsWho"></span></div>
+      <div class="form-group full"><label>Message</label><textarea id="smsBody" placeholder="Hey, it's Arthur from Aquatic Pools & Spas…"></textarea></div>
+      <div class="form-actions">
+        <button type="button" class="cancel" id="smsCancel">Cancel</button>
+        <button type="button" class="submit" id="smsSend">Send Text</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Compose: Email -->
+  <div class="modal" id="emailModal">
+    <div class="modal-content">
+      <div class="modal-title">Email <span id="emailWho"></span></div>
+      <div class="form-group full" id="emailFromWrap" style="margin-bottom:14px"><label>From</label><select id="emailFrom"></select></div>
+      <div class="form-group full" style="margin-bottom:14px"><label>Subject</label><input type="text" id="emailSubject" placeholder="Your backyard project" /></div>
+      <div class="form-group full"><label>Message</label><textarea id="emailBody"></textarea></div>
+      <div class="form-actions">
+        <button type="button" class="cancel" id="emailCancel">Cancel</button>
+        <button type="button" class="submit" id="emailSend">Send Email</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  var POLL_MS = 10000;
+  var currentFilter = "all";
+  var currentSource = "all";
+  var currentSearch = "";
+  var leads = [];
+  var currentEditId = null;
+  var lastPayload = "";       // change-detection so re-renders only happen on real changes
+  var knownIds = null;        // to flash newly-arrived leads
+  var lastSync = 0;
+  var pollTimer = null;
+  var visible = true;
+  var firstRender = true;
+
+  var $ = function(id){ return document.getElementById(id); };
+  var els = {
+    statTotal:$("statTotal"), statCalled:$("statCalled"), statBooked:$("statBooked"),
+    statCalledPct:$("statCalledPct"), statBookedPct:$("statBookedPct"),
+    statConversion:$("statConversion"), statConversionNote:$("statConversionNote"),
+    leadsContainer:$("leadsContainer"), searchInput:$("searchInput"),
+    editModal:$("editModal"), modalTitle:$("modalTitle"), leadForm:$("leadForm"),
+    formName:$("formName"), formPhone:$("formPhone"), formEmail:$("formEmail"),
+    formAddress:$("formAddress"), formProjectType:$("formProjectType"),
+    formBudget:$("formBudget"), formTimeline:$("formTimeline"), formSource:$("formSource"),
+    sourceBar:$("sourceBar"), sourceLegend:$("sourceLegend"),
+    newLeadBtn:$("newLeadBtn"), cancelBtn:$("cancelBtn"),
+    liveTag:$("liveTag"), liveText:$("liveText"), toast:$("toast"),
+    nAll:$("nAll"), nPending:$("nPending"), nCalled:$("nCalled"), nBooked:$("nBooked"),
+    statRevenue:$("statRevenue"), statRevenueNote:$("statRevenueNote"),
+    drawerWrap:$("drawerWrap"), drName:$("drName"), drMeta:$("drMeta"),
+    drContact:$("drContact"), drPipe:$("drPipe"), drTimeline:$("drTimeline"), drPayments:$("drPayments"),
+    drClose:$("drClose"), drTextBtn:$("drTextBtn"), drEmailBtn:$("drEmailBtn"), drEditBtn:$("drEditBtn"), drDeleteBtn:$("drDeleteBtn"), overviewStack:$("overviewStack"),
+    payLabel:$("payLabel"), payAmount:$("payAmount"), payMethod:$("payMethod"), payAdd:$("payAdd"),
+    noteInput:$("noteInput"), noteAdd:$("noteAdd"),
+    alertsCard:$("alertsCard"), alertsList:$("alertsList"),
+    prTier:$("prTier"), prJurisdiction:$("prJurisdiction"), prPermit:$("prPermit"), prDesign:$("prDesign"),
+    prValue:$("prValue"), prReferredBy:$("prReferredBy"), prScope:$("prScope"), prSave:$("prSave"),
+    drBuildStage:$("drBuildStage"), drInspections:$("drInspections"), msGenerate:$("msGenerate"),
+    drSubs:$("drSubs"), subPick:$("subPick"), subStage:$("subStage"), subDate:$("subDate"), subAssign:$("subAssign"),
+    newSubName:$("newSubName"), newSubTrade:$("newSubTrade"), newSubPhone:$("newSubPhone"), newSubAdd:$("newSubAdd"),
+    drFiles:$("drFiles"), fileKind:$("fileKind"), fileInput:$("fileInput"),
+    drEstimate:$("drEstimate"), estLabel:$("estLabel"), estQty:$("estQty"), estUnit:$("estUnit"),
+    estCost:$("estCost"), estMarkup:$("estMarkup"), estAdd:$("estAdd"), estApply:$("estApply"),
+    smsModal:$("smsModal"), smsWho:$("smsWho"), smsBody:$("smsBody"), smsSend:$("smsSend"), smsCancel:$("smsCancel"),
+    emailModal:$("emailModal"), emailWho:$("emailWho"), emailFrom:$("emailFrom"), emailFromWrap:$("emailFromWrap"),
+    emailSubject:$("emailSubject"), emailBody:$("emailBody"), emailSend:$("emailSend"), emailCancel:$("emailCancel")
+  };
+
+  var SOURCE_COLOR = { sofia:"#7C3AED", sofia_call:"#7C3AED", ads:"#2563EB", ralph:"var(--red)", website:"#0E8194", referral:"#B7791F", manual:"var(--faint)" };
+  var SOURCE_LABEL = { sofia:"Sofia (calls)", sofia_call:"Sofia (older calls)", ads:"Ads", ralph:"Social (Paulie)", website:"Website", referral:"Referral", manual:"Manual" };
+  function sourceColor(s){ return SOURCE_COLOR[s] || "var(--muted)"; }
+  function sourceLabel(s){ return SOURCE_LABEL[s] || (s.charAt(0).toUpperCase() + s.slice(1)); }
+
+  function renderSourceBreakdown(bySource){
+    var rows = (bySource || []).slice().sort(function(a,b){ return b.count - a.count; });
+    var total = rows.reduce(function(s,r){ return s + r.count; }, 0);
+    if (!total){ els.sourceBar.innerHTML = ""; els.sourceLegend.innerHTML = '<span class="dim">No leads yet</span>'; return; }
+    var bar = "", legend = "";
+    rows.forEach(function(r){
+      var pct = Math.max(1, Math.round(100 * r.count / total));
+      var color = sourceColor(r.source);
+      bar += '<span style="width:' + pct + '%;background:' + color + '"></span>';
+      var active = currentSource === "all" || currentSource === r.source;
+      legend += '<div class="sl-item' + (active ? "" : " dim-off") + '" data-source="' + esc(r.source) + '">' +
+        '<span class="dot" style="background:' + color + '"></span>' +
+        sourceLabel(r.source) + ' <b>' + r.count + '</b></div>';
+    });
+    els.sourceBar.innerHTML = bar;
+    els.sourceLegend.innerHTML = legend + (currentSource !== "all" ? '<div class="sl-item" data-source="all" style="font-weight:600;color:var(--teal-deep)">Show all</div>' : "");
+  }
+
+  els.sourceLegend.addEventListener("click", function(e){
+    var item = e.target.closest("[data-source]");
+    if (!item) return;
+    var s = item.getAttribute("data-source");
+    currentSource = (currentSource === s) ? "all" : s;
+    lastPayload = ""; // force the next stats redraw to reflect the new toggle state
+    renderLeads();
+    renderSourceBreakdown(lastBySource);
+  });
+
+  var lastBySource = [];
+
+  function renderAlerts(alerts){
+    if (!alerts.length){ els.alertsCard.style.display = "none"; return; }
+    els.alertsCard.style.display = "";
+    els.alertsList.innerHTML = alerts.map(function(a){
+      return '<div class="alert-row ' + (a.kind === "payment" ? "pay" : "sub") + '" data-lead-open="' + a.leadId + '">' +
+        '<span class="ai"></span>' + esc(a.text) + '</div>';
+    }).join("");
+  }
+  document.addEventListener("click", function(e){
+    var r = e.target.closest("[data-lead-open]");
+    if (r) openDrawer(Number(r.getAttribute("data-lead-open")));
+  });
+
+  var PIPELINE = ["new","contacted","quoted","booked","in_progress","completed","lost"];
+  var PIPE_LABEL = { new:"New", contacted:"Contacted", quoted:"Quoted", booked:"Booked", in_progress:"In Progress", completed:"Completed", lost:"Lost" };
+  var BUILD_STAGES = [];   // [{key,label}] from the API
+  var SUB_TRADES = [];
+  var allSubs = [];        // subcontractor address book
+  var drawerLead = null;   // lead currently open in the drawer
+  var emailAccounts = [];
+
+  function loadSubs(){
+    fetch("/api/crm/subs").then(function(r){ return r.json(); }).then(function(d){
+      allSubs = (d && d.subs) || [];
+      SUB_TRADES = (d && d.trades) || SUB_TRADES;
+      renderSubPickers();
+    }).catch(function(){});
+  }
+  function renderSubPickers(){
+    els.subPick.innerHTML = allSubs.length
+      ? allSubs.map(function(s){ return '<option value="' + s.id + '">' + esc(s.name) + ' (' + esc(s.trade||"") + ')</option>'; }).join("")
+      : '<option value="">No subs saved yet</option>';
+    els.newSubTrade.innerHTML = SUB_TRADES.map(function(t){ return '<option value="' + t + '">' + t + '</option>'; }).join("");
+    els.subStage.innerHTML = BUILD_STAGES.map(function(s){ return '<option value="' + s.key + '">' + esc(s.label) + '</option>'; }).join("");
+  }
+
+  fetch("/api/crm/email-accounts").then(function(r){ return r.json(); }).then(function(d){
+    emailAccounts = (d && d.accounts) || [];
+  }).catch(function(){ emailAccounts = []; });
+
+  function fmtMoney(cents){
+    return "$" + (Math.round(cents/100)).toLocaleString();
+  }
+
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+
+  function toast(msg){
+    els.toast.innerHTML = msg;
+    els.toast.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function(){ els.toast.classList.remove("show"); }, 2800);
+  }
+
+  /* ── Count-up animation for KPI values ── */
+  function countTo(el, target, suffix){
+    var from = parseFloat((el.getAttribute("data-v")||"0")) || 0;
+    el.setAttribute("data-v", target);
+    if (from === target){ el.textContent = target + (suffix||""); return; }
+    var t0 = null;
+    function step(ts){
+      if (!t0) t0 = ts;
+      var p = Math.min(1, (ts - t0)/650), e = 1 - Math.pow(1-p, 3);
+      el.textContent = Math.round(from + (target-from)*e) + (suffix||"");
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* ── Live data ── */
+  function syncLabel(){
+    if (!lastSync){ els.liveText.textContent = "Connecting…"; return; }
+    var s = Math.round((Date.now()-lastSync)/1000);
+    els.liveTag.classList.toggle("stale", s > 45);
+    els.liveText.textContent = "Live · synced " + (s < 3 ? "now" : s + "s ago");
+  }
+  setInterval(syncLabel, 1000);
+
+  function loadLeads(){
+    fetch("/api/leads")
+      .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+      .then(function(d){
+        lastSync = Date.now(); syncLabel();
+        var payload = JSON.stringify(d);
+        if (payload === lastPayload) return;   // nothing changed — don't disturb the UI
+        lastPayload = payload;
+        var prevIds = knownIds;
+        leads = d.leads || [];
+        knownIds = {}; leads.forEach(function(l){ knownIds[l.id] = 1; });
+        var fresh = [];
+        if (prevIds) leads.forEach(function(l){ if(!prevIds[l.id]) fresh.push(l.id); });
+        if (d.buildStages) { BUILD_STAGES = d.buildStages; renderSubPickers(); }
+        updateStats(d.stats);
+        renderAlerts(d.alerts || []);
+        lastBySource = d.bySource || [];
+        renderSourceBreakdown(lastBySource);
+        renderLeads(fresh);
+        if (fresh.length && prevIds) toast("<b>" + fresh.length + "</b> new lead" + (fresh.length>1?"s":"") + " just came in");
+      })
+      .catch(function(e){
+        console.error("[CRM]", e);
+        els.liveTag.classList.add("stale");
+        if (firstRender) els.leadsContainer.innerHTML = '<div class="empty-state"><div class="es-orb">!</div><p>Couldn’t reach the lead API — retrying…</p></div>';
+      });
+  }
+
+  function startPolling(){
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(function(){ if (visible && !document.hidden) loadLeads(); }, POLL_MS);
+  }
+
+  // Shell tells iframes when they're the active tab; refresh instantly on focus.
+  window.addEventListener("message", function(e){
+    var d = e.data || {};
+    if (d.type === "shell-visibility"){ visible = !!d.active; if (visible) loadLeads(); }
+  });
+  document.addEventListener("visibilitychange", function(){ if (!document.hidden) loadLeads(); });
+
+  function updateStats(stats){
+    var total = (stats && stats.total) || 0;
+    var called = (stats && stats.called) || 0;
+    var booked = (stats && stats.booked) || 0;
+    var callRate = total ? Math.round(100*called/total) : 0;
+    var bookRate = total ? Math.round(100*booked/total) : 0;
+    var convRate = called ? Math.round(100*booked/called) : 0;
+    countTo(els.statTotal, total);
+    countTo(els.statCalled, called);
+    countTo(els.statBooked, booked);
+    countTo(els.statConversion, convRate, "%");
+    els.statCalledPct.textContent = callRate + "% of all leads";
+    els.statBookedPct.textContent = bookRate + "% of all leads";
+    els.statConversionNote.textContent = called ? (booked + " booked from " + called + " calls") : "No calls yet";
+    var collected = (stats && stats.collected_cents) || 0;
+    var pendingC = (stats && stats.pending_cents) || 0;
+    var projected = (stats && stats.projected_cents) || 0;
+    els.statRevenue.textContent = fmtMoney(collected);
+    var noteBits = [];
+    if (pendingC) noteBits.push(fmtMoney(pendingC) + " pending");
+    if (projected) noteBits.push(fmtMoney(projected) + " projected (active builds)");
+    els.statRevenueNote.textContent = noteBits.length ? noteBits.join(" · ") : "All payments in";
+    els.nAll.textContent = total;
+    els.nPending.textContent = leads.filter(function(l){ return !l.called && !l.booked; }).length;
+    els.nCalled.textContent = leads.filter(function(l){ return l.called && !l.booked; }).length;
+    els.nBooked.textContent = leads.filter(function(l){ return l.booked; }).length;
+  }
+
+  function getFilteredLeads(){
+    return leads.filter(function(l){
+      var ok = currentFilter === "all" ||
+        (currentFilter === "pending" && !l.called && !l.booked) ||
+        (currentFilter === "called" && l.called && !l.booked) ||
+        (currentFilter === "booked" && l.booked);
+      if (!ok) return false;
+      if (currentSource !== "all" && (l.source || "unknown") !== currentSource) return false;
+      if (!currentSearch) return true;
+      var q = currentSearch.toLowerCase();
+      return String(l.name||"").toLowerCase().indexOf(q) >= 0 || String(l.phone||"").indexOf(q) >= 0;
+    });
+  }
+
+  function formatDate(iso){
+    if (!iso) return "—";
+    var d = new Date(String(iso).replace(" ", "T") + (String(iso).indexOf("Z")<0 ? "Z" : ""));
+    if (isNaN(d)) d = new Date(iso);
+    if (isNaN(d)) return String(iso);
+    return (d.getMonth()+1) + "/" + d.getDate() + " " + String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
+  }
+
+  function renderLeads(freshIds){
+    var filtered = getFilteredLeads();
+    firstRender = false;
+    if (!filtered.length){
+      els.leadsContainer.innerHTML = '<div class="empty-state" style="padding:30px 12px"><div class="es-orb">\u25ce</div><p>No leads match this view</p></div>';
+      return;
+    }
+    var freshSet = {}; (freshIds||[]).forEach(function(id){ freshSet[id]=1; });
+    els.leadsContainer.innerHTML = filtered.map(function(l){
+      var stage = l.pipeline || (l.booked ? "booked" : (l.called ? "contacted" : "new"));
+      var src = String(l.source||"sofia").toLowerCase();
+      var sel = drawerLead && drawerLead.id === l.id ? " selected" : "";
+      var cls = freshSet[l.id] ? " flash" : "";
+      return '<div class="lead-item' + sel + cls + '" data-lead="' + l.id + '">' +
+        '<div class="li-top"><span class="li-name">' + esc(l.name||"\u2014") + '</span>' +
+        '<span class="src src-' + esc(src) + '">' + esc(src) + '</span></div>' +
+        '<div class="li-sub"><span>' + esc(l.phone||"") + '</span>' +
+        '<span class="status-badge status-' + (l.booked ? "booked" : (l.called ? "called" : "pending")) + '" style="margin-left:auto">' + esc(PIPE_LABEL[stage] || stage) + '</span></div>' +
+        '</div>';
+    }).join("");
+  }
+
+  // Clicking a lead in the list opens it in the main pane.
+  els.leadsContainer.addEventListener("click", function(e){
+    var row = e.target.closest("[data-lead]");
+    if (row) openDrawer(Number(row.getAttribute("data-lead")));
+  });
+
+  /* \u2500\u2500 Lead detail pane \u2500\u2500 */
+  function openDrawer(id){
+    drawerLead = leads.find(function(x){ return x.id === id; }) || { id:id };
+    els.drawerWrap.classList.add("active");
+    els.overviewStack.style.display = "none";
+    renderDrawerHead();
+    els.drTimeline.innerHTML = '<div class="dim">Loading…</div>';
+    els.drPayments.innerHTML = "";
+    refreshDrawer();
+    renderLeads(); // refresh the selected highlight in the list
+  }
+  function closeDrawer(){
+    els.drawerWrap.classList.remove("active");
+    els.overviewStack.style.display = "";
+    drawerLead = null;
+    renderLeads();
+  }
+  els.drClose.addEventListener("click", closeDrawer);
+  els.drDeleteBtn.addEventListener("click", function(){
+    if (!drawerLead) return;
+    if (!confirm("Delete this lead? This removes its payments, files and timeline too.")) return;
+    fetch("/api/leads/" + drawerLead.id, { method:"DELETE" })
+      .then(function(){ toast("Lead deleted"); closeDrawer(); lastPayload=""; loadLeads(); })
+      .catch(function(){ toast("Delete failed"); });
+  });
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape") closeDrawer(); });
+
+  function renderDrawerHead(){
+    var l = drawerLead; if (!l) return;
+    els.drName.textContent = l.name || "Lead #" + l.id;
+    var src = String(l.source||"sofia").toLowerCase();
+    var stage = l.pipeline || (l.booked ? "booked" : (l.called ? "contacted" : "new"));
+    els.drMeta.innerHTML =
+      '<span class="src src-' + esc(src) + '">' + esc(src) + '</span>' +
+      '<span class="dim">added ' + formatDate(l.created_at) + '</span>';
+    els.drContact.innerHTML =
+      '<div class="kv"><div class="k">Phone</div><div class="v lead-phone">' + (l.phone ? '<a href="tel:' + esc(l.phone) + '">' + esc(l.phone) + '</a>' : "—") + '</div></div>' +
+      '<div class="kv"><div class="k">Email</div><div class="v">' + esc(l.email||"—") + '</div></div>' +
+      '<div class="kv"><div class="k">Address</div><div class="v">' + esc(l.address||"—") + '</div></div>' +
+      '<div class="kv"><div class="k">Project</div><div class="v">' + esc(l.project_type||"—") + '</div></div>' +
+      '<div class="kv"><div class="k">Budget</div><div class="v">' + esc(l.budget||"—") + '</div></div>' +
+      '<div class="kv"><div class="k">Timeline</div><div class="v">' + esc(l.timeline||"—") + '</div></div>';
+    els.drPipe.innerHTML = PIPELINE.map(function(p){
+      return '<option value="' + p + '"' + (p === stage ? " selected" : "") + '>' + PIPE_LABEL[p] + '</option>';
+    }).join("");
+  }
+
+  function refreshDrawer(){
+    if (!drawerLead) return;
+    fetch("/api/leads/" + drawerLead.id)
+      .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+      .then(function(d){
+        if (!drawerLead || !d.lead || d.lead.id !== drawerLead.id) return;
+        drawerLead = d.lead;
+        renderDrawerHead();
+        renderProject(d.lead);
+        renderBuildStage(d.lead);
+        renderPayments(d.payments || []);
+        renderLeadSubs(d.subs || []);
+        renderFiles(d.files || []);
+        renderEstimate(d.estimate || []);
+        renderTimeline(d.activities || []);
+      })
+      .catch(function(e){ console.error("[CRM drawer]", e); });
+  }
+
+  /* ── Blueprint: project details ── */
+  function renderProject(l){
+    els.prTier.value = l.tier || "";
+    els.prJurisdiction.value = l.jurisdiction || "";
+    els.prPermit.value = l.permit_status || "none";
+    els.prDesign.value = l.design_status || "none";
+    els.prValue.value = l.project_value_cents ? "$" + Math.round(l.project_value_cents/100).toLocaleString() : "";
+    els.prReferredBy.value = l.referred_by || "";
+    var scope = {};
+    try { scope = JSON.parse(l.scope || "{}") || {}; } catch (_) {}
+    els.prScope.querySelectorAll("input[data-scope]").forEach(function(cb){
+      cb.checked = !!scope[cb.getAttribute("data-scope")];
+    });
+  }
+  els.prSave.addEventListener("click", function(){
+    if (!drawerLead) return;
+    var scope = {};
+    els.prScope.querySelectorAll("input[data-scope]").forEach(function(cb){ scope[cb.getAttribute("data-scope")] = cb.checked; });
+    var body = {
+      jurisdiction: els.prJurisdiction.value, permit_status: els.prPermit.value,
+      design_status: els.prDesign.value, referred_by: els.prReferredBy.value,
+      project_value: els.prValue.value, scope: scope
+    };
+    if (els.prTier.value) body.tier = els.prTier.value;
+    fetch("/api/leads/" + drawerLead.id, { method:"PATCH", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) })
+      .then(function(){ toast("Project details saved"); lastPayload=""; refreshDrawer(); loadLeads(); })
+      .catch(function(){ toast("Save failed"); });
+  });
+
+  /* ── Blueprint: build stage + inspections ── */
+  function renderBuildStage(l){
+    var opts = '<option value="">— not in construction —</option>' + BUILD_STAGES.map(function(s){
+      return '<option value="' + s.key + '"' + (s.key === l.build_stage ? " selected" : "") + '>' + esc(s.label) + '</option>';
+    }).join("");
+    els.drBuildStage.innerHTML = opts;
+    var insp = [];
+    try { insp = JSON.parse(l.inspections || "[]") || []; } catch (_) {}
+    els.drInspections.innerHTML = insp.length ? insp.map(function(it, i){
+      return '<div class="insp-row"><input type="checkbox" data-insp="' + i + '"' + (it.done ? " checked" : "") + ' /> ' + esc(it.label) +
+        (it.date ? '<span class="when">' + esc(it.date) + '</span>' : '') + '</div>';
+    }).join("") : '<div class="dim" style="font-size:12.5px">City inspections appear once the build starts</div>';
+  }
+  els.drBuildStage.addEventListener("change", function(){
+    if (!drawerLead) return;
+    fetch("/api/leads/" + drawerLead.id, { method:"PATCH", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ build_stage: els.drBuildStage.value || null }) })
+      .then(function(){ toast("Build stage updated"); lastPayload=""; refreshDrawer(); loadLeads(); })
+      .catch(function(){ toast("Update failed"); });
+  });
+  els.drInspections.addEventListener("change", function(e){
+    var cb = e.target.closest("input[data-insp]");
+    if (!cb || !drawerLead) return;
+    var insp = [];
+    try { insp = JSON.parse(drawerLead.inspections || "[]") || []; } catch (_) {}
+    var i = Number(cb.getAttribute("data-insp"));
+    if (!insp[i]) return;
+    insp[i].done = cb.checked;
+    insp[i].date = cb.checked ? new Date().toISOString().split("T")[0] : null;
+    fetch("/api/leads/" + drawerLead.id, { method:"PATCH", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ inspections: insp }) })
+      .then(function(){ refreshDrawer(); });
+  });
+  els.msGenerate.addEventListener("click", function(){
+    if (!drawerLead) return;
+    fetch("/api/leads/" + drawerLead.id + "/milestones/generate", { method:"POST" })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d.ok){ toast(d.error || "Set a project value first"); return; }
+        toast(d.created ? d.created + " milestone draws created" : "Schedule already in place");
+        lastPayload=""; refreshDrawer(); loadLeads();
+      })
+      .catch(function(){ toast("Failed"); });
+  });
+
+  /* ── Blueprint: subcontractors ── */
+  function renderLeadSubs(subs){
+    els.drSubs.innerHTML = subs.length ? subs.map(function(s){
+      var stageLabel = (BUILD_STAGES.find(function(b){ return b.key === s.stage; }) || {}).label || s.stage || "—";
+      return '<div class="sub-row">' +
+        '<b>' + esc(s.name) + '</b> <span class="dim">' + esc(stageLabel) + (s.scheduled_for ? " · " + esc(s.scheduled_for) : "") + '</span>' +
+        '<span class="sub-status ' + esc(s.status) + '">' + esc(s.status) + '</span>' +
+        (s.status !== "confirmed" ? '<button class="mini-act" data-sub-notify="' + s.id + '">📲 Text schedule</button>' : "") +
+        (s.status === "notified" ? '<button class="mini-act" data-sub-confirm="' + s.id + '">✓ They confirmed</button>' : "") +
+        '<button class="mini-act" data-sub-del="' + s.id + '">×</button>' +
+        '</div>';
+    }).join("") : '<div class="dim" style="font-size:12.5px;padding:2px 0 6px">No subs assigned yet</div>';
+  }
+  els.drSubs.addEventListener("click", function(e){
+    if (!drawerLead) return;
+    var n = e.target.closest("[data-sub-notify]"), c = e.target.closest("[data-sub-confirm]"), x = e.target.closest("[data-sub-del]");
+    if (n){
+      n.disabled = true; n.textContent = "Sending…";
+      fetch("/api/leads/" + drawerLead.id + "/subs/" + n.getAttribute("data-sub-notify") + "/notify", { method:"POST" })
+        .then(function(r){ return r.json(); })
+        .then(function(d){ toast(d.ok ? "Schedule text sent" : (d.error || "Text failed")); refreshDrawer(); })
+        .catch(function(){ toast("Text failed"); refreshDrawer(); });
+    } else if (c){
+      fetch("/api/leads/" + drawerLead.id + "/subs/" + c.getAttribute("data-sub-confirm") + "/confirm", { method:"POST" })
+        .then(function(){ toast("Marked confirmed"); lastPayload=""; refreshDrawer(); loadLeads(); });
+    } else if (x){
+      fetch("/api/leads/" + drawerLead.id + "/subs/" + x.getAttribute("data-sub-del"), { method:"DELETE" })
+        .then(function(){ refreshDrawer(); });
+    }
+  });
+  els.subAssign.addEventListener("click", function(){
+    if (!drawerLead) return;
+    var subId = Number(els.subPick.value);
+    if (!subId){ toast("Save a sub first"); return; }
+    fetch("/api/leads/" + drawerLead.id + "/subs", { method:"POST", headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({ sub_id: subId, stage: els.subStage.value, scheduled_for: els.subDate.value.trim() }) })
+      .then(function(){ els.subDate.value=""; toast("Sub assigned"); refreshDrawer(); });
+  });
+  els.newSubAdd.addEventListener("click", function(){
+    var name = els.newSubName.value.trim();
+    if (!name){ toast("Enter the sub's name"); return; }
+    fetch("/api/crm/subs", { method:"POST", headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({ name: name, trade: els.newSubTrade.value, phone: els.newSubPhone.value.trim() }) })
+      .then(function(r){ return r.json(); })
+      .then(function(){ els.newSubName.value=""; els.newSubPhone.value=""; toast("Sub saved"); loadSubs(); });
+  });
+
+  /* ── Blueprint: project vault (files) ── */
+  function renderFiles(files){
+    els.drFiles.innerHTML = files.length ? files.map(function(f){
+      var isImg = /^image\//.test(f.mime || "");
+      return '<div class="file-row">' +
+        (isImg ? '<a href="/api/crm/files/' + f.id + '" target="_blank"><img class="file-thumb" src="/api/crm/files/' + f.id + '" alt="" /></a>' : "") +
+        '<span class="kind-tag">' + esc(f.kind) + '</span>' +
+        '<a href="/api/crm/files/' + f.id + '" target="_blank" style="color:var(--teal-deep);text-decoration:none">' + esc(f.name || "file") + '</a>' +
+        '<span class="dim" style="margin-left:auto">' + formatDate(f.created_at) + '</span>' +
+        '<button class="mini-act" data-file-del="' + f.id + '">×</button>' +
+        '</div>';
+    }).join("") : '<div class="dim" style="font-size:12.5px;padding:2px 0 6px">Nothing in the vault yet — inspiration pics, permits, contracts, field photos</div>';
+  }
+  els.drFiles.addEventListener("click", function(e){
+    var x = e.target.closest("[data-file-del]");
+    if (!x || !drawerLead) return;
+    if (!confirm("Remove this file?")) return;
+    fetch("/api/leads/" + drawerLead.id + "/files/" + x.getAttribute("data-file-del"), { method:"DELETE" })
+      .then(function(){ refreshDrawer(); });
+  });
+  els.fileInput.addEventListener("change", function(){
+    if (!drawerLead || !els.fileInput.files || !els.fileInput.files[0]) return;
+    var f = els.fileInput.files[0];
+    if (f.size > 6 * 1024 * 1024){ toast("File too large (max 6MB)"); els.fileInput.value = ""; return; }
+    var reader = new FileReader();
+    reader.onload = function(){
+      var b64 = String(reader.result).split(",")[1] || "";
+      fetch("/api/leads/" + drawerLead.id + "/files", { method:"POST", headers:{ "Content-Type":"application/json" },
+        body:JSON.stringify({ kind: els.fileKind.value, name: f.name, mime: f.type, data: b64 }) })
+        .then(function(r){ return r.json(); })
+        .then(function(d){ toast(d.ok ? "Saved to vault" : (d.error || "Upload failed")); els.fileInput.value = ""; refreshDrawer(); })
+        .catch(function(){ toast("Upload failed"); els.fileInput.value = ""; });
+    };
+    reader.readAsDataURL(f);
+  });
+
+  /* ── Blueprint: estimator ── */
+  function renderEstimate(items){
+    if (!items.length){ els.drEstimate.innerHTML = '<div class="dim" style="font-size:12.5px;padding:2px 0 6px">No line items yet</div>'; return; }
+    var total = 0;
+    var html = items.map(function(it){
+      var line = Math.round(it.qty * it.unit_cost_cents * (1 + (it.markup_pct || 0) / 100));
+      total += line;
+      return '<div class="est-row">' + esc(it.label) +
+        '<span class="dim">' + it.qty + (it.unit ? " " + esc(it.unit) : "") + ' × ' + fmtMoney(it.unit_cost_cents) + (it.markup_pct ? ' +' + it.markup_pct + '%' : '') + '</span>' +
+        '<b style="margin-left:auto">' + fmtMoney(line) + '</b>' +
+        '<button class="mini-act" data-est-del="' + it.id + '">×</button></div>';
+    }).join("");
+    els.drEstimate.innerHTML = html + '<div class="est-total">Total: ' + fmtMoney(total) + '</div>';
+  }
+  els.drEstimate.addEventListener("click", function(e){
+    var x = e.target.closest("[data-est-del]");
+    if (!x || !drawerLead) return;
+    fetch("/api/leads/" + drawerLead.id + "/estimate/" + x.getAttribute("data-est-del"), { method:"DELETE" })
+      .then(function(){ refreshDrawer(); });
+  });
+  els.estAdd.addEventListener("click", function(){
+    if (!drawerLead) return;
+    var label = els.estLabel.value.trim();
+    if (!label){ toast("Give the line item a name"); return; }
+    fetch("/api/leads/" + drawerLead.id + "/estimate", { method:"POST", headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({ label: label, qty: els.estQty.value || 1, unit: els.estUnit.value, unit_cost: els.estCost.value, markup_pct: els.estMarkup.value || 0 }) })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d.ok){ toast(d.error || "Add failed"); return; }
+        els.estLabel.value = ""; els.estQty.value = ""; els.estUnit.value = ""; els.estCost.value = ""; els.estMarkup.value = "";
+        refreshDrawer();
+      });
+  });
+  els.estApply.addEventListener("click", function(){
+    if (!drawerLead) return;
+    fetch("/api/leads/" + drawerLead.id + "/estimate/apply", { method:"POST" })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d.ok){ toast(d.error || "Apply failed"); return; }
+        toast("Project value set to $" + Math.round(d.total_cents/100).toLocaleString());
+        lastPayload=""; refreshDrawer(); loadLeads();
+      });
+  });
+
+  function renderPayments(payments){
+    if (!payments.length){ els.drPayments.innerHTML = '<div class="dim" style="padding:4px 2px 2px">No payments yet</div>'; return; }
+    var totalPaid = 0, totalPending = 0, html = "";
+    payments.forEach(function(p){
+      if (p.status === "paid") totalPaid += p.amount_cents; else totalPending += p.amount_cents;
+      html += '<div class="pay-row' + (p.status === "pending" ? " pending" : "") + '">' +
+        '<div class="pl">' + esc(p.label||"Payment") + '<div class="pm">' + esc(p.method||"") + (p.paid_at ? " · " + formatDate(p.paid_at) : "") + '</div></div>' +
+        '<span class="amt">' + fmtMoney(p.amount_cents) + '</span>' +
+        (p.status === "pending" ? '<button class="pst" data-pay-link="' + p.id + '" title="Create a Stripe payment link">' + (p.payment_url ? "Link ✓" : "Link") + '</button>' : "") +
+        '<button class="pst" data-pay-toggle="' + p.id + '">' + (p.status === "paid" ? "Paid" : "Pending") + '</button>' +
+        '<button class="px" data-pay-del="' + p.id + '">×</button>' +
+        '</div>';
+    });
+    html += '<div class="pay-total">collected <b>' + fmtMoney(totalPaid) + '</b>' + (totalPending ? ' · pending ' + fmtMoney(totalPending) : '') + '</div>';
+    els.drPayments.innerHTML = html;
+  }
+
+  els.drPayments.addEventListener("click", function(e){
+    var t = e.target.closest("[data-pay-toggle]"), d = e.target.closest("[data-pay-del]"), l = e.target.closest("[data-pay-link]");
+    if (!drawerLead) return;
+    if (t){
+      fetch("/api/leads/" + drawerLead.id + "/payments/" + t.getAttribute("data-pay-toggle") + "/toggle", { method:"POST" })
+        .then(function(){ lastPayload=""; refreshDrawer(); loadLeads(); });
+    } else if (d){
+      if (!confirm("Remove this payment?")) return;
+      fetch("/api/leads/" + drawerLead.id + "/payments/" + d.getAttribute("data-pay-del"), { method:"DELETE" })
+        .then(function(){ lastPayload=""; refreshDrawer(); loadLeads(); });
+    } else if (l){
+      var pid = l.getAttribute("data-pay-link");
+      l.disabled = true; l.textContent = "…";
+      fetch("/api/leads/" + drawerLead.id + "/payments/" + pid + "/link", { method:"POST" })
+        .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
+        .then(function(res){
+          if (!res.ok || !res.d.ok){ toast(res.d.error || "Couldn't create payment link"); refreshDrawer(); return; }
+          if (navigator.clipboard) navigator.clipboard.writeText(res.d.url).catch(function(){});
+          window.open(res.d.url, "_blank");
+          toast("Payment link copied — opened in a new tab");
+          refreshDrawer();
+        })
+        .catch(function(){ toast("Couldn't create payment link"); refreshDrawer(); });
+    }
+  });
+
+  els.payAdd.addEventListener("click", function(){
+    if (!drawerLead) return;
+    var amount = els.payAmount.value.trim();
+    if (!amount){ toast("Enter an amount"); return; }
+    fetch("/api/leads/" + drawerLead.id + "/payments", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({ label:els.payLabel.value.trim() || "Payment", amount:amount, method:els.payMethod.value })
+    }).then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d.ok){ toast(esc(d.error||"Payment failed")); return; }
+        els.payLabel.value = ""; els.payAmount.value = "";
+        toast("Payment <b>recorded</b>");
+        lastPayload=""; refreshDrawer(); loadLeads();
+      })
+      .catch(function(){ toast("Payment failed"); });
+  });
+
+  function renderTimeline(items){
+    if (!items.length){ els.drTimeline.innerHTML = '<div class="dim">No activity yet</div>'; return; }
+    els.drTimeline.innerHTML = items.map(function(a, i){
+      var icon = { sms:"Text", email:"Email", note:"Note", call:"Call", stage:"Stage", payment:"Payment" }[a.type] || a.type;
+      return '<div class="tl-item t-' + esc(a.type) + '" style="--i:' + Math.min(i,14) + '">' +
+        '<div class="tt">' + esc(icon) + ' · ' + formatDate(a.created_at) + '</div>' +
+        (a.subject ? '<div class="ts">' + esc(a.subject) + '</div>' : "") +
+        '<div class="tb">' + esc(a.body||"") + '</div>' +
+        '</div>';
+    }).join("");
+  }
+
+  els.noteAdd.addEventListener("click", function(){
+    if (!drawerLead) return;
+    var note = els.noteInput.value.trim();
+    if (!note) return;
+    fetch("/api/leads/" + drawerLead.id + "/notes", {
+      method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ note:note })
+    }).then(function(){ els.noteInput.value = ""; refreshDrawer(); toast("Note saved"); });
+  });
+  els.noteInput.addEventListener("keydown", function(e){ if (e.key === "Enter") els.noteAdd.click(); });
+
+  els.drPipe.addEventListener("change", function(){
+    if (!drawerLead) return;
+    patchLead(drawerLead.id, { pipeline: els.drPipe.value }, "Stage → <b>" + esc(PIPE_LABEL[els.drPipe.value]) + "</b>");
+    setTimeout(refreshDrawer, 350);
+  });
+
+  els.drEditBtn.addEventListener("click", function(){ if (drawerLead) openEdit(drawerLead.id); });
+
+  /* ── Compose: SMS ── */
+  els.drTextBtn.addEventListener("click", function(){
+    if (!drawerLead) return;
+    if (!drawerLead.phone || /not provided/i.test(drawerLead.phone)){ toast("This lead has no phone number"); return; }
+    els.smsWho.textContent = drawerLead.name || drawerLead.phone;
+    els.smsBody.value = "";
+    els.smsModal.classList.add("active");
+    els.smsBody.focus();
+  });
+  els.smsCancel.addEventListener("click", function(){ els.smsModal.classList.remove("active"); });
+  els.smsModal.addEventListener("click", function(e){ if (e.target === els.smsModal) els.smsModal.classList.remove("active"); });
+  els.smsSend.addEventListener("click", function(){
+    if (!drawerLead) return;
+    var msg = els.smsBody.value.trim();
+    if (!msg){ toast("Write a message first"); return; }
+    els.smsSend.disabled = true; els.smsSend.textContent = "Sending…";
+    fetch("/api/leads/" + drawerLead.id + "/sms", {
+      method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ message:msg })
+    }).then(function(r){ return r.json(); })
+      .then(function(d){
+        els.smsSend.disabled = false; els.smsSend.textContent = "Send Text";
+        if (!d.ok){ toast("Text failed: " + esc(d.error||"unknown")); return; }
+        els.smsModal.classList.remove("active");
+        toast("Text <b>sent</b> to " + esc(drawerLead.name||drawerLead.phone));
+        lastPayload=""; refreshDrawer(); loadLeads();
+      })
+      .catch(function(){ els.smsSend.disabled = false; els.smsSend.textContent = "Send Text"; toast("Text failed"); });
+  });
+
+  /* ── Compose: Email ── */
+  els.drEmailBtn.addEventListener("click", function(){
+    if (!drawerLead) return;
+    if (!drawerLead.email){ toast("This lead has no email — add one via Edit"); return; }
+    els.emailWho.textContent = drawerLead.name || drawerLead.email;
+    els.emailSubject.value = ""; els.emailBody.value = "";
+    if (emailAccounts.length){
+      els.emailFromWrap.style.display = "";
+      els.emailFrom.innerHTML = emailAccounts.map(function(a){ return '<option value="' + esc(a.email) + '">' + esc(a.label || a.email) + '</option>'; }).join("");
+    } else {
+      els.emailFromWrap.style.display = "none";
+    }
+    els.emailModal.classList.add("active");
+    els.emailSubject.focus();
+  });
+  els.emailCancel.addEventListener("click", function(){ els.emailModal.classList.remove("active"); });
+  els.emailModal.addEventListener("click", function(e){ if (e.target === els.emailModal) els.emailModal.classList.remove("active"); });
+  els.emailSend.addEventListener("click", function(){
+    if (!drawerLead) return;
+    var subject = els.emailSubject.value.trim(), body = els.emailBody.value.trim();
+    if (!subject || !body){ toast("Subject and message are required"); return; }
+    els.emailSend.disabled = true; els.emailSend.textContent = "Sending…";
+    fetch("/api/leads/" + drawerLead.id + "/email", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({ subject:subject, body:body, from:emailAccounts.length ? els.emailFrom.value : "" })
+    }).then(function(r){ return r.json(); })
+      .then(function(d){
+        els.emailSend.disabled = false; els.emailSend.textContent = "Send Email";
+        if (!d.ok){ toast("Email failed: " + esc(d.error||"unknown")); return; }
+        els.emailModal.classList.remove("active");
+        toast("Email <b>sent</b> to " + esc(drawerLead.name||drawerLead.email));
+        lastPayload=""; refreshDrawer(); loadLeads();
+      })
+      .catch(function(){ els.emailSend.disabled = false; els.emailSend.textContent = "Send Email"; toast("Email failed"); });
+  });
+
+  function patchLead(id, body, msg){
+    fetch("/api/leads/" + id, {
+      method:"PATCH", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body)
+    }).then(function(){ lastPayload=""; loadLeads(); if (msg) toast(msg); })
+      .catch(function(e){ console.error(e); toast("Update failed"); });
+  }
+
+  function openEdit(id){
+    currentEditId = id;
+    var l = leads.find(function(x){ return x.id === id; });
+    if (!l) return;
+    els.modalTitle.textContent = "Edit Lead";
+    els.formName.value = l.name || "";
+    els.formPhone.value = l.phone || "";
+    els.formEmail.value = l.email || "";
+    els.formAddress.value = l.address || "";
+    els.formProjectType.value = l.project_type || "";
+    els.formBudget.value = l.budget || "";
+    els.formTimeline.value = l.timeline || "";
+    // Sofia-sourced leads (real phone calls) aren't reassignable here — picking a
+    // different source in this form would flip skipAutoCall and re-dial the lead.
+    var isSofia = (l.source === "sofia" || l.source === "sofia_call");
+    els.formSource.disabled = isSofia;
+    if (isSofia){
+      var opt = els.formSource.querySelector('option[value="__current__"]') || document.createElement("option");
+      opt.value = "__current__"; opt.textContent = sourceLabel(l.source);
+      els.formSource.appendChild(opt);
+      els.formSource.value = "__current__";
+    } else {
+      var stale = els.formSource.querySelector('option[value="__current__"]');
+      if (stale) stale.remove();
+      els.formSource.value = els.formSource.querySelector('option[value="' + l.source + '"]') ? l.source : "manual";
+    }
+    els.editModal.classList.add("active");
+  }
+
+  els.newLeadBtn.addEventListener("click", function(){
+    currentEditId = null;
+    els.modalTitle.textContent = "New Lead";
+    els.leadForm.reset();
+    els.formSource.disabled = false;
+    var stale = els.formSource.querySelector('option[value="__current__"]');
+    if (stale) stale.remove();
+    els.formSource.value = "manual";
+    els.editModal.classList.add("active");
+  });
+  els.cancelBtn.addEventListener("click", function(){ els.editModal.classList.remove("active"); currentEditId = null; });
+  els.editModal.addEventListener("click", function(e){ if (e.target === els.editModal){ els.editModal.classList.remove("active"); currentEditId = null; } });
+
+  els.leadForm.addEventListener("submit", function(e){
+    e.preventDefault();
+    var data = {
+      name:els.formName.value, phone:els.formPhone.value, email:els.formEmail.value,
+      address:els.formAddress.value, project_type:els.formProjectType.value,
+      budget:els.formBudget.value, timeline:els.formTimeline.value
+    };
+    if (els.formSource.value !== "__current__") data.source = els.formSource.value || "manual";
+    var url = "/api/leads" + (currentEditId ? "/" + currentEditId : "");
+    fetch(url, { method: currentEditId ? "PATCH" : "POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(data) })
+      .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+      .then(function(){
+        els.editModal.classList.remove("active");
+        toast(currentEditId ? "Lead updated" : "Lead <b>added</b>");
+        currentEditId = null;
+        lastPayload = ""; loadLeads();
+        if (drawerLead) refreshDrawer();
+      })
+      .catch(function(e){ console.error(e); toast("Save failed — check name & phone"); });
+  });
+
+  document.querySelectorAll(".controls .btn[data-filter]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      document.querySelectorAll(".controls .btn[data-filter]").forEach(function(b){ b.classList.remove("active"); });
+      btn.classList.add("active");
+      currentFilter = btn.getAttribute("data-filter");
+      renderLeads();
+    });
+  });
+
+  els.searchInput.addEventListener("input", function(){ currentSearch = this.value; renderLeads(); });
+
+  /* ── Role-aware UI: hide what the signed-in role can't use (server enforces too) ── */
+  fetch("/api/auth/me").then(function(r){ return r.json(); }).then(function(d){
+    var role = d && d.user && d.user.role;
+    if (!role || role === "owner") return;
+    function hideSec(el){ var sec = el && el.closest(".dr-sec"); if (sec) sec.style.display = "none"; }
+    if (role === "sales"){
+      hideSec($("drPayments")); hideSec($("drSubs")); hideSec($("drBuildStage"));
+      var rev = $("statRevenue"); if (rev){ var card = rev.closest(".stat-card"); if (card) card.style.display = "none"; }
+    } else if (role === "pm"){
+      hideSec($("drEstimate"));
+    }
+  }).catch(function(){});
+
+  /* ── Other Calls: the non-prospect bucket ── */
+  function loadOtherCalls(){
+    fetch("/api/crm/other-calls").then(function(r){ return r.json(); }).then(function(d){
+      var calls = (d && d.calls) || [];
+      var card = $("otherCallsCard");
+      if (!calls.length){ card.style.display = "none"; return; }
+      card.style.display = "";
+      $("ocCount").textContent = "· " + calls.length + (calls.length === 100 ? "+" : "");
+      $("ocList").innerHTML = calls.map(function(c){
+        return '<div class="oc-row">' +
+          '<span class="oc-cat ' + esc(c.category || "other") + '">' + esc(c.category || "other") + '</span>' +
+          '<b>' + esc(c.name || "Unknown") + '</b>' +
+          '<span class="dim">' + esc(c.phone || "") + '</span>' +
+          '<span class="oc-msg" title="' + esc(c.message || "") + '">' + esc(c.message || "") + '</span>' +
+          '<span class="dim">' + formatDate(c.created_at) + '</span>' +
+          '<button class="mini-act" data-oc-promote="' + c.id + '" title="This is actually a real lead">↑ Lead</button>' +
+          '<button class="mini-act" data-oc-del="' + c.id + '">×</button>' +
+          '</div>';
+      }).join("");
+    }).catch(function(){});
+  }
+  $("ocList").addEventListener("click", function(e){
+    var p = e.target.closest("[data-oc-promote]"), x = e.target.closest("[data-oc-del]");
+    if (p){
+      p.disabled = true;
+      fetch("/api/crm/other-calls/" + p.getAttribute("data-oc-promote") + "/promote", { method:"POST" })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          toast(d.ok ? (d.merged ? "Merged into an existing lead" : "Promoted to lead") : (d.error || "Failed"));
+          lastPayload = ""; loadLeads(); loadOtherCalls();
+        })
+        .catch(function(){ toast("Failed"); loadOtherCalls(); });
+    } else if (x){
+      if (!confirm("Remove this call record?")) return;
+      fetch("/api/crm/other-calls/" + x.getAttribute("data-oc-del"), { method:"DELETE" })
+        .then(function(){ loadOtherCalls(); });
+    }
+  });
+
+  loadLeads();
+  loadSubs();
+  loadOtherCalls();
+  setInterval(function(){ if (visible && !document.hidden) loadOtherCalls(); }, 60000);
+  startPolling();
+})();
+</script>
+</body>
+</html>

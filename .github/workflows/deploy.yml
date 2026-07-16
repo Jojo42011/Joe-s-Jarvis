@@ -1,0 +1,19 @@
+name: Deploy arthur-arlo
+
+on:
+  push:
+    branches: [main, master, claude/focused-mendel-Ch67G]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy arthur-arlo
+        run: flyctl deploy --remote-only -c fly.toml
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

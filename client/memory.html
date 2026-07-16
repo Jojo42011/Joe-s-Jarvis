@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>A.R.L.O // Neural Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  :root {
+    --app-bg:#F4F7F9; --card:#FFFFFF; --card-2:#F8FAFB;
+    --border:#E5EBEF; --border-strong:#D3DDE3;
+    --text:#0E1B24; --body:#33454F; --muted:#6B7C86; --faint:#9AA9B2;
+    --red:#D9301B; --red-hover:#BC2714; --red-soft:rgba(217,48,27,0.08);
+    --teal:#15A6BC; --teal-deep:#0E8194; --teal-soft:rgba(21,166,188,0.10);
+    --success:#12B76A; --danger:#E5484D; --info:#2563EB;
+    --shadow-sm:0 1px 2px rgba(14,27,36,0.06);
+    --shadow:0 1px 3px rgba(14,27,36,0.07), 0 10px 26px -16px rgba(14,27,36,0.22);
+    --shadow-lg:0 24px 60px -20px rgba(14,27,36,0.28);
+    --bg-0: var(--app-bg);
+    --bg-1: var(--card);
+    --bg-2: var(--card-2);
+    --line: var(--border);
+    --line-strong: var(--border-strong);
+    --orange: var(--teal);
+    --orange-bright: var(--teal-deep);
+    --dim: var(--muted);
+    --dimmer: var(--faint);
+    --ok: var(--success);
+    --sans:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    --mono:'JetBrains Mono',monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--app-bg);
+    color: var(--body);
+    font-family: var(--sans);
+    height: 100vh;
+    overflow: hidden;
+  }
+  #topbar {
+    height: 52px; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 22px; border-bottom: 1px solid var(--border);
+    background: var(--card); box-shadow: var(--shadow-sm);
+  }
+  #topbar a { color: var(--teal-deep); text-decoration: none; font-family: var(--sans); font-weight: 600; font-size: 12px; letter-spacing: 0.04em; }
+  #title { font-family: var(--sans); font-weight: 700; font-size: 14px; letter-spacing: 0.06em; color: var(--text); }
+  #layout { display: flex; height: calc(100vh - 52px - 36px); }
+  #graph-wrap { flex: 1; position: relative; background: var(--app-bg); }
+  #graph { width: 100%; height: 100%; }
+  #panel {
+    width: 320px; border-left: 1px solid var(--border);
+    background: var(--card); padding: 18px; overflow-y: auto;
+  }
+  #panel h3 { font-family: var(--sans); font-weight: 700; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  #bottombar {
+    height: 36px; display: flex; align-items: center; gap: 16px;
+    padding: 0 22px; border-top: 1px solid var(--border);
+    background: var(--card);
+    font-family: var(--sans); font-weight: 600; font-size: 11px; letter-spacing: 0.03em; color: var(--muted);
+  }
+  .stat-sep { color: var(--border-strong); }
+  .type-badge { display: inline-block; padding: 2px 8px; font-size: 9px; border-radius: 20px; margin-bottom: 8px; color: #fff; font-weight: 600; }
+  .fact-row { font-size: 12px; margin-bottom: 8px; color: var(--body); line-height: 1.4; }
+  .bar-bg { height: 4px; background: var(--card-2); border: 1px solid var(--border); border-radius: 3px; margin-top: 4px; }
+  .bar-fill { height: 100%; background: var(--teal); border-radius: 3px; width: 0; transition: width 0.8s ease; }
+  .dim-row { margin-bottom: 10px; }
+  .dim-label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; }
+  .dim-name { font-family: var(--sans); font-weight: 600; color: var(--muted); letter-spacing: 0.02em; }
+  .dim-pct { color: var(--teal-deep); font-weight: 600; }
+
+  #topright { display: flex; align-items: center; gap: 16px; }
+  #sync { font-size: 11px; color: var(--muted); }
+  #about-btn {
+    font-family: var(--sans); font-weight: 600; font-size: 12px; letter-spacing: 0.02em;
+    color: var(--teal-deep); background: var(--card); border: 1px solid var(--border);
+    padding: 6px 12px; border-radius: 8px; cursor: pointer; transition: all 0.15s ease;
+    box-shadow: var(--shadow-sm);
+  }
+  #about-btn:hover { background: var(--teal-soft); border-color: var(--teal); }
+
+  #about-overlay {
+    position: fixed; inset: 0; z-index: 10000;
+    background: rgba(14,27,36,0.42); backdrop-filter: blur(2px);
+    display: none; align-items: center; justify-content: center; padding: 24px;
+  }
+  #about-overlay.open { display: flex; }
+  #about-card {
+    position: relative; max-width: 640px; max-height: 86vh; overflow-y: auto;
+    background: var(--card);
+    border: 1px solid var(--border); border-radius: 16px; padding: 30px 34px;
+    box-shadow: var(--shadow-lg);
+  }
+  #about-card h2 { font-family: var(--sans); font-weight: 700; font-size: 18px; letter-spacing: 0.01em; color: var(--text); margin-bottom: 16px; }
+  #about-card h3 { font-family: var(--sans); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--teal-deep); margin: 22px 0 10px; }
+  #about-card p { font-size: 13px; line-height: 1.7; color: var(--body); margin-bottom: 10px; }
+  #about-card p.lede { font-size: 14px; color: var(--text); }
+  #about-card p.foot { font-size: 11px; color: var(--muted); margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
+  #about-card ul { list-style: none; margin: 0; padding: 0; }
+  #about-card li { font-size: 12.5px; line-height: 1.65; color: var(--body); padding-left: 16px; position: relative; margin-bottom: 10px; }
+  #about-card li::before { content: '▸'; position: absolute; left: 0; color: var(--teal); }
+  #about-card b { color: var(--text); }
+  #about-close {
+    position: absolute; top: 16px; right: 18px; background: transparent; border: none;
+    color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1;
+  }
+  #about-close:hover { color: var(--red); }
+</style>
+</head>
+<body>
+  <header id="topbar">
+    <a href="/">← BACK TO CORE</a>
+    <div id="title">A.R.L.O // NEURAL MAP</div>
+    <div id="topright">
+      <button id="about-btn" type="button">ⓘ ABOUT</button>
+      <span id="sync">SYNCING…</span>
+    </div>
+  </header>
+
+  <div id="about-overlay" aria-hidden="true">
+    <div id="about-card">
+      <button id="about-close" type="button" aria-label="Close">✕</button>
+      <h2>THE NEURAL MAP</h2>
+      <p class="lede">This is Arlo's mind — a live picture of everything he knows about Arthur and Aquatic Pool &amp; Spa. Every client, project, value, and decision is a <b>node</b>; every relationship is an <b>edge</b>. It grows after every conversation.</p>
+
+      <h3>WHY IT MATTERS</h3>
+      <p>Tools are a commodity — memory is the moat. A generic AI forgets you the moment the chat ends. Arlo doesn't. This graph is the accumulated, private judgment of the founder: the one thing a competitor can't copy and that gets more valuable every week. When the identity bars fill in, that's the clone learning how Arthur actually thinks — not just what the business does.</p>
+
+      <h3>HOW IT FUNCTIONS</h3>
+      <ul>
+        <li><b>Six memory layers</b> — working (the live conversation), episodic (session summaries), semantic (durable facts), relational (this graph), procedural (business rules), and self-evolving (weekly synthesis).</li>
+        <li><b>Hybrid recall</b> — before every reply Arlo retrieves memories by <i>meaning</i>, scoring each on relevance (semantic similarity), keyword match, strength, recency, and importance.</li>
+        <li><b>Reflection</b> — periodically Arlo reads his recent memories and writes back higher-level insights about Arthur. Those conclusions become new nodes — this is how understanding forms, not just facts.</li>
+        <li><b>Decay &amp; reinforcement</b> — memories he uses grow stronger; memories he never touches gently fade. He forgets by not remembering, the same way people do.</li>
+        <li><b>Curiosity</b> — after real conversations Arlo occasionally asks a deep question across 12 psychological dimensions. Every answer deepens the identity profile below.</li>
+      </ul>
+      <p class="foot">Nodes pulse in as they're created. Click any node to explore its connections; drag to reposition; scroll to zoom.</p>
+    </div>
+  </div>
+  <div id="layout">
+    <div id="graph-wrap"><svg id="graph"></svg></div>
+    <aside id="panel"><h3>OVERVIEW</h3><div id="panel-body">Loading…</div></aside>
+  </div>
+  <footer id="bottombar">
+    <span id="stat-nodes">NODES: 0</span><span class="stat-sep">│</span>
+    <span id="stat-edges">EDGES: 0</span><span class="stat-sep">│</span>
+    <span id="stat-facts">FACTS: 0</span><span class="stat-sep">│</span>
+    <span id="stat-rules">RULES: 0</span><span class="stat-sep">│</span>
+    <span id="stat-episodes">EPISODES: 0</span>
+  </footer>
+<script>
+(function () {
+  "use strict";
+
+  const NODE_COLORS = {
+    client: "#15A6BC", person: "#0E8194", company: "#D9301B",
+    project: "#12B76A", tool: "#2563EB", concept: "#8B5CF6", unknown: "#9AA9B2"
+  };
+
+  let nodes = [], edges = [], allFacts = [], simulation = null;
+  let width = 800, height = 600;
+
+  const svg = d3.select("#graph");
+  const graphGroup = svg.append("g");
+
+  const defs = svg.append("defs");
+  defs.append("filter").attr("id", "glow-orange").attr("x", "-50%").attr("y", "-50%").attr("width", "200%").attr("height", "200%")
+    .html('<feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#0E1B24" flood-opacity="0.18"/>');
+  defs.append("filter").attr("id", "glow-strong").attr("x", "-50%").attr("y", "-50%").attr("width", "200%").attr("height", "200%")
+    .html('<feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0E1B24" flood-opacity="0.22"/>');
+
+  function nodeRadius(d) {
+    const c = edges.filter(function (e) {
+      const sid = typeof e.source === "object" ? e.source.id : e.source;
+      const tid = typeof e.target === "object" ? e.target.id : e.target;
+      return sid === d.id || tid === d.id;
+    }).length;
+    return Math.min(8 + c * 2, 30);
+  }
+
+  function resize() {
+    const wrap = document.getElementById("graph-wrap");
+    width = wrap.clientWidth;
+    height = wrap.clientHeight;
+    svg.attr("width", width).attr("height", height);
+    if (simulation) simulation.force("center", d3.forceCenter(width / 2, height / 2)).alpha(0.3).restart();
+  }
+
+  function showOverview(data) {
+    const stats = data.stats || {};
+    document.getElementById("stat-nodes").textContent = "NODES: " + (stats.nodes || 0);
+    document.getElementById("stat-edges").textContent = "EDGES: " + (stats.edges || 0);
+    document.getElementById("stat-facts").textContent = "FACTS: " + (stats.facts || 0);
+    document.getElementById("stat-rules").textContent = "RULES: " + (stats.rules || 0);
+    document.getElementById("stat-episodes").textContent = "EPISODES: " + (stats.episodes || 0);
+    document.getElementById("sync").textContent = "LAST SYNC: " + new Date().toLocaleTimeString();
+
+    let html = "<p style='font-size:11px;color:var(--dim);margin-bottom:14px;'>Select a node to explore connections.</p>";
+
+    if ((data.episodes || []).length) {
+      html += "<h3 style='margin-top:12px;'>LATEST EPISODE</h3><p class='fact-row'>" + data.episodes[0].summary + "</p>";
+    }
+
+    const topFacts = (data.facts || []).slice(0, 5);
+    if (topFacts.length) {
+      html += "<h3 style='margin-top:12px;'>TOP FACTS</h3>";
+      topFacts.forEach(function (f) {
+        html += "<div class='fact-row'>" + f.content.slice(0, 80) + "</div>";
+      });
+    }
+
+    html += "<h3 style='margin-top:16px;'>IDENTITY PROFILE</h3><div id='identity-dims'></div>";
+    document.getElementById("panel-body").innerHTML = html;
+
+    const profile = data.identityProfile || [];
+    const container = document.getElementById("identity-dims");
+    if (!profile.length || profile.every(function (p) { return p.confidence === 0; })) {
+      container.innerHTML = "<p style='font-size:11px;color:var(--dim);'>No identity data yet.<br>Arlo will ask questions after sessions.</p>";
+      return;
+    }
+    container.innerHTML = profile.map(function (p) {
+      return "<div class='dim-row'><div class='dim-label'><span class='dim-name'>" + p.dimension + "</span><span class='dim-pct'>" + Math.round(p.confidence * 100) + "%</span></div><div class='bar-bg'><div class='bar-fill' data-target='" + (p.confidence * 100) + "'></div></div></div>";
+    }).join("");
+    requestAnimationFrame(function () {
+      container.querySelectorAll(".bar-fill").forEach(function (b) {
+        b.style.width = b.dataset.target + "%";
+      });
+    });
+  }
+
+  function showNodeDetail(d) {
+    const related = allFacts.filter(function (f) {
+      return f.content.toLowerCase().includes(d.name.toLowerCase());
+    });
+    const conns = edges.filter(function (e) {
+      const sid = typeof e.source === "object" ? e.source.id : e.source;
+      const tid = typeof e.target === "object" ? e.target.id : e.target;
+      return sid === d.id || tid === d.id;
+    });
+    let html = "<div class='type-badge' style='background:" + (NODE_COLORS[d.type] || NODE_COLORS.unknown) + "'>" + d.type + "</div>";
+    html += "<h2 style='font-family:Inter;font-weight:700;font-size:16px;margin-bottom:12px;color:var(--text);'>" + d.name + "</h2>";
+    if (conns.length) {
+      html += "<h3>CONNECTIONS</h3>";
+      conns.forEach(function (e) {
+        html += "<div class='fact-row'>" + e.relationship + "</div>";
+      });
+    }
+    if (related.length) {
+      html += "<h3 style='margin-top:12px;'>RELATED FACTS</h3>";
+      related.forEach(function (f) {
+        html += "<div class='fact-row'>" + f.content + "</div>";
+      });
+    }
+    document.getElementById("panel-body").innerHTML = html;
+  }
+
+  function renderGraph() {
+    graphGroup.selectAll("*").remove();
+
+    if (!nodes.length) {
+      graphGroup.append("text").attr("x", width / 2).attr("y", height / 2 - 10)
+        .attr("text-anchor", "middle").style("font-family", "Inter").style("font-weight", "700").style("font-size", "14px")
+        .style("fill", "#9AA9B2").style("letter-spacing", "1px").text("NEURAL MAP // EMPTY");
+      graphGroup.append("text").attr("x", width / 2).attr("y", height / 2 + 20)
+        .attr("text-anchor", "middle").style("font-size", "12px").style("fill", "#9AA9B2")
+        .text("Start a conversation to grow the memory graph.");
+      return;
+    }
+
+    const link = graphGroup.append("g").selectAll("line").data(edges).join("line")
+      .style("stroke", "rgba(21,166,188,0.35)").style("stroke-width", function (d) { return Math.max(0.5, (d.strength || 1) * 2); });
+
+    const node = graphGroup.append("g").selectAll("circle").data(nodes).join("circle")
+      .attr("r", function (d) { return nodeRadius(d); })
+      .attr("fill", function (d) { return NODE_COLORS[d.type] || NODE_COLORS.unknown; })
+      .attr("filter", "url(#glow-orange)")
+      .style("cursor", "pointer")
+      .call(d3.drag()
+        .on("start", function (event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+        .on("drag", function (event, d) { d.fx = event.x; d.fy = event.y; })
+        .on("end", function (event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
+      )
+      .on("click", function (event, d) { event.stopPropagation(); showNodeDetail(d); });
+
+    const labels = graphGroup.append("g").selectAll("text").data(nodes).join("text")
+      .text(function (d) { return d.name.length > 18 ? d.name.slice(0, 15) + "…" : d.name; })
+      .style("font-family", "Inter").style("font-weight", "600").style("font-size", "10px").style("fill", "#33454F")
+      .attr("text-anchor", "middle").attr("dy", function (d) { return nodeRadius(d) + 14; });
+
+    simulation = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(edges).id(function (d) { return d.id; }).distance(80).strength(0.3))
+      .force("charge", d3.forceManyBody().strength(-300).distanceMax(400))
+      .force("center", d3.forceCenter(width / 2, height / 2))
+      .force("collide", d3.forceCollide().radius(function (d) { return nodeRadius(d) + 12; }))
+      .on("tick", function () {
+        link.attr("x1", function (d) { return d.source.x; }).attr("y1", function (d) { return d.source.y; })
+            .attr("x2", function (d) { return d.target.x; }).attr("y2", function (d) { return d.target.y; });
+        node.attr("cx", function (d) { return d.x; }).attr("cy", function (d) { return d.y; });
+        labels.attr("x", function (d) { return d.x; }).attr("y", function (d) { return d.y; });
+      });
+
+    svg.call(d3.zoom().scaleExtent([0.1, 4]).on("zoom", function (event) {
+      graphGroup.attr("transform", event.transform);
+    }));
+
+    svg.on("click", function () { showOverview({ stats: {}, facts: allFacts, episodes: [], identityProfile: [] }); });
+  }
+
+  async function loadMemoryData() {
+    try {
+      const res = await fetch("/api/memory/all");
+      const data = await res.json();
+      allFacts = data.facts || [];
+      nodes = (data.nodes || []).map(function (n) { return Object.assign({}, n); });
+      edges = (data.edges || []).map(function (e) {
+        return { id: e.id, source: e.source_id, target: e.target_id, relationship: e.relationship, strength: e.strength };
+      });
+      resize();
+      renderGraph();
+      showOverview(data);
+    } catch (e) {
+      console.error("[neural map]", e);
+    }
+  }
+
+  const wsUrl = (location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/ws";
+  try {
+    const memWs = new WebSocket(wsUrl);
+    memWs.onmessage = function (event) {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "memory_updated") loadMemoryData();
+      } catch (_) {}
+    };
+  } catch (_) {}
+
+  // About overlay toggle
+  const overlay = document.getElementById("about-overlay");
+  const openAbout = function () { overlay.classList.add("open"); overlay.setAttribute("aria-hidden", "false"); };
+  const closeAbout = function () { overlay.classList.remove("open"); overlay.setAttribute("aria-hidden", "true"); };
+  document.getElementById("about-btn").addEventListener("click", openAbout);
+  document.getElementById("about-close").addEventListener("click", closeAbout);
+  overlay.addEventListener("click", function (e) { if (e.target === overlay) closeAbout(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeAbout(); });
+
+  window.addEventListener("resize", resize);
+  loadMemoryData();
+  var shellActive = true;
+  window.addEventListener("message", function (e) {
+    var d = e.data || {};
+    if (d.type === "shell-visibility") { var was = shellActive; shellActive = !!d.active; if (shellActive && !was) loadMemoryData(); }
+  });
+  setInterval(function () { if (shellActive) loadMemoryData(); }, 30000);
+})();
+</script>
+</body>
+</html>

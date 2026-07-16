@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Arlo // Inbox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #F4F7F9; --panel: #FFFFFF;
+    --crimson: #D9301B; --crimson-bright: #15A6BC;
+    --text: #0E1B24; --muted: #6B7C86;
+    --line: #E5EBEF; --line-strong: #D3DDE3;
+    --green: #12B76A;
+    --p1:#E5484D; --p2:#D9301B; --p3:#B7791F; --p4:#15A6BC; --p5:#9AA9B2;
+    --red:#D9301B; --red-hover:#BC2714; --red-soft:rgba(217,48,27,0.08);
+    --teal:#15A6BC; --teal-deep:#0E8194; --teal-soft:rgba(21,166,188,0.10);
+    --shadow-sm:0 1px 2px rgba(14,27,36,0.06);
+    --shadow:0 1px 3px rgba(14,27,36,0.07), 0 10px 26px -16px rgba(14,27,36,0.22);
+    --shadow-lg:0 24px 60px -20px rgba(14,27,36,0.28);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+  #app { position: relative; z-index: 2; height: 100vh; display: flex; flex-direction: column; }
+
+  #topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 20px; height: 54px; border-bottom: 1px solid var(--line); background: var(--panel); flex: 0 0 auto; }
+  #topbar .left { display: flex; align-items: center; gap: 18px; }
+  #topbar a.back { color: var(--teal-deep); text-decoration: none; font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; font-weight: 600; }
+  #title { font-family: var(--sans); font-weight: 700; font-size: 15px; letter-spacing: -0.01em; color: var(--text); }
+  #topbar .actions { display: flex; gap: 8px; align-items: center; }
+  .btn { font-family: var(--sans); font-size: 12.5px; font-weight: 600; letter-spacing: 0.01em; color: var(--body, var(--text)); background: var(--panel); border: 1px solid var(--line); padding: 8px 13px; border-radius: 9px; cursor: pointer; box-shadow: var(--shadow-sm); transition: .15s; }
+  .btn:hover { border-color: var(--line-strong); background: var(--bg); }
+  .btn.primary { background: var(--red); color: #fff; border-color: transparent; box-shadow: 0 1px 2px rgba(217,48,27,0.3); }
+  .btn.primary:hover { background: var(--red-hover); }
+  .btn.danger { color: #E5484D; border-color: rgba(229,72,77,0.35); }
+  .btn.danger:hover { background: rgba(229,72,77,0.06); }
+  .btn.ok { color: #fff; background: var(--green); border-color: transparent; }
+  .btn.ok:hover { background: #0f9d5c; }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+
+  #tabs { display: flex; gap: 6px; align-items: center; padding: 12px 20px 6px; flex-wrap: wrap; flex: 0 0 auto; }
+  .tab { font-family: var(--sans); font-size: 12px; font-weight: 500; letter-spacing: 0.01em; color: var(--muted); border: 1px solid var(--line); background: var(--panel); padding: 7px 12px; border-radius: 20px; cursor: pointer; display: flex; gap: 7px; align-items: center; box-shadow: var(--shadow-sm); }
+  .tab.active { color: var(--teal-deep); border-color: var(--teal); background: var(--teal-soft); font-weight: 600; }
+  .tab .cnt { font-size: 10.5px; font-weight: 600; color: var(--teal-deep); }
+  .sep { width: 1px; height: 20px; background: var(--line); margin: 0 4px; }
+  .fbtn { font-family: var(--sans); font-size: 11.5px; font-weight: 500; letter-spacing: 0.01em; color: var(--muted); border: 1px solid var(--line); background: var(--panel); padding: 7px 10px; border-radius: 20px; cursor: pointer; }
+  .fbtn.active { color: var(--teal-deep); border-color: var(--teal); background: var(--teal-soft); font-weight: 600; }
+
+  #main { flex: 1 1 auto; display: flex; min-height: 0; }
+  #list { width: 42%; max-width: 520px; border-right: 1px solid var(--line); overflow-y: auto; background: var(--panel); }
+  #detail { flex: 1; overflow-y: auto; padding: 22px 26px; }
+
+  .row { padding: 13px 18px; border-bottom: 1px solid var(--line); cursor: pointer; display: flex; gap: 11px; transition: background .12s; }
+  .row:hover { background: var(--bg); }
+  .row.sel { background: var(--teal-soft); border-left: 2px solid var(--teal); padding-left: 16px; }
+  .row.unread .subj { font-weight: 700; color: var(--text); }
+  .pdot { flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; margin-top: 5px; }
+  .row .rbody { flex: 1; min-width: 0; }
+  .row .meta { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--muted); }
+  .row .acct { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.05em; color: var(--teal-deep); text-transform: uppercase; font-weight: 600; }
+  .row .from { color: var(--text); font-size: 12.5px; margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+  .row .subj { font-size: 13px; color: var(--body, #33454F); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .snip { font-size: 11.5px; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .badges { display: flex; gap: 5px; margin-top: 5px; }
+  .chip { font-family: var(--mono); font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); background: var(--bg); }
+  .chip.draft { color: var(--teal-deep); border-color: var(--teal); background: var(--teal-soft); }
+  .chip.flag { color: #B7791F; border-color: rgba(183,121,31,0.3); background: rgba(183,121,31,0.08); }
+
+  #detail .empty { color: var(--muted); font-size: 13px; padding: 40px 10px; text-align: center; }
+  #detail h2 { font-size: 19px; color: var(--text); margin-bottom: 6px; font-weight: 700; }
+  #detail .dmeta { font-size: 12.5px; color: var(--muted); margin-bottom: 4px; }
+  #detail .dmeta b { color: var(--text); }
+  #detail .summary { margin: 14px 0; padding: 12px 14px; border-left: 2px solid var(--teal); background: var(--teal-soft); border-radius: 0 8px 8px 0; font-size: 13px; line-height: 1.55; color: var(--text); }
+  #detail .body { white-space: pre-wrap; font-size: 13.5px; line-height: 1.65; color: #33454F; margin: 16px 0; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); box-shadow: var(--shadow-sm); max-height: 320px; overflow-y: auto; }
+  #detail .draftlabel { font-family: var(--sans); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--teal-deep); margin: 18px 0 8px; }
+  #detail textarea { width: 100%; min-height: 150px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; color: var(--text); font-family: var(--sans); font-size: 13.5px; line-height: 1.6; padding: 14px; resize: vertical; box-shadow: var(--shadow-sm); }
+  #detail textarea:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft); }
+  #detail .dactions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .pri-pill { font-family: var(--mono); font-size: 10.5px; font-weight: 600; padding: 3px 8px; border-radius: 5px; border: 1px solid; }
+
+  /* Compose modal */
+  #compose-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(14,27,36,0.42); backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; padding: 20px; }
+  #compose-overlay.open { display: flex; }
+  #compose { width: 100%; max-width: 560px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 24px; box-shadow: var(--shadow-lg); }
+  #compose h3 { font-family: var(--sans); font-size: 15px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); margin-bottom: 16px; }
+  #compose label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 10px 0 5px; }
+  #compose input, #compose select, #compose textarea { width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; color: var(--text); font-family: var(--sans); font-size: 13px; padding: 10px; }
+  #compose input:focus, #compose select:focus, #compose textarea:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft); }
+  #compose textarea { min-height: 140px; resize: vertical; }
+  #compose .cactions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+  #toast { position: fixed; bottom: 92px; left: 50%; transform: translateX(-50%); z-index: 200; background: var(--text); border: 1px solid var(--text); color: #fff; font-size: 13px; padding: 12px 20px; border-radius: 10px; opacity: 0; transition: opacity 0.25s; pointer-events: none; box-shadow: var(--shadow-lg); }
+  #toast.show { opacity: 1; }
+
+  /* scrollbars */
+  * { scrollbar-width: thin; scrollbar-color: #CBD5DB transparent; }
+  *::-webkit-scrollbar { width: 9px; height: 9px; }
+  *::-webkit-scrollbar-thumb { background: #CBD5DB; border-radius: 8px; }
+  *::-webkit-scrollbar-thumb:hover { background: #AEBCC4; }
+  *::-webkit-scrollbar-track { background: transparent; }
+
+  @media (max-width: 720px) { #list { width: 100%; max-width: none; } #detail { display: none; } body.detail-open #list { display: none; } body.detail-open #detail { display: block; } }
+</style>
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="left">
+        <a class="back" href="/">← CORE</a>
+        <div id="title">Inbox</div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="compose-btn">✎ Compose</button>
+        <button class="btn primary" id="sync-btn">↻ Sync now</button>
+      </div>
+    </header>
+
+    <div id="tabs"></div>
+
+    <div id="main">
+      <div id="list"><div class="empty" style="padding:30px;color:var(--muted);font-size:13px;">Loading inbox…</div></div>
+      <div id="detail"><div class="empty">Select an email to read, triage, and reply.</div></div>
+    </div>
+  </div>
+
+  <div id="compose-overlay">
+    <div id="compose">
+      <h3>Compose — in Arthur's voice</h3>
+      <label>From account</label>
+      <select id="c-account"></select>
+      <label>To</label>
+      <input id="c-to" type="email" placeholder="recipient@example.com" />
+      <label>Subject</label>
+      <input id="c-subject" type="text" />
+      <label>Message</label>
+      <textarea id="c-body"></textarea>
+      <div class="cactions">
+        <button class="btn" id="c-cancel">Cancel</button>
+        <button class="btn ok" id="c-send">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+  var PLABEL = {1:"URGENT",2:"TODAY",3:"NORMAL",4:"LOW",5:"NOISE"};
+  var state = { account: "", filter: "all", accounts: [], counts: {}, items: [], selId: null };
+
+  function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c];});}
+  function toast(m){var t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(function(){t.classList.remove("show");},2600);}
+  function pcolor(p){return getComputedStyle(document.documentElement).getPropertyValue("--p"+(p||3)).trim();}
+  function labelFor(email){var a=state.accounts.find(function(x){return x.email===email;});return a?a.label:email;}
+  function when(iso){if(!iso)return"";var d=new Date(iso);if(isNaN(d))return"";return d.toLocaleDateString("en-US",{month:"short",day:"numeric"})+" "+d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});}
+
+  function loadAccounts(){
+    return fetch("/api/google/accounts").then(function(r){return r.json();}).then(function(d){
+      state.accounts = (d.accounts||[]).filter(function(a){return a.connected;});
+      // populate compose account select
+      var sel=document.getElementById("c-account");
+      sel.innerHTML=state.accounts.map(function(a){return '<option value="'+esc(a.email)+'">'+esc(a.label)+'</option>';}).join("");
+      if(!d.configured || !state.accounts.length){
+        document.getElementById("list").innerHTML='<div class="empty" style="padding:30px;">No mailbox connected yet. Connect accounts on <a href="/integrations" style="color:var(--crimson-bright)">Integrations</a>.</div>';
+      }
+    });
+  }
+  function loadCounts(){
+    return fetch("/api/google/counts").then(function(r){return r.json();}).then(function(d){
+      state.counts={}; (d.counts||[]).forEach(function(c){state.counts[c.account_email]=c;}); renderTabs();
+    });
+  }
+  function renderTabs(){
+    var tabs=document.getElementById("tabs");
+    var total=0,flag=0,drafts=0;
+    Object.keys(state.counts).forEach(function(k){var c=state.counts[k];total+=c.total;flag+=c.flagged;drafts+=c.pending_drafts;});
+    var html='<div class="tab '+(state.account===""?"active":"")+'" data-acct=""><span>All</span><span class="cnt">'+total+'</span></div>';
+    state.accounts.forEach(function(a){
+      var c=state.counts[a.email]||{total:0};
+      html+='<div class="tab '+(state.account===a.email?"active":"")+'" data-acct="'+esc(a.email)+'"><span>'+esc(a.label)+'</span><span class="cnt">'+(c.total||0)+'</span></div>';
+    });
+    html+='<div class="sep"></div>';
+    html+='<button class="fbtn '+(state.filter==="all"?"active":"")+'" data-filter="all">All</button>';
+    html+='<button class="fbtn '+(state.filter==="flagged"?"active":"")+'" data-filter="flagged">★ Flagged '+(flag?"("+flag+")":"")+'</button>';
+    html+='<button class="fbtn '+(state.filter==="drafts"?"active":"")+'" data-filter="drafts">Drafts '+(drafts?"("+drafts+")":"")+'</button>';
+    tabs.innerHTML=html;
+    tabs.querySelectorAll(".tab").forEach(function(t){t.onclick=function(){state.account=t.getAttribute("data-acct");renderTabs();loadList();};});
+    tabs.querySelectorAll(".fbtn").forEach(function(b){b.onclick=function(){state.filter=b.getAttribute("data-filter");renderTabs();loadList();};});
+  }
+
+  function loadList(){
+    var url="/api/google/inbox?limit=100";
+    if(state.account)url+="&account="+encodeURIComponent(state.account);
+    if(state.filter==="flagged")url+="&flagged=1";
+    var endpoint = state.filter==="drafts" ? "/api/google/drafts" : url;
+    fetch(endpoint).then(function(r){return r.json();}).then(function(d){
+      state.items=d.items||[];
+      if(state.filter==="drafts" && state.account) state.items=state.items.filter(function(i){return i.account_email===state.account;});
+      renderList();
+    });
+  }
+  function renderList(){
+    var el=document.getElementById("list");
+    if(!state.items.length){el.innerHTML='<div class="empty" style="padding:30px;color:var(--muted);font-size:13px;">No emails here yet. Hit <b>Sync now</b>.</div>';return;}
+    el.innerHTML=state.items.map(function(e){
+      var badges="";
+      if(e.draft_status==="pending")badges+='<span class="chip draft">Reply drafted</span>';
+      if(e.flagged)badges+='<span class="chip flag">★ Flagged</span>';
+      if(e.category)badges+='<span class="chip">'+esc(e.category)+'</span>';
+      return '<div class="row '+(e.is_unread?"unread":"")+' '+(state.selId===e.id?"sel":"")+'" data-id="'+e.id+'">'+
+        '<div class="pdot" style="background:'+pcolor(e.priority)+'"></div>'+
+        '<div class="rbody">'+
+          '<div class="meta"><span class="acct">'+esc(labelFor(e.account_email))+'</span><span>'+when(e.received_at)+'</span></div>'+
+          '<div class="from">'+esc(e.from_addr||"")+'</div>'+
+          '<div class="subj">'+esc(e.subject||"(no subject)")+'</div>'+
+          '<div class="snip">'+esc(e.summary||e.snippet||"")+'</div>'+
+          (badges?'<div class="badges">'+badges+'</div>':"")+
+        '</div></div>';
+    }).join("");
+    el.querySelectorAll(".row").forEach(function(r){r.onclick=function(){openDetail(Number(r.getAttribute("data-id")));};});
+  }
+
+  function openDetail(id){
+    state.selId=id; renderList(); document.body.classList.add("detail-open");
+    var d=document.getElementById("detail");
+    d.innerHTML='<div class="empty">Loading…</div>';
+    fetch("/api/google/email/"+id).then(function(r){return r.json();}).then(function(res){
+      var e=res.item; var pc=pcolor(e.priority);
+      var draft=e.draft_reply||"";
+      d.innerHTML=
+        '<div class="dmeta"><span class="pri-pill" style="color:'+pc+';border-color:'+pc+'">P'+e.priority+' · '+(PLABEL[e.priority]||"")+'</span> &nbsp; <b>'+esc(labelFor(e.account_email))+'</b> &nbsp; '+esc(e.category||"")+'</div>'+
+        '<h2>'+esc(e.subject||"(no subject)")+'</h2>'+
+        '<div class="dmeta">From: <b>'+esc(e.from_addr||"")+'</b></div>'+
+        '<div class="dmeta">'+when(e.received_at)+'</div>'+
+        (e.summary?'<div class="summary">'+esc(e.summary)+'</div>':"")+
+        '<div class="body">'+esc(res.body||e.snippet||"")+'</div>'+
+        '<div class="draftlabel">Reply — in Arthur\'s voice'+(e.draft_status==="sent"?" (SENT)":e.draft_status==="dismissed"?" (dismissed)":"")+'</div>'+
+        '<textarea id="draft-box" placeholder="Write a reply, or edit Arlo\'s draft…">'+esc(draft)+'</textarea>'+
+        '<div class="dactions">'+
+          '<button class="btn ok" id="send-btn">✓ Approve &amp; Send</button>'+
+          '<button class="btn" id="save-btn">Save draft</button>'+
+          '<button class="btn danger" id="dismiss-btn">Dismiss</button>'+
+        '</div>';
+      document.getElementById("send-btn").onclick=function(){sendReply(e);};
+      document.getElementById("save-btn").onclick=function(){saveDraft(e);};
+      document.getElementById("dismiss-btn").onclick=function(){dismiss(e);};
+    });
+  }
+  function draftVal(){var t=document.getElementById("draft-box");return t?t.value.trim():"";}
+  function saveDraft(e){
+    var body=draftVal(); if(!body){toast("Nothing to save");return;}
+    fetch("/api/google/draft/"+e.id+"/edit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({body:body})})
+      .then(function(){toast("Draft saved");loadCounts();});
+  }
+  function sendReply(e){
+    var body=draftVal(); if(!body){toast("Write a reply first");return;}
+    if(!confirm("Send this reply to "+(e.from_addr||"")+" ?"))return;
+    // persist edits, then approve+send
+    fetch("/api/google/draft/"+e.id+"/edit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({body:body})})
+      .then(function(){return fetch("/api/google/draft/"+e.id+"/approve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({body:body})});})
+      .then(function(r){return r.json();}).then(function(res){
+        if(res.ok){toast("Sent ✓");loadCounts();loadList();document.getElementById("detail").innerHTML='<div class="empty">Sent. Select another email.</div>';}
+        else toast("Send failed: "+(res.error||""));
+      }).catch(function(){toast("Send failed");});
+  }
+  function dismiss(e){
+    fetch("/api/google/draft/"+e.id+"/dismiss",{method:"POST"}).then(function(){toast("Dismissed");loadCounts();loadList();});
+  }
+
+  // Compose
+  var overlay=document.getElementById("compose-overlay");
+  document.getElementById("compose-btn").onclick=function(){overlay.classList.add("open");};
+  document.getElementById("c-cancel").onclick=function(){overlay.classList.remove("open");};
+  document.getElementById("c-send").onclick=function(){
+    var account=document.getElementById("c-account").value, to=document.getElementById("c-to").value.trim(),
+        subject=document.getElementById("c-subject").value.trim(), body=document.getElementById("c-body").value.trim();
+    if(!account||!to||!subject||!body){toast("Fill every field");return;}
+    fetch("/api/google/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account:account,to:to,subject:subject,body:body})})
+      .then(function(r){return r.json();}).then(function(res){
+        if(res.ok){toast("Email sent ✓");overlay.classList.remove("open");document.getElementById("c-to").value="";document.getElementById("c-subject").value="";document.getElementById("c-body").value="";}
+        else toast("Send failed: "+(res.error||""));
+      }).catch(function(){toast("Send failed");});
+  };
+
+  // Sync
+  document.getElementById("sync-btn").onclick=function(){
+    var b=this; b.disabled=true; b.textContent="↻ Syncing…";
+    fetch("/api/google/sync",{method:"POST"}).then(function(r){return r.json();}).then(function(res){
+      toast("Sync: "+(res.fetched||0)+" new, "+(res.triaged||0)+" triaged");
+      b.disabled=false; b.textContent="↻ Sync now"; loadCounts(); loadList();
+    }).catch(function(){b.disabled=false; b.textContent="↻ Sync now"; toast("Sync failed");});
+  };
+
+  loadAccounts().then(loadCounts).then(loadList);
+  var shellActive = true;
+  window.addEventListener("message", function(e){
+    var d = e.data || {};
+    if (d.type === "shell-visibility") { var was = shellActive; shellActive = !!d.active; if (shellActive && !was) loadCounts(); }
+  });
+  setInterval(function(){ if (shellActive) loadCounts(); }, 60000);
+})();
+</script>
+</body>
+</html>

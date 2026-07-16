@@ -1,0 +1,9 @@
+node_modules
+server/dist
+.git
+.env
+.env.*
+!.env.example
+arlo.db
+*.md
+terminals

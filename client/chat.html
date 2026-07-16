@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Arlo — Chat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0B0D0F;
+    --panel: #141719;
+    --panel-2: #1A1E21;
+    --line: rgba(255,255,255,0.08);
+    --text: #ECEFF1;
+    --muted: #8B979E;
+    --accent: #CC5500;
+    --accent-bright: #FF8C00;
+    --accent-glow: rgba(255,140,0,0.45);
+    --column: 760px;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+  body { display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── Header ── */
+  header {
+    flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+    padding: 16px max(22px, env(safe-area-inset-right)) 16px max(22px, env(safe-area-inset-left));
+  }
+  .brand { display: flex; align-items: center; gap: 9px; font-family: var(--mono); font-size: 12px; font-weight: 600; letter-spacing: 0.34em; text-transform: uppercase; }
+  .brand .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent-glow); animation: breathe 3s ease-in-out infinite; }
+  @keyframes breathe { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
+  #newchat { background: none; border: none; color: var(--muted); font-family: var(--sans); font-size: 13px; cursor: pointer; padding: 8px 10px; border-radius: 8px; transition: color .15s, background .15s; }
+  #newchat:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+
+  /* ── Thread ── */
+  #scroll { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
+  #thread { max-width: var(--column); margin: 0 auto; padding: 8px 22px 24px; display: flex; flex-direction: column; gap: 26px; }
+
+  /* Empty state */
+  #empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 24px; min-height: 55vh; }
+  #empty h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; }
+  #empty p { margin-top: 10px; color: var(--muted); font-size: 15px; }
+  #chips { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 26px; }
+  .chip {
+    border: 1px solid var(--line); background: transparent; color: var(--text);
+    font-family: var(--sans); font-size: 13.5px; padding: 10px 16px; border-radius: 100px; cursor: pointer;
+    transition: background .15s, border-color .15s;
+  }
+  .chip:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.18); }
+
+  /* Messages */
+  .turn { display: flex; }
+  .turn.user { justify-content: flex-end; }
+  .turn.user .bubble {
+    max-width: 82%; background: var(--panel-2); border: 1px solid var(--line);
+    padding: 12px 16px; border-radius: 18px 18px 4px 18px; font-size: 14.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+  }
+  .turn.bot { gap: 14px; align-items: flex-start; }
+  .avatar {
+    flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%; margin-top: 2px;
+    background: radial-gradient(circle at 38% 35%, rgba(255,140,0,0.9), rgba(204,85,0,0.3) 60%, transparent 75%);
+    box-shadow: 0 0 14px var(--accent-glow), inset 0 0 6px rgba(255,255,255,0.25);
+  }
+  .bot .body { font-size: 14.5px; line-height: 1.72; max-width: calc(100% - 46px); word-break: break-word; }
+  .bot .body p { margin: 0 0 10px; } .bot .body p:last-child { margin-bottom: 0; }
+  .bot .body code { font-family: var(--mono); font-size: 12.5px; background: rgba(255,255,255,0.07); padding: 2px 6px; border-radius: 5px; }
+  .bot .body pre { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; overflow-x: auto; margin: 10px 0; }
+  .bot .body pre code { background: none; padding: 0; }
+  .bot .body ul { margin: 8px 0 8px 20px; } .bot .body li { margin: 4px 0; }
+  .bot .body b { font-weight: 600; }
+  .bot .body .err { color: #E5484D; }
+  .caret { display: inline-block; width: 7px; height: 15px; background: var(--accent); margin-left: 2px; vertical-align: -2px; animation: blink 0.9s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Typing dots */
+  .dots { display: inline-flex; gap: 5px; padding: 6px 0; }
+  .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: hop 1.2s ease-in-out infinite; }
+  .dots i:nth-child(2) { animation-delay: 0.15s; } .dots i:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes hop { 0%,60%,100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+  /* ── Composer ── */
+  #composer-wrap { flex: 0 0 auto; padding: 10px max(18px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); }
+  #composer {
+    max-width: var(--column); margin: 0 auto; display: flex; align-items: flex-end; gap: 10px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 26px; padding: 8px 8px 8px 20px;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  #composer:focus-within { border-color: rgba(255,140,0,0.5); box-shadow: 0 0 0 3px rgba(255,140,0,0.12); }
+  #input {
+    flex: 1; background: none; border: none; outline: none; resize: none; color: var(--text);
+    font-family: var(--sans); font-size: 14.5px; line-height: 1.55; padding: 8px 0; max-height: 160px;
+  }
+  #input::placeholder { color: var(--muted); }
+  #send {
+    flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer;
+    background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center;
+    transition: opacity .15s, transform .15s;
+  }
+  #send:disabled { opacity: 0.35; cursor: default; }
+  #send:not(:disabled):hover { transform: translateY(-1px); }
+  #send svg { width: 17px; height: 17px; }
+  #hint { max-width: var(--column); margin: 8px auto 0; text-align: center; }
+  #hint span { display: inline-block; width: 44px; height: 4px; border-radius: 4px; background: rgba(255,255,255,0.14); }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 8px; }
+
+  @media (max-width: 640px) {
+    #empty h1 { font-size: 25px; }
+    .turn.user .bubble { max-width: 92%; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand"><span class="dot"></span><span id="brand-name">ARLO</span></div>
+    <button id="newchat">New chat</button>
+  </header>
+
+  <div id="scroll">
+    <div id="empty">
+      <h1 id="empty-title">What do you need?</h1>
+      <p id="empty-sub">Ask me anything.</p>
+      <div id="chips"></div>
+    </div>
+    <div id="thread"></div>
+  </div>
+
+  <div id="composer-wrap">
+    <div id="composer">
+      <textarea id="input" rows="1" placeholder="Message"></textarea>
+      <button id="send" disabled title="Send">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      </button>
+    </div>
+    <div id="hint"><span></span></div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ══ CONFIG — everything you'd ever touch ══════════════════════════════ */
+  var CONFIG = {
+    brand: "ARLO",
+    emptyTitle: "What do you need?",
+    emptySub: "Ask me anything.",
+    placeholder: "Message",
+    chips: ["Give me a summary", "What can you do?"],
+
+    // The one function to wire: take the user's message, return { text }.
+    // Throw to show an inline error. sessionId + history come free.
+    send: async function (payload) {
+      var res = await fetch("/api/brain/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: payload.message, sessionId: payload.sessionId })
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Request failed");
+      return { text: data.text || data.speech || "", navigate: data.navigate || null };
+    }
+  };
+  /* ══ Engine — no need to edit below ════════════════════════════════════ */
+
+  var scroll = document.getElementById("scroll");
+  var thread = document.getElementById("thread");
+  var empty = document.getElementById("empty");
+  var input = document.getElementById("input");
+  var send = document.getElementById("send");
+  var history = [];
+  var busy = false;
+
+  document.getElementById("brand-name").textContent = CONFIG.brand;
+  document.getElementById("empty-title").textContent = CONFIG.emptyTitle;
+  document.getElementById("empty-sub").textContent = CONFIG.emptySub;
+  input.placeholder = CONFIG.placeholder;
+
+  var sessionId = sessionStorage.getItem("chat-session");
+  if (!sessionId) {
+    sessionId = "chat-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    sessionStorage.setItem("chat-session", sessionId);
+  }
+
+  var chipsEl = document.getElementById("chips");
+  CONFIG.chips.forEach(function (c) {
+    var b = document.createElement("button");
+    b.className = "chip"; b.textContent = c;
+    b.addEventListener("click", function () { submit(c); });
+    chipsEl.appendChild(b);
+  });
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (ch) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+    });
+  }
+
+  // Markdown-lite: escape FIRST, then bold/italic/code/bullets — XSS-safe.
+  function renderMd(raw) {
+    var s = esc(raw);
+    var blocks = [];
+    s = s.replace(/```([\s\S]*?)```/g, function (_, code) {
+      blocks.push("<pre><code>" + code.replace(/^\n|\n$/g, "") + "</code></pre>");
+      return " " + (blocks.length - 1) + " ";
+    });
+    s = s.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+    s = s.replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>");
+    s = s.replace(/(^|\s)\*([^*\n]+)\*(?=\s|$|[.,!?])/g, "$1<i>$2</i>");
+    var lines = s.split("\n"), out = [], list = null;
+    lines.forEach(function (ln) {
+      var m = ln.match(/^\s*[-•]\s+(.*)$/);
+      if (m) { (list = list || []).push("<li>" + m[1] + "</li>"); return; }
+      if (list) { out.push("<ul>" + list.join("") + "</ul>"); list = null; }
+      if (ln.trim()) out.push("<p>" + ln + "</p>");
+    });
+    if (list) out.push("<ul>" + list.join("") + "</ul>");
+    var html = out.join("");
+    blocks.forEach(function (b, i) { html = html.replace(" " + i + " ", b); });
+    return html || "<p></p>";
+  }
+
+  function stick() { scroll.scrollTop = scroll.scrollHeight; }
+
+  function addUser(text) {
+    var t = document.createElement("div");
+    t.className = "turn user";
+    var b = document.createElement("div");
+    b.className = "bubble"; b.textContent = text;
+    t.appendChild(b); thread.appendChild(t); stick();
+  }
+
+  function addBot() {
+    var t = document.createElement("div");
+    t.className = "turn bot";
+    t.innerHTML = '<div class="avatar"></div><div class="body"><span class="dots"><i></i><i></i><i></i></span></div>';
+    thread.appendChild(t); stick();
+    return t.querySelector(".body");
+  }
+
+  // Typewriter reveal, capped ~1.5s total so long replies aren't slow.
+  function typeOut(el, raw) {
+    var full = renderMd(raw);
+    var plain = raw.replace(/\s+/g, " ");
+    var steps = Math.min(plain.length, 60);
+    if (steps < 8) { el.innerHTML = full; stick(); return; }
+    var per = Math.max(12, Math.floor(1500 / steps));
+    var i = 0;
+    var timer = setInterval(function () {
+      i++;
+      var slice = raw.slice(0, Math.ceil(raw.length * (i / steps)));
+      el.innerHTML = renderMd(slice) ;
+      var last = el.lastElementChild || el;
+      var c = document.createElement("span"); c.className = "caret"; last.appendChild(c);
+      stick();
+      if (i >= steps) { clearInterval(timer); el.innerHTML = full; stick(); }
+    }, per);
+  }
+
+  async function submit(text) {
+    text = (text || "").trim();
+    if (!text || busy) return;
+    busy = true; send.disabled = true;
+    empty.style.display = "none";
+    input.value = ""; autosize();
+    addUser(text);
+    history.push({ role: "user", text: text });
+    var body = addBot();
+    try {
+      var r = await CONFIG.send({ message: text, sessionId: sessionId, history: history.slice(0, -1) });
+      var reply = (r && r.text) || "…";
+      history.push({ role: "assistant", text: reply });
+      typeOut(body, reply);
+      // Arlo can steer the shell ("open the CRM") from chat, same as voice.
+      if (r && r.navigate && window.parent !== window) {
+        window.parent.postMessage({ type: "arlo-navigate", tab: r.navigate }, "*");
+      }
+    } catch (err) {
+      body.innerHTML = '<p class="err">' + esc(err && err.message ? err.message : "Something went wrong.") + "</p>";
+    }
+    busy = false;
+    send.disabled = !input.value.trim();
+    input.focus();
+  }
+
+  function autosize() {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 160) + "px";
+  }
+  input.addEventListener("input", function () { autosize(); send.disabled = !input.value.trim() || busy; });
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(input.value); }
+  });
+  send.addEventListener("click", function () { submit(input.value); });
+
+  document.getElementById("newchat").addEventListener("click", function () {
+    history = []; thread.innerHTML = ""; empty.style.display = "";
+    sessionId = "chat-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    sessionStorage.setItem("chat-session", sessionId);
+    input.focus();
+  });
+
+  input.focus();
+})();
+</script>
+</body>
+</html>
