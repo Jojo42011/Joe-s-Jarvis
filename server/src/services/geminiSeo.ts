@@ -1,5 +1,5 @@
 const DEFAULT_SEO_MODEL = process.env.SEO_GEMINI_MODEL || 'gemini-2.5-flash';
-const FALLBACK_SEO_MODEL = process.env.SEO_GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash-lite';
+const FALLBACK_SEO_MODEL = process.env.SEO_GEMINI_FALLBACK_MODEL || 'gemini-2.0-flash';
 const GEMINI_TIMEOUT_MS = 120_000;
 
 async function sleep(ms: number): Promise<void> {
