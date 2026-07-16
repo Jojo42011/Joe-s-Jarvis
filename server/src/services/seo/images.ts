@@ -80,27 +80,27 @@ function convertPlaceholderVideos(html: string): string {
   return html.replace(/<video\b[^>]*>[\s\S]*?<\/video>/gi, (block) => {
     if (!block.includes(PLACEHOLDER)) return block;
     const prompt = block.match(/data-img-prompt\s*=\s*["']([^"']*)["']/i)?.[1]
-      || 'cinematic wide hero shot of a luxury resort-style backyard swimming pool at golden hour';
+      || 'cinematic wide hero shot of a beautifully landscaped Ohio backyard with a paver patio and stone retaining wall at golden hour';
     const cls = block.match(/\bclass\s*=\s*["']([^"']*)["']/i)?.[1];
     const clsAttr = cls ? ` class="${cls}"` : '';
-    return `<img${clsAttr} src="${PLACEHOLDER}" data-img-prompt="${prompt.replace(/"/g, '&quot;')}" alt="Luxury pool">`;
+    return `<img${clsAttr} src="${PLACEHOLDER}" data-img-prompt="${prompt.replace(/"/g, '&quot;')}" alt="Professional landscaping">`;
   });
 }
 
 // ── Expert prompt engineering ─────────────────────────────────────────────
 // Wrap the LLM's raw scene description in a photographic scaffold tuned for
-// luxury Arizona pool photography. This is what makes Lauren an expert prompter.
+// Ohio landscaping/hardscaping photography. This is what makes Lauren an expert prompter.
 export function buildImagePrompt(sceneDesc: string, ctx: { city?: string; keyword?: string; type?: string }): string {
-  const where = ctx.city ? `an upscale ${ctx.city}, Arizona` : 'an upscale Phoenix Valley';
-  const subject = (sceneDesc || '').trim() || 'a luxury resort-style backyard swimming pool at golden hour';
+  const where = ctx.city ? `a well-kept ${ctx.city}, Ohio` : 'a well-kept Holmes County, Ohio';
+  const subject = (sceneDesc || '').trim() || 'a beautifully landscaped backyard with a paver patio and stone retaining wall at golden hour';
 
   return [
-    `Professional architectural real-estate photography. Subject: ${subject}.`,
-    `Location: ${where} backyard designed by a high-end custom pool builder.`,
-    `Style: luxury resort aesthetic, desert-modern landscaping with saguaro cactus, palms and agave,`,
-    `travertine or large-format stone decking, glass-tile waterline, crystal-clear turquoise water,`,
-    `clean infinity or geometric pool lines, tasteful water features, warm golden-hour light,`,
-    `deep blue Arizona sky, ultra-realistic, high dynamic range, sharp focus, shot on a full-frame DSLR with a 24-35mm lens.`,
+    `Professional landscape and outdoor-living photography. Subject: ${subject}.`,
+    `Location: ${where} property designed and built by a high-end landscaping and hardscaping contractor.`,
+    `Style: rustic-classic Midwest warmth — natural stone retaining walls, paver patios, ponds and waterfalls,`,
+    `deep green manicured lawns, layered perennial beds, mature hardwood trees,`,
+    `rolling Holmes County countryside in the background, four-season Midwest light (warm golden hour or soft overcast),`,
+    `ultra-realistic, high dynamic range, sharp focus, shot on a full-frame DSLR with a 24-35mm lens.`,
     `Composition: editorial, magazine-quality, inviting.`,
     `Absolutely no people, no text, no words, no watermark, no logos, no signage.`,
   ].join(' ');
@@ -181,7 +181,7 @@ export function imageUrlForRepoPath(path: string): string {
   const mode = process.env.SEO_IMAGE_CDN || 'site';
   if (mode === 'jsdelivr') return `https://cdn.jsdelivr.net/gh/${repo}@${branch}/${path}`;
   if (mode === 'raw') return `https://raw.githubusercontent.com/${repo}/${branch}/${path}`;
-  const base = (process.env.SEO_WEBSITE_URL || 'https://aquaticpoolaz.com').replace(/\/+$/, '');
+  const base = (process.env.SEO_WEBSITE_URL || 'https://www.totallyoutdoorsllc.com').replace(/\/+$/, '');
   return `${base}/${path}`;
 }
 
@@ -308,8 +308,8 @@ function normalizeImageContainers(
       if (!CONTAINER_KW.test(cls)) return whole;
       if (/logo|icon|avatar|badge/i.test(cls)) return whole;
       if (/__LAUREN_IMAGE__/.test(attrs)) return whole; // already a bg placeholder
-      const desc = nearestHeading(out, offset) || `${ctx.city || 'Arizona'} luxury custom pool`;
-      const img = `<img src="__LAUREN_IMAGE__" data-img-prompt="${desc.replace(/"/g, '&quot;')}" alt="${(ctx.city || 'Arizona')} luxury pool">`;
+      const desc = nearestHeading(out, offset) || `${ctx.city || 'Ohio'} professional landscaping and hardscaping`;
+      const img = `<img src="__LAUREN_IMAGE__" data-img-prompt="${desc.replace(/"/g, '&quot;')}" alt="${(ctx.city || 'Ohio')} professional landscaping">`;
       return `<${tag}${attrs}>${img}</${tag}>`;
     },
   );
@@ -410,7 +410,7 @@ export async function fillPageImages(
   const db = getDb();
   const images: FilledImage[] = [];
   const urls: string[] = [];         // preview URLs of generated images, for reuse
-  const altFallback = `${ctx.city || 'Arizona'} luxury pool by ${getBusinessProfile().name}`;
+  const altFallback = `${ctx.city || 'Ohio'} landscaping by ${getBusinessProfile().name}`;
 
   // Round-robin cursor over already-generated images. Used to cycle a small set
   // of generated images across ALL remaining slots (slot 4 → img 1, slot 5 →
@@ -517,7 +517,7 @@ export async function generateSocialImage(
   const cfg = { ...imageConfig(), aspect: ctx.aspect || process.env.RALPH_IMAGE_ASPECT || '1:1' };
   // raw=true: the caller (Paulie) already crafted a complete, format-aware photo
   // prompt (may allow people, before/after splits, editorial framing). Otherwise
-  // wrap the scene in the standard luxury-pool photographic scaffold.
+  // wrap the scene in the standard landscaping photographic scaffold.
   const prompt = ctx.raw ? sceneDesc : buildImagePrompt(sceneDesc, ctx);
   let b64 = await generateOne(prompt, cfg);
   if (!b64) return null;
@@ -566,7 +566,7 @@ async function commitImageToRepo(repoPath: string, base64Png: string): Promise<b
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
     Accept: 'application/vnd.github.v3+json',
-    'User-Agent': 'AquaticSEOAgent/1.0',
+    'User-Agent': 'TotallyOutdoorsSEOBot/1.0 (totallyoutdoorsllc.com)',
   };
   const url = `https://api.github.com/repos/${repo}/contents/${repoPath}`;
   try {

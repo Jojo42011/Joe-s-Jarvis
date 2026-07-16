@@ -36,7 +36,7 @@ const TAG = '[SEO Agent]';
 function inferTaskType(task: string, keyword?: string): string {
   const hay = `${task || ''} ${keyword || ''}`.toLowerCase();
   if (matchServiceArea(hay)) return 'city_page'; // names a service-area city
-  if (/\b(remodel|renovat|repair|resurfac|cleaning|maintenance|installation|water\s*feature|spa|hot\s*tub|design|construction)\b/.test(hay)) return 'service_page';
+  if (/\b(lawn\s*care|landscap|hardscap|patio|excavat|water\s*feature|pond|retaining\s*wall|putting\s*green|golf\s*scape|snow\s*plow|deic|drainage|maintenance|installation|design|construction)\b/.test(hay)) return 'service_page';
   return 'blog';
 }
 
@@ -92,18 +92,18 @@ function snapshotKeywordHistory(): void {
 function buildDesignTokenPrompt(designTokens: string, task: string, keyword: string, type: string): string {
   const tokenBlock = designTokens.trim()
     ? designTokens
-    : 'COLOR PALETTE: use a clean luxury palette (deep teal/charcoal text, warm orange accent, off-white sections).';
+    : 'COLOR PALETTE: use a clean, earthy palette (deep forest green/charcoal text, warm stone/tan accent, off-white sections).';
 
   const pageTypeRules =
     type === 'city_page'
-      ? '- city_page: local landing page for THIS city specifically — lead with the city + service, emphasize the service area, and CTA to book a design consultation. DIFFERENTIATE FROM OTHER CITY PAGES: name at least one real, recognizable neighborhood, landmark, or geographic detail specific to this city (not just the city name swapped into a generic template), and if you know of a city-specific permitting/HOA consideration for pool builds there, mention it briefly. Google treats near-identical city pages as thin/doorway content — this must read as written for this city, not a find-and-replace of another one.'
+      ? '- city_page: local landing page for THIS town specifically — lead with the town + service, emphasize the service area, and CTA to book a free estimate. DIFFERENTIATE FROM OTHER TOWN PAGES: name at least one real, recognizable neighborhood, landmark, or geographic detail specific to this town (not just the town name swapped into a generic template), and if you know of a town-specific soil, drainage, or terrain consideration for landscaping/excavating work there, mention it briefly. Google treats near-identical town pages as thin/doorway content — this must read as written for this town, not a find-and-replace of another one.'
       : type === 'blog'
-        ? '- blog: answer the question in the title with an educational tone; end with a link to a free consultation.'
+        ? '- blog: answer the question in the title with an educational tone; end with a link to a free estimate.'
         : type === 'service_page'
-          ? '- service_page: explain the single service, its process, and why Aquatic does it best; CTA to a quote.'
+          ? '- service_page: explain the single service, its process, and why Totally Outdoors does it best; CTA to a quote.'
           : '- section_page: a focused landing page for this topic with a clear hero and CTA.';
 
-  return `Design and build a BRAND-NEW, self-contained web page for Aquatic Pool and Spa.
+  return `Design and build a BRAND-NEW, self-contained web page for Totally Outdoors LLC.
 Use the DESIGN TOKENS below to make it feel on-brand — but create your OWN clean, modern
 layout. Do NOT copy the existing site's header, nav, footer, or hero-video structure.
 
@@ -117,17 +117,17 @@ ${pageTypeRules}
 
 Rules:
 - Return ONLY a complete HTML document. No markdown fences. Start with <!DOCTYPE html>.
-- Build your OWN simple, clean layout — a lightweight header (text logo "Aquatic Pool and Spa" + a few links to /, /services, /contact), well-structured content sections, and a simple footer. Keep it minimal; do NOT reproduce the homepage's nav/hero/video markup.
+- Build your OWN simple, clean layout — a lightweight header (text logo "Totally Outdoors LLC" + a few links to /, /services, /contact), well-structured content sections, and a simple footer. Keep it minimal; do NOT reproduce the homepage's nav/hero/video markup.
 - Apply the design tokens: use the palette hex values, the font families, and where sensible reuse the site's button/section class names for visual consistency.
 - Semantic HTML: exactly one <h1>, meaningful <h2>/<h3> subheadings, real paragraphs. 400-600 words of substantive, original copy (blogs 600+). No lorem ipsum, no empty sections.
-- Write as Aquatic Pool and Spa — 18 years, 400+ pools, Phoenix Arizona, family owned, luxury resort-style builds. Phone CTA: (623) 225-0537.
+- Write as Totally Outdoors LLC — landscaping, hardscaping and excavating in Millersburg, Ohio (Holmes County) since 2004, owner-operated by Joe, financing available. Phone CTA: (330) 231-4080.
 - HERO: the first section MUST be complete — a clear <h1>, a supporting sub-paragraph, and a primary CTA button. NEVER output an empty hero.
 - TEXT OVER A PHOTO → use a CSS BACKGROUND, not an <img>: when headline/paragraph text sits ON TOP of a photo (hero banners, full-width callouts), set the photo as a CSS background: style="background-image:url('__LAUREN_IMAGE__')" with a nearby data-img-prompt describing the shot. The system darkens these and makes text white/readable automatically — do not add your own overlay.
-- STANDALONE PHOTOS → use <img>: for photos beside/between text (gallery cards, feature images), output <img src="__LAUREN_IMAGE__" data-img-prompt="exact shot description" alt="keyword-relevant alt">. Example: <img src="__LAUREN_IMAGE__" data-img-prompt="wide golden-hour shot of a modern geometric infinity pool with a raised spa and fire bowls, travertine deck" alt="Luxury infinity pool in ${keyword}">.
+- STANDALONE PHOTOS → use <img>: for photos beside/between text (gallery cards, feature images), output <img src="__LAUREN_IMAGE__" data-img-prompt="exact shot description" alt="keyword-relevant alt">. Example: <img src="__LAUREN_IMAGE__" data-img-prompt="wide golden-hour shot of a natural stone paver patio with a fire pit, retaining wall and lush perennial beds beside a deep green lawn" alt="Paver patio and landscaping in ${keyword}">.
 - Use the __LAUREN_IMAGE__ placeholder for EVERY photo. NEVER reference video files, real file paths, placeholder image services, lorem-picsum, or example.com URLs. Place photos naturally throughout.
 - READABILITY: text NOT over a photo must use high-contrast solid colors (dark text on light sections), bold headlines.
 - Add a few contextual internal links to the homepage (/), services (/services), and contact (/contact).
-- End with a strong call-to-action section linking to the contact / free-consultation page.`;
+- End with a strong call-to-action section linking to the contact / free-estimate page.`;
 }
 
 async function generatePageFromTokens(
@@ -342,7 +342,7 @@ function buildMainContentPrompt(
 ): string {
   const tokenBlock = designTokens.trim()
     ? designTokens
-    : 'COLOR PALETTE: clean luxury palette (deep teal/charcoal text, warm orange accent, off-white sections).';
+    : 'COLOR PALETTE: clean, earthy palette (deep forest green/charcoal text, warm stone/tan accent, off-white sections).';
 
   const styleRef = exampleSections.trim()
     ? `STYLE REFERENCE — sections from the real site, shown ONLY so you can match its colors, fonts, button look and overall feel. Do NOT copy their structure, class names, decorative graphics, sliders or scroll animations — those depend on the homepage's JavaScript and will break on a static page. Build your own clean layout instead:
@@ -354,14 +354,14 @@ ${exampleSections}
 
   const pageTypeRules =
     type === 'city_page'
-      ? '- city_page: local landing page for THIS city specifically — lead with the city + service, emphasize the service area, CTA to book a design consultation. DIFFERENTIATE FROM OTHER CITY PAGES: name at least one real, recognizable neighborhood, landmark, or geographic detail specific to this city (not just the city name swapped into a generic template), and if you know of a city-specific permitting/HOA consideration for pool builds there, mention it briefly. Google treats near-identical city pages as thin/doorway content — this must read as written for this city, not a find-and-replace of another one.'
+      ? '- city_page: local landing page for THIS town specifically — lead with the town + service, emphasize the service area, CTA to book a free estimate. DIFFERENTIATE FROM OTHER TOWN PAGES: name at least one real, recognizable neighborhood, landmark, or geographic detail specific to this town (not just the town name swapped into a generic template), and if you know of a town-specific soil, drainage, or terrain consideration for landscaping/excavating work there, mention it briefly. Google treats near-identical town pages as thin/doorway content — this must read as written for this town, not a find-and-replace of another one.'
       : type === 'blog'
-        ? '- blog: answer the question in the title with an educational tone; end with a link to a free consultation.'
+        ? '- blog: answer the question in the title with an educational tone; end with a link to a free estimate.'
         : type === 'service_page'
-          ? '- service_page: explain the single service, its process, and why Aquatic does it best; CTA to a quote.'
+          ? '- service_page: explain the single service, its process, and why Totally Outdoors does it best; CTA to a quote.'
           : '- section_page: a focused landing page for this topic with a clear hero and CTA.';
 
-  return `Write the MAIN CONTENT BODY for a new Aquatic Pool and Spa web page. Your output
+  return `Write the MAIN CONTENT BODY for a new Totally Outdoors LLC web page. Your output
 is inserted inside the site's existing <main> element — the real header, nav, logo,
 footer, fonts and CSS are already provided by the site, so you must NOT output any
 <!DOCTYPE>, <html>, <head>, <header>, <nav>, or <footer>.
@@ -381,21 +381,21 @@ Rules:
 - Every <section> must be self-sufficient: give it its own padding (e.g. 64px 24px), a max-width inner wrapper (~1100px, margin auto), and its own background/spacing via inline styles. Do NOT rely on the site's classes to size or reveal anything.
 - Do NOT reproduce the homepage's copy, structure, decorative graphics, or any <video> element. Original words, your own solid layout.
 - Semantic HTML: exactly ONE <h1> (the page headline), meaningful <h2>/<h3> subheadings, real paragraphs. 400-600 words of substantive, original copy (blogs 600+). No lorem ipsum, no empty sections.
-- Write as Aquatic Pool and Spa — 18 years, 400+ pools, Phoenix Arizona, family owned, luxury resort-style builds. Phone CTA: (623) 225-0537.
-- HEADLINE VOICE: the <h1> must sound like AQUATIC POOL AND SPA specifically — not a generic, swappable phrase like "Premier Luxury Pool Builder". Name the brand and a concrete, distinctive value tied to the page's city/service (e.g. "Aquatic Pool & Spa — Custom Resort Pools Built for Scottsdale Backyards"). Keep it under ~9 words so it fits on one or two lines. Use the brand-voice sample phrases for tone.
+- Write as Totally Outdoors LLC — landscaping, hardscaping and excavating serving Millersburg, Ohio and Holmes County since 2004, owner-operated by Joe, financing available. Phone CTA: (330) 231-4080.
+- HEADLINE VOICE: the <h1> must sound like TOTALLY OUTDOORS specifically — not a generic, swappable phrase like "Premier Landscaping Company". Name the brand and a concrete, distinctive value tied to the page's town/service (e.g. "Totally Outdoors — Paver Patios Built for Millersburg Backyards"). Keep it under ~9 words so it fits on one or two lines. Use the brand-voice sample phrases for tone.
 - HERO (first <section>) is a FULL-BLEED BANNER with the photo BEHIND the words. Use exactly this shape:
-  <section style="background-image:url('__LAUREN_IMAGE__');background-size:cover;background-position:center;min-height:70vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:80px 24px;" data-img-prompt="wide golden-hour shot of a luxury resort-style backyard pool">
-     <h1>…</h1><p>…</p><a class="[site button class]" href="/contact">Free Design Consult</a>
+  <section style="background-image:url('__LAUREN_IMAGE__');background-size:cover;background-position:center;min-height:70vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:80px 24px;" data-img-prompt="wide golden-hour shot of a professionally landscaped Ohio backyard with a paver patio and stone retaining wall">
+     <h1>…</h1><p>…</p><a class="[site button class]" href="/contact">Get a Free Estimate</a>
   </section>
   The system darkens the background and makes the text white automatically — do not add your own overlay. NEVER an empty hero.
 - EVERY section that should show a photo MUST carry its OWN __LAUREN_IMAGE__ — inline style="background-image:url('__LAUREN_IMAGE__')" for full-bleed/banner sections, or <img src="__LAUREN_IMAGE__"> otherwise. Never rely on a CSS class to supply an image, or that spot renders empty.
 - TEXT OVER A PHOTO → CSS BACKGROUND, not <img>: any section where text sits ON TOP of a photo uses style="background-image:url('__LAUREN_IMAGE__');background-size:cover;background-position:center;" with a data-img-prompt. The system darkens these and makes text white/readable.
 - IMAGE CARDS: for a gallery/feature row, use a simple flex/grid wrapper with each card a fixed size (e.g. min-height:240px) containing <img src="__LAUREN_IMAGE__" style="width:100%;height:100%;object-fit:cover;"> so images always show at a real size.
-- STANDALONE PHOTOS → <img>: for photos beside/between text, output <img src="__LAUREN_IMAGE__" data-img-prompt="exact shot description" alt="keyword-relevant alt">. Example: <img src="__LAUREN_IMAGE__" data-img-prompt="wide golden-hour shot of a modern geometric infinity pool with a raised spa and fire bowls, travertine deck" alt="Luxury infinity pool in ${keyword}">.
+- STANDALONE PHOTOS → <img>: for photos beside/between text, output <img src="__LAUREN_IMAGE__" data-img-prompt="exact shot description" alt="keyword-relevant alt">. Example: <img src="__LAUREN_IMAGE__" data-img-prompt="wide golden-hour shot of a natural stone paver patio with a fire pit, retaining wall and lush perennial beds beside a deep green lawn" alt="Paver patio and landscaping in ${keyword}">.
 - Use the __LAUREN_IMAGE__ placeholder for EVERY photo/background. NEVER reference video files, real homepage file paths, placeholder image services, lorem-picsum, or example.com URLs. Place photos naturally throughout.
 - READABILITY: text NOT over a photo must use high-contrast solid colors (dark text on light sections), bold headlines.
 - Add a few contextual internal links to the homepage (/), services (/services), and contact (/contact).
-- End with a strong call-to-action section (use the site's CTA section classes) linking to the contact / free-consultation page.`;
+- End with a strong call-to-action section (use the site's CTA section classes) linking to the contact / free-estimate page.`;
 }
 
 async function generateMainContent(
@@ -470,20 +470,24 @@ function isValidPageHtml(content: string): boolean {
 }
 
 const SEARCH_QUERIES = [
-  'pool builders Phoenix AZ',
-  'custom pool builder Scottsdale',
-  'luxury pool construction Phoenix',
-  'pool company Paradise Valley AZ',
+  'landscaping companies Millersburg Ohio',
+  'hardscaping contractor Holmes County Ohio',
+  'paver patio installation Wooster OH',
+  'excavating contractor Millersburg OH',
+  'lawn care services Berlin Ohio',
 ];
 
-const SEO_STRATEGIST_SYSTEM = `You are the SEO strategist for Aquatic Pool and Spa,
-a luxury custom pool builder serving Phoenix, Scottsdale, Paradise Valley, Chandler,
-Goodyear, Buckeye, Tempe, Mesa, Gilbert, Peoria, Glendale, Sun City, Surprise,
-Ahwatukee, and Avondale Arizona.
-They do NOT serve Maricopa or San Tan Valley.
-Minimum project $40,000. Luxury resort style builds. 18 years experience.
-400+ pools built. Family owned. Same quality as Shasta, Cody, Presidential,
-California Pools but more personal.`;
+const SEO_STRATEGIST_SYSTEM = `You are the SEO strategist for Totally Outdoors LLC,
+a landscaping, hardscaping, and excavating company owned by Joe, serving Millersburg,
+Holmesville, Berlin, Walnut Creek, Sugarcreek, Charm, Winesburg, Mount Hope, Killbuck,
+Nashville, Glenmont, Big Prairie, Lakeville, Loudonville, Wooster, Apple Creek,
+Fredericksburg, Baltic, Danville, and Lake Buckhorn, Ohio (Holmes County and
+surrounding areas).
+In business since 2004. Services: lawn care, landscaping, hardscaping, patios,
+excavating, water features & ponds, outdoor structures, golf scapes (putting greens),
+snow plowing & liquid salt/deicing, and materials disposal/dump service.
+Financing available. Do not invent pricing figures.
+Website: https://www.totallyoutdoorsllc.com — phone (330) 231-4080.`;
 
 type LlmProvider = 'gemini' | 'anthropic';
 
@@ -622,19 +626,19 @@ async function phaseResearch(runId: number, llm: LlmContext): Promise<string[]> 
   if (llm.provider === 'gemini') {
     try {
       const queryList = SEARCH_QUERIES.map((q) => `- ${q}`).join('\n');
-      const prompt = `Use Google Search to research competitor SEO rankings for Aquatic Pool and Spa (luxury pool builder in Phoenix AZ).
+      const prompt = `Use Google Search to research competitor SEO rankings for Totally Outdoors LLC (landscaping, hardscaping and excavating company in Millersburg, Ohio — Holmes County).
 
 Search and analyze results for these queries:
 ${queryList}
 
-Identify top competitors by domain, keywords they rank for, and content patterns across top results.
+Identify the REAL local landscaping/hardscaping/excavating competitors that actually appear in the search results (by domain), the keywords they rank for, and content patterns across top results. Only report companies you actually found in the results — never invent company names.
 
 CRITICAL: Respond with ONLY raw JSON. No markdown fences. No explanation text before or after.
 
 {
   "domains": ["competitor1.com", "competitor2.com"],
   "keywords": [
-    { "keyword": "pool builder phoenix", "competitor": "Shasta Pools", "competitorRanking": "3", "estimatedVolume": "2400", "opportunityScore": 0.85 }
+    { "keyword": "landscaping millersburg ohio", "competitor": "example-competitor.com", "competitorRanking": "3", "estimatedVolume": "320", "opportunityScore": 0.85 }
   ]
 }`;
 
@@ -699,7 +703,7 @@ CRITICAL: Respond with ONLY raw JSON. No markdown fences. No explanation text be
       if (!keywords.length && competitorDomains.size > 0) {
         const queries = result.searchQueries.length ? result.searchQueries : SEARCH_QUERIES;
         keywords = Array.from(competitorDomains).slice(0, 8).map((domain, i) => ({
-          keyword: queries[i % queries.length] ?? 'pool builder phoenix',
+          keyword: queries[i % queries.length] ?? 'landscaping millersburg ohio',
           competitor: domain,
           competitorRanking: 'unknown',
           estimatedVolume: 'unknown',
@@ -828,7 +832,7 @@ async function phaseScrape(runId: number, llm: LlmContext, domains: string[]): P
   }
 
   const db = getDb();
-  const analystSystem = `You are an SEO analyst. Analyze this competitor page for Aquatic Pool and Spa, a luxury custom pool builder in Phoenix Arizona. Extract:
+  const analystSystem = `You are an SEO analyst. Analyze this competitor page for Totally Outdoors LLC, a landscaping, hardscaping and excavating company in Millersburg, Ohio. Extract:
 1. Page title and meta description
 2. Primary keywords used
 3. Content structure and headings
@@ -840,7 +844,7 @@ Return as JSON with keys: title, meta, keywords, headings, wordCount, sellingPoi
   for (const domain of domains.slice(0, 2)) {
     try {
       const res = await fetch(`https://${domain}`, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AquaticSEOBot/1.0)' },
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; TotallyOutdoorsSEOBot/1.0 (totallyoutdoorsllc.com))' },
         signal: AbortSignal.timeout(10000),
       });
       if (!res.ok) continue;
@@ -873,7 +877,7 @@ Return as JSON with keys: title, meta, keywords, headings, wordCount, sellingPoi
 
 // Build a varied, gap-driven task list straight from the content-gap analysis.
 // Used as the fallback plan (and the shape the LLM plan is asked to follow) so we
-// never fall back to the old hard-coded "Scottsdale first" list that made Lauren
+// never fall back to the old hard-coded "Millersburg first" list that made Lauren
 // build the same page every run.
 function buildGapDrivenPlanTasks(
   gaps: ReturnType<typeof computeContentGaps>,
@@ -882,7 +886,7 @@ function buildGapDrivenPlanTasks(
   const out: { task: string; type: string; targetKeyword: string; priority: string }[] = [];
 
   for (const city of gaps.missingCities.slice(0, 5)) {
-    out.push({ task: `Write ${city} luxury pool builder landing page`, type: 'city_page', targetKeyword: `pool builder ${city} AZ`, priority: 'high' });
+    out.push({ task: `Write ${city} landscaping and hardscaping landing page`, type: 'city_page', targetKeyword: `landscaping ${city} Ohio`, priority: 'high' });
   }
   for (const svc of gaps.missingServices.slice(0, 3)) {
     out.push({ task: `Create ${svc} service page`, type: 'service_page', targetKeyword: svc, priority: 'medium' });
@@ -893,8 +897,8 @@ function buildGapDrivenPlanTasks(
   // Only if the site somehow has no detected gaps at all.
   if (!out.length) {
     out.push(
-      { task: 'Write blog post: How Much Does a Custom Pool Cost in Phoenix', type: 'blog', targetKeyword: 'pool cost Phoenix AZ', priority: 'high' },
-      { task: 'Write blog post: Choosing a Luxury Pool Builder in Arizona', type: 'blog', targetKeyword: 'luxury pool builder Arizona', priority: 'medium' },
+      { task: 'Write blog post: Planning a Paver Patio in Holmes County Ohio', type: 'blog', targetKeyword: 'paver patio Holmes County Ohio', priority: 'high' },
+      { task: 'Write blog post: Choosing a Landscaping Contractor in Millersburg Ohio', type: 'blog', targetKeyword: 'landscaping contractor Millersburg Ohio', priority: 'medium' },
     );
   }
   return out.slice(0, 7).map((t, i) => ({ day: days[i % days.length], ...t }));
@@ -931,7 +935,7 @@ async function phasePlan(runId: number, llm: LlmContext): Promise<void> {
   ].filter(Boolean).join('\n\n');
 
   const planContext = context
-    || `No prior data. Use knowledge of Phoenix AZ luxury pool builders to create a first-week plan. Focus on city pages and blogs the site is missing.`;
+    || `No prior data. Use knowledge of landscaping, hardscaping and excavating companies around Millersburg / Holmes County, Ohio to create a first-week plan. Focus on town pages and blogs the site is missing.`;
 
   const planSystem = `${SEO_STRATEGIST_SYSTEM}\n\nBased on the CONTENT GAP ANALYSIS, competitor research, current website state, and brand guide, create a 7-day SEO action plan for this week.
 Be NEEDS-DRIVEN: prioritize the specific missing city pages, missing service pages, and high-opportunity keyword gaps identified above — do not invent pages the site does not need or already has.
@@ -1032,7 +1036,7 @@ async function phaseGenerate(runId: number, llm: LlmContext): Promise<void> {
 
   // What we've already built or queued (never denied). Used to SKIP any task that
   // would produce a page we already have, so every run builds a DIFFERENT page
-  // instead of repeating (e.g. a second Scottsdale). Keyed by file path + keyword.
+  // instead of repeating (e.g. a second Millersburg). Keyed by file path + keyword.
   const coveredPaths = new Set<string>(
     (db.prepare("SELECT file_path FROM seo_content WHERE status != 'denied' AND file_path IS NOT NULL").all() as { file_path: string }[])
       .map((r) => r.file_path.toLowerCase()),
@@ -1084,7 +1088,7 @@ async function phaseGenerate(runId: number, llm: LlmContext): Promise<void> {
         filePath = inferFilePath('blog', slug);
         navGroupForType = 'Blog';
       }
-      const keyword = parsed.targetKeyword || 'pool builder phoenix';
+      const keyword = parsed.targetKeyword || 'landscaping millersburg ohio';
 
       // Skip anything we already have — guarantees a DIFFERENT page each run and
       // prevents duplicate slugs from overwriting an existing page on publish.
@@ -1097,7 +1101,7 @@ async function phaseGenerate(runId: number, llm: LlmContext): Promise<void> {
       }
 
       const city = type === 'city_page'
-        ? titleCase((slug || '').replace(/-pool-builder$/, ''))
+        ? titleCase((slug || '').replace(/-(landscaping(-company)?|hardscaping|lawn-care|excavating)$/, ''))
         : undefined;
 
       // Fill image slots on the piece of HTML we generated, then (for the hybrid
