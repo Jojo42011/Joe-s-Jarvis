@@ -1,9 +1,9 @@
-name: Deploy totally-outdoors
+name: Deploy Totally Outdoors platform to joes-jarvis
 
-# NOTE: this repo's master branch auto-deploys Joe's JARVIS (fly-deploy.yml on
-# master) to the joes-jarvis Fly app. The Totally Outdoors platform lives on its
-# own branch and deploys to its own Fly app with its own token secret so the two
-# never collide. Push to totally-outdoors-prod (or run manually) to deploy.
+# Deploys the Totally Outdoors platform (this branch) to the joes-jarvis Fly
+# app, replacing whatever is currently serving there. NOTE: master's
+# fly-deploy.yml also deploys to the same app on pushes to master — last push
+# wins. Keep only one of the two active long-term.
 on:
   push:
     branches: [totally-outdoors-prod]
@@ -17,7 +17,7 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Deploy totally-outdoors
+      - name: Deploy to joes-jarvis
         run: flyctl deploy --remote-only -c fly.toml
         env:
-          FLY_API_TOKEN: ${{ secrets.TOTALLY_OUTDOORS_FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
