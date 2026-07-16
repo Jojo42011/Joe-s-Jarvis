@@ -905,7 +905,7 @@
   function renderCompetitors() {
     var comps = ((A && A.competitorComparison) || []).slice();
     var k = (A && A.kpis) || {};
-    var us = { domain: "Aquatic (You)", keywordCount: k.ourRankedCount || 0, you: true };
+    var us = { domain: "Totally Outdoors (You)", keywordCount: k.ourRankedCount || 0, you: true };
     var all = [us].concat(comps);
     var max = Math.max(1, Math.max.apply(null, all.map(function(c){return c.keywordCount||0;})));
     if (comps.length === 0 && !us.keywordCount) { $("comp-list").innerHTML = '<div class="empty">No competitor data yet — run Lauren</div>'; return; }
@@ -1081,7 +1081,7 @@
       ["Area", (b.city||"")+", "+(b.state||"")],
       ["Website", b.url],
       ["Price", b.priceRange],
-      ["Experience", (b.yearsExperience||"")+" yrs · "+(b.poolsBuilt||"")+" pools"],
+      ["Experience", (b.yearsExperience||"")+" yrs · "+(b.projectsCompleted||"")+" projects"],
       ["Min project", b.minProject]
     ];
     $("nap").innerHTML = napRows.map(function(r){

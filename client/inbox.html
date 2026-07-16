@@ -129,7 +129,7 @@
 
   <div id="compose-overlay">
     <div id="compose">
-      <h3>Compose — in Arthur's voice</h3>
+      <h3>Compose — in Joe's voice</h3>
       <label>From account</label>
       <select id="c-account"></select>
       <label>To</label>
@@ -239,7 +239,7 @@
         '<div class="dmeta">'+when(e.received_at)+'</div>'+
         (e.summary?'<div class="summary">'+esc(e.summary)+'</div>':"")+
         '<div class="body">'+esc(res.body||e.snippet||"")+'</div>'+
-        '<div class="draftlabel">Reply — in Arthur\'s voice'+(e.draft_status==="sent"?" (SENT)":e.draft_status==="dismissed"?" (dismissed)":"")+'</div>'+
+        '<div class="draftlabel">Reply — in Joe\'s voice'+(e.draft_status==="sent"?" (SENT)":e.draft_status==="dismissed"?" (dismissed)":"")+'</div>'+
         '<textarea id="draft-box" placeholder="Write a reply, or edit Arlo\'s draft…">'+esc(draft)+'</textarea>'+
         '<div class="dactions">'+
           '<button class="btn ok" id="send-btn">✓ Approve &amp; Send</button>'+

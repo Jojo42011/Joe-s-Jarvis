@@ -14,7 +14,7 @@ function fmtWhen(iso: string | null): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleString('en-US', {
-    timeZone: 'America/Phoenix',
+    timeZone: 'America/New_York',
     month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
   });
 }

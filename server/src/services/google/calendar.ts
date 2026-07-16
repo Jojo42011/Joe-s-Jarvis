@@ -56,7 +56,7 @@ export async function createEvent(email: string, ev: {
   if (!auth) throw new Error(`Account ${email} is not connected`);
   const calendar = google.calendar({ version: 'v3', auth });
 
-  const tz = ev.timeZone || 'America/Phoenix';
+  const tz = ev.timeZone || 'America/New_York';
   const res = await calendar.events.insert({
     calendarId: 'primary',
     requestBody: {

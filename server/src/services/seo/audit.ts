@@ -169,7 +169,7 @@ export function auditPage(html: string, opts: AuditOptions = {}): SeoReport {
 
   // ── E-E-A-T (10) ──
   const experience = /\b\d+\+?\s*(years|pools)\b/i.test(body) || bodyLower.includes('we built') || bodyLower.includes('our team');
-  const expertise = new RegExp(`${p.poolsBuilt.replace('+', '\\+?')}|licensed|certified|design`, 'i').test(body);
+  const expertise = new RegExp(`${p.projectsCompleted.replace('+', '\\+?')}|licensed|certified|design`, 'i').test(body);
   const authority = /award|featured|review|rated|testimonial|reputation/i.test(bodyLower) || (getBusinessProfile().socials.length > 0);
   const trust = hasPhone && /family owned|licensed|insured|warranty|guarantee|free consultation/i.test(bodyLower);
   const eeatBools = [experience, expertise, authority, trust];

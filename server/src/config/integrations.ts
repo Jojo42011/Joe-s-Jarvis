@@ -13,7 +13,7 @@ import { anyGoogleAccountConnected, accountHasScope } from '../db/google';
 import { GOOGLE_ACCOUNTS } from './google';
 
 /** The mailbox that authorizes Search Console access (owns Full permission on the property). */
-const SEARCH_CONSOLE_ACCOUNT = GOOGLE_ACCOUNTS[0]?.email ?? 'arthur.garcia@aquaticpoolaz.com';
+const SEARCH_CONSOLE_ACCOUNT = GOOGLE_ACCOUNTS[0]?.email ?? 'totallyoutdoors@gmail.com';
 
 export type IntegrationStatus = 'connected' | 'available' | 'planned';
 

@@ -144,7 +144,7 @@
   /* honest per-platform follower breakdown under the Followers KPI — Zernio
      doesn't expose Instagram's follower count today, only Facebook's, so a
      single combined number without this breakdown reads as "wrong" against
-     what Arthur sees in the real apps. */
+     what Joe sees in the real apps. */
   .acct-chip-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
   .acct-chip { font-size:10.5px; padding:3px 9px; border-radius:20px; border:1px solid var(--border); color:var(--muted); background:var(--card-2); }
   .acct-chip b { color:var(--text); font-weight:600; }
@@ -291,7 +291,7 @@
   <div id="ov"><div id="modal">
     <h3 id="modal-title">New content</h3>
     <input type="hidden" id="m-id" />
-    <label>Title</label><input id="m-title" type="text" placeholder="e.g. 5 signs your pool needs a remodel" />
+    <label>Title</label><input id="m-title" type="text" placeholder="e.g. 5 signs your patio needs a hardscape refresh" />
     <div class="row"><div><label>Channel</label><select id="m-channel"></select></div><div><label>Status</label><select id="m-status"></select></div></div>
     <label>Schedule for (optional)</label><input id="m-date" type="date" />
     <label>Caption / draft</label><textarea id="m-body" placeholder="Outline, caption, or full draft…"></textarea>
@@ -384,7 +384,7 @@
   }
   // Honest per-platform breakdown under the Followers KPI. Zernio doesn't
   // expose Instagram's follower count today (only Facebook's real fan_count),
-  // so a single combined number reads as "wrong" against what Arthur sees in
+  // so a single combined number reads as "wrong" against what Joe sees in
   // the real apps unless each platform's real (or unavailable) count is shown.
   function followerBreakdown(s){
     var accts=(s&&s.accounts)||[];

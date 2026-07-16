@@ -67,7 +67,7 @@ export function buildMetaTitle(opts: { type: string; keyword?: string; city?: st
 export function buildMetaDescription(opts: { type: string; keyword?: string; city?: string; task?: string }): string {
   const p = getBusinessProfile();
   const where = opts.city ? `${opts.city}, ${p.stateFull}` : `the Phoenix Valley`;
-  const proof = `${p.yearsExperience}+ years, ${p.poolsBuilt} pools built`;
+  const proof = `${p.yearsExperience}+ years, ${p.projectsCompleted} projects completed`;
 
   let desc: string;
   if (opts.type === 'city_page') {

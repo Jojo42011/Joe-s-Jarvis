@@ -372,7 +372,7 @@ export function initDb(): Database.Database {
     CREATE TABLE IF NOT EXISTS subs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
-      trade TEXT,                          -- excavation | steel | plumbing | gunite | hardscape | landscaping | electrical | plaster | other
+      trade TEXT,                          -- excavation | hardscape | landscaping | irrigation | lighting | masonry | planting | snow_removal | other
       phone TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -518,11 +518,11 @@ function migrateLeads(database: Database.Database): void {
   if (!names.has('confirmation_sent_at')) add('ALTER TABLE leads ADD COLUMN confirmation_sent_at DATETIME');
   if (!names.has('follow_up_count')) add('ALTER TABLE leads ADD COLUMN follow_up_count INTEGER DEFAULT 0');
   if (!names.has('last_follow_up_at')) add('ALTER TABLE leads ADD COLUMN last_follow_up_at DATETIME');
-  // CRM v3 — Arthur's Blueprint: tier, scope, construction stages, permits,
+  // CRM v3 — project blueprint: tier, scope, build stages, permits,
   // inspections, project value, referral attribution, design status.
   if (!names.has('tier')) add('ALTER TABLE leads ADD COLUMN tier TEXT');                    // standard | luxury
-  if (!names.has('scope')) add('ALTER TABLE leads ADD COLUMN scope TEXT');                  // JSON: {pool,hardscape,landscape,structures,lighting}
-  if (!names.has('jurisdiction')) add('ALTER TABLE leads ADD COLUMN jurisdiction TEXT');    // Goodyear | Buckeye | Phoenix | ...
+  if (!names.has('scope')) add('ALTER TABLE leads ADD COLUMN scope TEXT');                  // JSON: {lawn_care,landscape,hardscape,excavation,water_features,structures,snow} — read defensively; unknown/legacy keys (e.g. old {pool,...}) are ignored
+  if (!names.has('jurisdiction')) add('ALTER TABLE leads ADD COLUMN jurisdiction TEXT');    // Millersburg | Holmes County | ...
   if (!names.has('permit_status')) add("ALTER TABLE leads ADD COLUMN permit_status TEXT DEFAULT 'none'"); // none | draft | submitted | approved
   if (!names.has('build_stage')) add('ALTER TABLE leads ADD COLUMN build_stage TEXT');      // construction pipeline (null until contract)
   if (!names.has('project_value_cents')) add('ALTER TABLE leads ADD COLUMN project_value_cents INTEGER');

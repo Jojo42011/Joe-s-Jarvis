@@ -1,13 +1,13 @@
 /**
  * Auth: username/password login with scrypt hashes, DB-backed session tokens
  * in an HttpOnly cookie, and three roles per Arthur's Blueprint:
- *   owner — everything (Arthur)
+ *   owner — everything (Joe)
  *   sales — the CRM front-end: leads, outreach, estimates. No payments/subs/build ops.
  *   pm    — the CRM build side: stages, subs, files, payments. No estimator, no deletes.
  * Non-CRM pages (Arlo, Paulie, Lauren, Integrations, …) are owner-only.
  *
- * Bootstraps a default owner account (arthur / aquatic-pools-2026) on first
- * boot when no users exist — change it in Team settings after first login.
+ * Bootstraps a default owner account ("joe") on first boot when no users
+ * exist — password via OWNER_DEFAULT_PASSWORD or randomly generated.
  */
 
 import crypto from 'crypto';
@@ -36,14 +36,23 @@ export function verifyPassword(password: string, stored: string): boolean {
   return candidate.length === expected.length && crypto.timingSafeEqual(candidate, expected);
 }
 
-/** Create the default owner account on first boot so Arthur can log in at all. */
+/** Create the default owner account on first boot so Joe can log in at all.
+ *  Password comes from OWNER_DEFAULT_PASSWORD (set it as a Fly secret before
+ *  first boot); otherwise a random one is generated and printed ONCE at boot —
+ *  change it in Team settings immediately either way. */
 export function seedDefaultOwner(): void {
   const db = getDb();
   const count = (db.prepare('SELECT COUNT(*) c FROM users').get() as { c: number }).c;
   if (count > 0) return;
+  const envPassword = (process.env.OWNER_DEFAULT_PASSWORD || '').trim();
+  const password = envPassword || crypto.randomBytes(12).toString('base64url');
   db.prepare('INSERT INTO users (username, name, role, password_hash) VALUES (?, ?, ?, ?)')
-    .run('arthur', 'Arthur Garcia', 'owner', hashPassword('aquatic-pools-2026'));
-  console.log('[Auth] Seeded default owner account: arthur / aquatic-pools-2026 — change this password in Team settings.');
+    .run('joe', 'Joe', 'owner', hashPassword(password));
+  if (envPassword) {
+    console.log('[Auth] Seeded default owner account "joe" with OWNER_DEFAULT_PASSWORD — change it in Team settings.');
+  } else {
+    console.log(`[Auth] Seeded default owner account: joe / ${password} — this is shown ONCE; change it in Team settings now.`);
+  }
 }
 
 export function createSession(userId: number): string {
@@ -83,14 +92,14 @@ export function userForToken(token: string | undefined): AuthUser | null {
   }
 }
 
-// Login is OFF by default — Arthur wants the dashboard to open straight up,
+// Login is OFF by default — the dashboard opens straight up,
 // no sign-in. Set AUTH_ENABLED=1 (Fly secret) to turn the login wall + role
 // system on once the team actually grows; everything below stays wired.
 export function authEnabled(): boolean {
   return process.env.AUTH_ENABLED === '1';
 }
 
-const OPEN_MODE_OWNER: AuthUser = { id: 0, username: 'arthur', name: 'Arthur Garcia', role: 'owner' };
+const OPEN_MODE_OWNER: AuthUser = { id: 0, username: 'joe', name: 'Joe', role: 'owner' };
 
 export function userFromRequest(req: Request): AuthUser | null {
   if (!authEnabled()) return OPEN_MODE_OWNER;

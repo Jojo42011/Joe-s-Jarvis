@@ -1,4 +1,4 @@
-// ─── Single source of truth for Aquatic Pool & Spa's local business identity ───
+// ─── Single source of truth for Totally Outdoors LLC's local business identity ───
 // Used for NAP consistency, LocalBusiness/Service schema, areaServed signals,
 // and the local-SEO scoring checks. Everything is env-overridable so the same
 // engine can be repointed at another client without code changes.
@@ -25,7 +25,7 @@ export interface BusinessProfile {
   priceRange: string;
   foundingYear: number;
   yearsExperience: number;
-  poolsBuilt: string;
+  projectsCompleted: string;
   minProject: string;
   street: string;
   city: string;
@@ -44,9 +44,10 @@ export interface BusinessProfile {
 }
 
 const SERVICE_AREA_CITIES = [
-  'Phoenix', 'Scottsdale', 'Paradise Valley', 'Chandler', 'Goodyear', 'Buckeye',
-  'Tempe', 'Mesa', 'Gilbert', 'Peoria', 'Glendale', 'Sun City', 'Surprise',
-  'Ahwatukee', 'Avondale',
+  'Millersburg', 'Holmesville', 'Berlin', 'Walnut Creek', 'Sugarcreek',
+  'Charm', 'Winesburg', 'Mount Hope', 'Killbuck', 'Nashville', 'Glenmont',
+  'Big Prairie', 'Lakeville', 'Loudonville', 'Wooster', 'Apple Creek',
+  'Fredericksburg', 'Baltic', 'Danville', 'Lake Buckhorn',
 ];
 
 function toSlug(s: string): string {
@@ -58,63 +59,66 @@ function toSlug(s: string): string {
 export function contactPageUrl(): string {
   const explicit = env('SEO_CONTACT_URL', '').replace(/\/+$/, '');
   if (explicit) return explicit;
-  const site = env('SEO_WEBSITE_URL', 'https://aquaticpoolaz.com').replace(/\/+$/, '');
+  const site = env('SEO_WEBSITE_URL', 'https://www.totallyoutdoorsllc.com').replace(/\/+$/, '');
   return `${site}/contact`;
 }
 
 export function getBusinessProfile(): BusinessProfile {
-  const url = env('SEO_WEBSITE_URL', 'https://aquaticpoolaz.com').replace(/\/+$/, '');
-  const phone = env('SEO_BIZ_PHONE', '(623) 225-0537');
+  const url = env('SEO_WEBSITE_URL', 'https://www.totallyoutdoorsllc.com').replace(/\/+$/, '');
+  const phone = env('SEO_BIZ_PHONE', '(330) 231-4080');
   const currentYear = new Date().getFullYear();
-  const foundingYear = parseInt(env('SEO_BIZ_FOUNDING_YEAR', '2007'), 10);
+  const foundingYear = parseInt(env('SEO_BIZ_FOUNDING_YEAR', '2004'), 10);
 
   return {
-    name: env('SEO_BIZ_NAME', 'Aquatic Pool and Spa'),
-    legalName: env('SEO_BIZ_LEGAL_NAME', 'Aquatic Pool and Spa LLC'),
+    name: env('SEO_BIZ_NAME', 'Totally Outdoors'),
+    legalName: env('SEO_BIZ_LEGAL_NAME', 'Totally Outdoors LLC'),
     phone,
     phoneDigits: phone.replace(/[^\d]/g, ''),
-    email: env('SEO_BIZ_EMAIL', 'info@aquaticpoolaz.com'),
+    email: env('SEO_BIZ_EMAIL', 'totallyoutdoors@gmail.com'),
     url,
     logo: env('SEO_BIZ_LOGO', `${url}/assets/logo.png`),
     image: env('SEO_BIZ_IMAGE', `${url}/assets/hero.jpg`),
-    priceRange: env('SEO_BIZ_PRICE_RANGE', '$$$$'),
+    priceRange: env('SEO_BIZ_PRICE_RANGE', '$$'),
     foundingYear,
     yearsExperience: Math.max(1, currentYear - foundingYear),
-    poolsBuilt: env('SEO_BIZ_POOLS_BUILT', '400+'),
-    minProject: env('SEO_BIZ_MIN_PROJECT', '$40,000'),
-    street: env('SEO_BIZ_STREET', ''),
-    city: env('SEO_BIZ_CITY', 'Phoenix'),
-    state: env('SEO_BIZ_STATE', 'AZ'),
-    stateFull: env('SEO_BIZ_STATE_FULL', 'Arizona'),
-    zip: env('SEO_BIZ_ZIP', '85001'),
-    lat: parseFloat(env('SEO_BIZ_LAT', '33.4484')),
-    lng: parseFloat(env('SEO_BIZ_LNG', '-112.0740')),
+    projectsCompleted: env('SEO_BIZ_PROJECTS_COMPLETED', 'hundreds of'),
+    minProject: env('SEO_BIZ_MIN_PROJECT', ''),
+    street: env('SEO_BIZ_STREET', '2855 State Route 83'),
+    city: env('SEO_BIZ_CITY', 'Millersburg'),
+    state: env('SEO_BIZ_STATE', 'OH'),
+    stateFull: env('SEO_BIZ_STATE_FULL', 'Ohio'),
+    zip: env('SEO_BIZ_ZIP', '44654'),
+    lat: parseFloat(env('SEO_BIZ_LAT', '40.5545')),
+    lng: parseFloat(env('SEO_BIZ_LNG', '-81.9179')),
     hours: [
-      { days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], opens: '08:00', closes: '17:00' },
-      { days: ['Saturday'], opens: '09:00', closes: '14:00' },
+      { days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], opens: '08:00', closes: '18:00' },
     ],
     gbpCategories: [
-      'Swimming pool contractor',
-      'Pool cleaning service',
-      'Construction company',
+      'Landscaper',
+      'Lawn care service',
+      'Landscape designer',
+      'Excavating contractor',
+      'Snow removal service',
     ],
     services: [
-      'Custom Pool Construction',
-      'Luxury Pool Design',
-      'Pool Remodeling',
-      'Spa & Hot Tub Installation',
-      'Water Features',
-      'Pool Renovation',
+      'Landscaping',
+      'Hardscaping & Patios',
+      'Lawn Care',
+      'Excavating',
+      'Water Features & Ponds',
+      'Outdoor Structures',
+      'Golf Scapes & Putting Greens',
+      'Snow Plowing & Deicing',
     ],
     serviceAreas: SERVICE_AREA_CITIES.map((c) => ({ city: c, slug: toSlug(c) })),
-    excludedAreas: ['Maricopa', 'San Tan Valley'],
+    excludedAreas: ['Columbus', 'Cleveland', 'Akron', 'Canton'],
     socials: (process.env.SEO_BIZ_SOCIALS || '')
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean),
     tagline: env(
       'SEO_BIZ_TAGLINE',
-      'Luxury resort-style custom pool builder serving the Phoenix Valley',
+      'Landscaping, hardscaping, and excavating serving Holmes County, Ohio since 2004',
     ),
   };
 }

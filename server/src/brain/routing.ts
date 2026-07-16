@@ -1,11 +1,13 @@
 const SONNET_TRIGGERS = [
-  'marco', 'arthur', 'joe', 'gus', 'client',
+  'joe', 'client',
   'remember', 'recall', 'store', 'learned', 'memory', 'graph',
   'read', 'write', 'list', 'edit', 'file',
   'build', 'deploy', 'fix', 'analyze', 'code',
   'search', 'look up', 'find', 'what is', 'price',
   'email', 'calendar', 'send', 'book', 'schedule',
-  'pool', 'spa', 'project', 'crew', 'vendor', 'quote', 'invoice',
+  'yard', 'lawn', 'sod', 'mulch', 'patio', 'hardscape', 'landscape',
+  'excavat', 'pond', 'irrigation', 'retaining wall', 'snow', 'plow',
+  'project', 'crew', 'vendor', 'quote', 'invoice',
 ];
 
 export function needsSonnet(message: string): boolean {

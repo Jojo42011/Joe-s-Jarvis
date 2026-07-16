@@ -1,5 +1,5 @@
-app = "arthur-arlo"
-primary_region = "lax"
+app = "totally-outdoors"
+primary_region = "ord"
 
 [build]
   dockerfile = "Dockerfile"
@@ -21,5 +21,5 @@ primary_region = "lax"
   cpus = 1
 
 [[mounts]]
-  source = "arlo_data"
+  source = "totally_outdoors_data"
   destination = "/data"

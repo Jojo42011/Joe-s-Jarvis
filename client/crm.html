@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Lead CRM — Arlo</title>
+<title>Lead CRM — Totally Outdoors</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
@@ -296,7 +296,7 @@
         <span class="orb"></span>
         <div>
           <h1>Lead CRM</h1>
-          <div class="head-sub">Aquatic OS · Pipeline</div>
+          <div class="head-sub">Totally Outdoors LLC · Pipeline</div>
         </div>
       </div>
       <div class="header-right">
@@ -431,11 +431,17 @@
             </label>
           </div>
           <div class="scope-row" id="prScope">
-            <label><input type="checkbox" data-scope="pool" /> Pool & water features</label>
-            <label><input type="checkbox" data-scope="hardscape" /> Hardscape</label>
+            <!-- Scope keys must stay in sync with the server-side scope JSON
+                 shape: {lawn_care, landscape, hardscape, excavation,
+                 water_features, structures, snow}. Legacy keys on old rows
+                 (e.g. "pool") are simply ignored by this checkbox render. -->
+            <label><input type="checkbox" data-scope="lawn_care" /> Lawn care</label>
             <label><input type="checkbox" data-scope="landscape" /> Landscaping</label>
-            <label><input type="checkbox" data-scope="structures" /> Bar / gazebo / pergola</label>
-            <label><input type="checkbox" data-scope="lighting" /> Lighting</label>
+            <label><input type="checkbox" data-scope="hardscape" /> Hardscape / patio</label>
+            <label><input type="checkbox" data-scope="excavation" /> Excavating</label>
+            <label><input type="checkbox" data-scope="water_features" /> Water features / ponds</label>
+            <label><input type="checkbox" data-scope="structures" /> Outdoor structures</label>
+            <label><input type="checkbox" data-scope="snow" /> Snow plowing</label>
           </div>
           <button class="btn" id="prSave" style="margin-top:10px">Save project details</button>
         </div>
@@ -447,7 +453,7 @@
         <div class="dr-sec">
           <h3>Milestones & Payments</h3>
           <div class="add-inline" style="margin-bottom:8px">
-            <button class="btn" id="msGenerate" title="Creates Arthur's 10/25/30/30/5 draw schedule from the project value">Generate 10/25/30/30/5 schedule</button>
+            <button class="btn" id="msGenerate" title="Creates the 50% deposit / 50% final payment schedule from the project value (default — confirm Joe's billing practice)">Generate 50/50 schedule</button>
           </div>
           <div id="drPayments"></div>
           <div class="add-inline">
@@ -491,7 +497,7 @@
           <h3>Estimate</h3>
           <div id="drEstimate"></div>
           <div class="add-inline">
-            <input type="text" id="estLabel" placeholder="Line item (Gunite…)" />
+            <input type="text" id="estLabel" placeholder="Line item (Pavers…)" />
             <input type="text" id="estQty" placeholder="Qty" style="max-width:60px" />
             <input type="text" id="estUnit" placeholder="Unit" style="max-width:60px" />
             <input type="text" id="estCost" placeholder="$/unit" style="max-width:80px" />
@@ -524,7 +530,7 @@
           <div class="form-group"><label>Phone</label><input type="tel" id="formPhone" required /></div>
           <div class="form-group full"><label>Email</label><input type="email" id="formEmail" /></div>
           <div class="form-group full"><label>Address</label><input type="text" id="formAddress" /></div>
-          <div class="form-group"><label>Project Type</label><input type="text" id="formProjectType" placeholder="Pool, remodel, spa…" /></div>
+          <div class="form-group"><label>Project Type</label><input type="text" id="formProjectType" placeholder="Patio, landscaping, pond…" /></div>
           <div class="form-group"><label>Budget</label><input type="text" id="formBudget" placeholder="$60k–$90k" /></div>
           <div class="form-group"><label>Timeline</label><input type="text" id="formTimeline" placeholder="ASAP, 3–6 months…" /></div>
           <div class="form-group"><label>Source</label>
@@ -549,7 +555,7 @@
   <div class="modal" id="smsModal">
     <div class="modal-content">
       <div class="modal-title">Text <span id="smsWho"></span></div>
-      <div class="form-group full"><label>Message</label><textarea id="smsBody" placeholder="Hey, it's Arthur from Aquatic Pools & Spas…"></textarea></div>
+      <div class="form-group full"><label>Message</label><textarea id="smsBody" placeholder="Hey, it's Joe from Totally Outdoors…"></textarea></div>
       <div class="form-actions">
         <button type="button" class="cancel" id="smsCancel">Cancel</button>
         <button type="button" class="submit" id="smsSend">Send Text</button>
