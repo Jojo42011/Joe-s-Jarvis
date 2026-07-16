@@ -1,5 +1,5 @@
 /**
- * Integration catalog — the "hands" library for Arlo.
+ * Integration catalog — the "hands" library for Jarvis.
  *
  * This is the map of every service the Intelligence can plug into. Status is
  * resolved live from the environment: a tool with all its env keys present reports
@@ -55,12 +55,12 @@ export const INTEGRATIONS: IntegrationDef[] = [
 
   // ── Voice & Telephony (already live) ──
   { id: 'vapi', name: 'Vapi', category: 'Voice & Telephony', description: 'Sofia — inbound receptionist and outbound sales calls with automatic lead capture.', envKeys: ['VAPI_API_KEY'], fallback: 'available' },
-  { id: 'elevenlabs', name: 'ElevenLabs', category: 'Voice & Telephony', description: 'Arlo\'s realtime voice — Scribe speech-to-text and low-latency TTS.', envKeys: ['ELEVENLABS_API_KEY'], fallback: 'available' },
+  { id: 'elevenlabs', name: 'ElevenLabs', category: 'Voice & Telephony', description: 'Jarvis\'s realtime voice — Scribe speech-to-text and low-latency TTS.', envKeys: ['ELEVENLABS_API_KEY'], fallback: 'available' },
   { id: 'sms_gate', name: 'SMS Gateway (sms-gate.app)', category: 'Messaging', description: 'Live outbound texting from Joe\'s own Android device — manual, operator-sent texts from the CRM (automated texting to leads is off).', fallback: 'available' },
-  { id: 'twilio_sms', name: 'Twilio SMS', category: 'Messaging', description: 'Two-way texting on a dedicated business number — inbound texts trigger Arlo, outbound reminders and confirmations.', envKeys: ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN'], fallback: 'planned' },
+  { id: 'twilio_sms', name: 'Twilio SMS', category: 'Messaging', description: 'Two-way texting on a dedicated business number — inbound texts trigger Jarvis, outbound reminders and confirmations.', envKeys: ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN'], fallback: 'planned' },
 
   // ── AI & Reasoning ──
-  { id: 'openai', name: 'OpenAI', category: 'AI & Reasoning', description: 'Arlo\'s conversational brain and the embeddings behind semantic memory recall.', envKeys: ['OPENAI_API_KEY'], fallback: 'available' },
+  { id: 'openai', name: 'OpenAI', category: 'AI & Reasoning', description: 'Jarvis\'s conversational brain and the embeddings behind semantic memory recall.', envKeys: ['OPENAI_API_KEY'], fallback: 'available' },
   { id: 'anthropic', name: 'Anthropic Claude', category: 'AI & Reasoning', description: 'Memory extraction, reflection, weekly synthesis, and briefings.', envKeys: ['ANTHROPIC_API_KEY'], fallback: 'available' },
   { id: 'gemini', name: 'Google Gemini', category: 'AI & Reasoning', description: 'Lauren\'s SEO research (Google-grounded) and AI image generation for pages.', envKeys: ['GEMINI_API_KEY'], fallback: 'available' },
 

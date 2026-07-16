@@ -117,15 +117,11 @@
   };
   var TABS = [
     { key:"arlo", label:"Jarvis", sub:"Operator", src:"/arlo", home:true },
-    { key:"chat", label:"Chat", sub:"Text Jarvis", src:"/chat" },
-    { key:"seo", label:"SEO", sub:"Lauren", src:"/atlas" },
-    { key:"content", label:"Content", sub:"Paulie", src:"/ralph" },
-    { key:"crm", label:"CRM", sub:"Leads", src:"/crm" },
     { key:"calls", label:"Calls", sub:"Sofia", src:"/calls" },
-    { key:"inbox", label:"Inbox", sub:"Email", src:"/inbox" },
+    { key:"chat", label:"Text", sub:"Message Jarvis", src:"/chat" },
+    { key:"inbox", label:"Email", sub:"Inbox", src:"/inbox" },
     { key:"memory", label:"Memory", sub:"Neural Map", src:"/memory" },
-    { key:"integrations", label:"Integrations", sub:"Hands", src:"/integrations" },
-    { key:"team", label:"Team", sub:"Access", src:"/team" }
+    { key:"integrations", label:"Integrations", sub:"Hands", src:"/integrations" }
   ];
   var byKey = {}; TABS.forEach(function(t){ byKey[t.key]=t; });
   var current = "arlo";

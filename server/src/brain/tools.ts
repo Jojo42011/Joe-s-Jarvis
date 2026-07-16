@@ -7,11 +7,11 @@ import { createEvent } from '../services/google/calendar';
 import { GOOGLE_ACCOUNTS } from '../config/google';
 import { PIPELINE, logActivity } from '../routes/leads';
 
-/** Dashboards Arlo can pull up in the UI. Keys match the shell's tab keys. */
-export const UI_TABS = ['arlo', 'seo', 'content', 'calls', 'inbox', 'memory', 'integrations'];
+/** Dashboards Jarvis can pull up in the UI. Keys match the shell's tab keys. */
+export const UI_TABS = ['arlo', 'calls', 'inbox', 'memory', 'integrations'];
 
 /**
- * Function tools for Arlo's brain (Responses API — flat shape). Kept to safe,
+ * Function tools for Jarvis's brain (Responses API — flat shape). Kept to safe,
  * reversible actions + reads + UI navigation. Sending email stays gated to the
  * Inbox panel; these never send mail.
  */
@@ -19,7 +19,7 @@ export const FUNCTION_TOOLS = [
   {
     type: 'function' as const,
     name: 'open_dashboard',
-    description: "Pull up an agent's dashboard/tab in the UI for Joe to see (and you speak over it). Use when he asks how an agent is doing or to show him something. tab: seo=Lauren/SEO, content=Paulie, calls=Sofia, inbox=email, memory=neural map, integrations=connected tools, arlo=home.",
+    description: "Pull up a tab in the UI for Joe to see (and you speak over it). Use when he asks to show him something. tab: calls=Sofia/phone log, inbox=email, memory=neural map, integrations=connected tools, arlo=home.",
     parameters: {
       type: 'object',
       properties: { tab: { type: 'string', enum: UI_TABS } },
@@ -29,63 +29,11 @@ export const FUNCTION_TOOLS = [
   {
     type: 'function' as const,
     name: 'get_agent_status',
-    description: 'Get live numbers for an agent so you can report them out loud. agent: seo, content, or inbox.',
+    description: 'Get live numbers for the inbox so you can report them out loud.',
     parameters: {
       type: 'object',
-      properties: { agent: { type: 'string', enum: ['seo', 'content', 'inbox'] } },
+      properties: { agent: { type: 'string', enum: ['inbox'] } },
       required: ['agent'], additionalProperties: false,
-    },
-  },
-  {
-    type: 'function' as const,
-    name: 'sync_seo_rankings',
-    description: 'Refresh real Google Search Console rankings for the website now.',
-    parameters: { type: 'object', properties: {}, additionalProperties: false },
-  },
-  {
-    type: 'function' as const,
-    name: 'create_content',
-    description: "Add a content idea/draft to Paulie's pipeline.",
-    parameters: {
-      type: 'object',
-      properties: {
-        title: { type: 'string' },
-        channel: { type: 'string', enum: RALPH_CHANNELS },
-        status: { type: 'string', enum: ['idea', 'draft', 'scheduled'] },
-      },
-      required: ['title'], additionalProperties: false,
-    },
-  },
-  {
-    type: 'function' as const,
-    name: 'generate_content_posts',
-    description: "Have Paulie write real on-brand social posts (caption + AI image) into the Approvals queue for Joe to review. Runs in the background. Use when Joe says to make posts/content, fill the queue, or 'have Paulie draft something'. count defaults to 5; optional channel.",
-    parameters: {
-      type: 'object',
-      properties: {
-        count: { type: 'number' },
-        channel: { type: 'string', enum: RALPH_CHANNELS },
-      },
-      additionalProperties: false,
-    },
-  },
-  {
-    type: 'function' as const,
-    name: 'list_pending_seo_pages',
-    description: "List Lauren's upcoming SEO pages — she writes, scores, and schedules them fully autonomously now, no approval needed. Use when Joe asks what Lauren's working on, what's coming next, or what's live already (title, type, target keyword, SEO score, scheduled date, id).",
-    parameters: { type: 'object', properties: {}, additionalProperties: false },
-  },
-  {
-    type: 'function' as const,
-    name: 'approve_seo_page',
-    description: "Fast-track a specific Lauren page to publish RIGHT NOW instead of waiting for its scheduled date — Lauren already writes and schedules autonomously, so this is only for when Joe explicitly wants something live immediately. Confirm which page he means if ambiguous. id comes from list_pending_seo_pages.",
-    parameters: {
-      type: 'object',
-      properties: {
-        id: { type: 'number', description: 'seo_content id from list_pending_seo_pages' },
-        publish_now: { type: 'boolean', description: 'true = commit to the live site immediately instead of waiting for its scheduled date' },
-      },
-      required: ['id'], additionalProperties: false,
     },
   },
   {
@@ -192,58 +140,6 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
       }
       case 'get_agent_status':
         return { result: agentStatus(String(args.agent || '')) };
-      case 'sync_seo_rankings':
-        return { result: await syncSearchConsole() };
-      case 'create_content': {
-        const id = createRalphContent({
-          title: String(args.title || 'Untitled'),
-          channel: args.channel ? String(args.channel) : 'blog',
-          status: args.status ? String(args.status) : 'idea',
-        });
-        return { result: { ok: true, id } };
-      }
-      case 'generate_content_posts': {
-        const count = Math.max(1, Math.min(Number(args.count) || 5, 12));
-        const channel = args.channel ? String(args.channel) : undefined;
-        // Slow (throttled image gen) — fire in the background so voice stays snappy.
-        generateBatch(count, channel as never)
-          .then((posts) => console.log(`[Paulie] voice-triggered batch done — ${posts.length} drafted`))
-          .catch((err) => console.error('[Paulie] voice-triggered batch failed:', err));
-        return { result: { ok: true, started: true, count, note: `Paulie is drafting ${count} post(s) into the Approvals queue now.` } };
-      }
-      case 'list_pending_seo_pages': {
-        // Lauren writes straight to 'approved' now (no human gate) — this lists
-        // whatever hasn't gone live yet, ordered by when it's scheduled to.
-        const rows = getDb().prepare(`
-          SELECT id, title, type, target_keyword, seo_score, seo_grade, scheduled_for, status, created_at
-          FROM seo_content
-          WHERE committed = 0
-          ORDER BY scheduled_for ASC, created_at ASC
-        `).all();
-        return { result: { pending: rows, count: (rows as unknown[]).length } };
-      }
-      case 'approve_seo_page': {
-        // Mirrors POST /api/seo/content/:id/approve — same guards, same effect.
-        // Lauren already auto-approves on generation; this just fast-tracks the
-        // publish date when Joe explicitly wants something live sooner.
-        const db = getDb();
-        const id = Number(args.id);
-        const row = db.prepare('SELECT id, title, status, committed FROM seo_content WHERE id = ?').get(id) as
-          | { id: number; title: string; status: string; committed: number }
-          | undefined;
-        if (!row) return { result: { ok: false, error: `No page with id ${id}` } };
-        if (row.committed) return { result: { ok: false, error: 'Already published' } };
-        if (row.status === 'denied') return { result: { ok: false, error: 'That page was denied' } };
-        db.prepare(
-          "UPDATE seo_content SET status = 'approved', approved_at = CURRENT_TIMESTAMP WHERE id = ?",
-        ).run(id);
-        if (args.publish_now === true) {
-          const { publishContentToGithub } = await import('../services/seoPublish');
-          const pub = await publishContentToGithub(id);
-          return { result: { ok: pub.success, title: row.title, published: pub.success, liveUrl: pub.liveUrl ?? null, message: pub.message } };
-        }
-        return { result: { ok: true, title: row.title, approved: true, note: 'Will upload on the hourly publish cycle (or on its scheduled date).' } };
-      }
       case 'add_calendar_event': {
         const acct = pickAccount(args.account ? String(args.account) : undefined);
         if (!acct) return { result: { ok: false, error: 'No connected Google account' } };

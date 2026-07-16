@@ -234,7 +234,7 @@ export function initDb(): Database.Database {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
-    -- Triaged inbox items: Arlo's read of each message + any drafted reply.
+    -- Triaged inbox items: Jarvis's read of each message + any drafted reply.
     CREATE TABLE IF NOT EXISTS email_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       account_email TEXT NOT NULL,

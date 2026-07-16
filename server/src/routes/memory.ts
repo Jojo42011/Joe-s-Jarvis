@@ -66,7 +66,7 @@ router.post('/extract-voice', async (req: Request, res: Response) => {
     await runPostConversationExtraction(enriched);
     res.json({ ok: true });
   } catch (err) {
-    console.error('[Arlo] Voice extraction error:', err);
+    console.error('[Jarvis] Voice extraction error:', err);
     res.status(500).json({ error: 'Extraction failed' });
   }
 });

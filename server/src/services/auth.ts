@@ -4,7 +4,7 @@
  *   owner — everything (Joe)
  *   sales — the CRM front-end: leads, outreach, estimates. No payments/subs/build ops.
  *   pm    — the CRM build side: stages, subs, files, payments. No estimator, no deletes.
- * Non-CRM pages (Arlo, Paulie, Lauren, Integrations, …) are owner-only.
+ * Non-CRM pages (Jarvis, Paulie, Lauren, Integrations, …) are owner-only.
  *
  * Bootstraps a default owner account ("joe") on first boot when no users
  * exist — password via OWNER_DEFAULT_PASSWORD or randomly generated.
@@ -155,7 +155,7 @@ export function apiAuthGuard(req: Request, res: Response, next: NextFunction): v
     if (!crmAllowedForRole(req, user.role)) { res.status(403).json({ error: 'not allowed for your role' }); return; }
     next(); return;
   }
-  // Everything else (Arlo brain/voice, Paulie, Lauren, integrations, memory…) is owner-only.
+  // Everything else (Jarvis brain/voice, Paulie, Lauren, integrations, memory…) is owner-only.
   if (user.role !== 'owner') { res.status(403).json({ error: 'owner only' }); return; }
   next();
 }

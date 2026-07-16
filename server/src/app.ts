@@ -313,29 +313,27 @@ scheduleDailyDecay();
 
 scheduleWeeklySynthesis();
 
-scheduleSeoAgent();
-
-scheduleSeoPublish();
-
-scheduleSeoLiveCheck();
+// SEO (Lauren) and social content (Paulie) removed from Joe's build — their
+// autonomous schedulers are disabled so nothing publishes/generates in the
+// background. Re-enable if those agents ever come back.
+// scheduleSeoAgent();
+// scheduleSeoPublish();
+// scheduleSeoLiveCheck();
+// scheduleSearchConsole();
+// scheduleRalphContent();
+// scheduleRalphPublish();
+// scheduleIndexingSweep();
 
 scheduleReflection();
 
 scheduleInboxSync();
 
-scheduleSearchConsole();
-
-scheduleRalphContent();
-
-scheduleRalphPublish();
-
 scheduleLeadFollowUps();
 
 scheduleJunkCleanup();
 
+// Sofia (phone) stays — keep the Vapi call sync running.
 scheduleVapiSync();
-
-scheduleIndexingSweep();
 
 
 

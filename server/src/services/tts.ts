@@ -98,7 +98,7 @@ export async function generateTtsPcm(text: string, previousText?: string): Promi
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[Arlo] ElevenLabs TTS error: ${response.status} ${errorText}`);
+      console.error(`[Jarvis] ElevenLabs TTS error: ${response.status} ${errorText}`);
       throw new Error(`ElevenLabs TTS failed: ${response.status}`);
     }
 

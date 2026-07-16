@@ -97,9 +97,9 @@ export function scheduleDailyDecay(): void {
         UPDATE rules SET confidence = confidence * 0.999
         WHERE last_reinforced < datetime('now', '-7 days');
       `);
-      console.log('[Arlo] Daily memory decay applied');
+      console.log('[Jarvis] Daily memory decay applied');
     } catch (err) {
-      console.error('[Arlo] Decay error:', err);
+      console.error('[Jarvis] Decay error:', err);
     }
   }, 24 * 60 * 60 * 1000);
 }
@@ -146,10 +146,10 @@ export function scheduleWeeklySynthesis(): void {
           INSERT INTO syntheses (content, period_start, period_end)
           VALUES (?, datetime('now', '-7 days'), datetime('now'))
         `).run(block.text);
-        console.log('[Arlo] Weekly synthesis complete');
+        console.log('[Jarvis] Weekly synthesis complete');
       }
     } catch (err) {
-      console.error('[Arlo] Synthesis error:', err);
+      console.error('[Jarvis] Synthesis error:', err);
     }
 
     scheduleNextSunday();
@@ -217,7 +217,7 @@ export function scheduleSeoPublish(): void {
   console.log('[SEO Agent] Publish scheduler — checks hourly for approved content due');
 }
 
-// Reflection: Arlo synthesizes higher-level insights from recent memories.
+// Reflection: Jarvis synthesizes higher-level insights from recent memories.
 // First pass 10 min after boot (once seed/conversation exists), then every 12h.
 const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 

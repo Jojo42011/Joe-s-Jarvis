@@ -34,7 +34,7 @@ export interface KnownAccount {
   label: string;
 }
 
-/** The mailboxes Arlo watches, kept separate so he can speak per-inbox. Add more entries as needed. */
+/** The mailboxes Jarvis watches, kept separate so he can speak per-inbox. Add more entries as needed. */
 export const GOOGLE_ACCOUNTS: KnownAccount[] = [
   { email: 'totallyoutdoors@gmail.com', label: 'Office / New Leads' },
 ];
@@ -47,7 +47,7 @@ export function labelForEmail(email: string): string {
 /**
  * How much mail to pull per account per sync.
  * TEMP (verification): pull the last 10 messages regardless of read state so we
- * can confirm Arlo is actually reading the inbox. Tighten back to
+ * can confirm Jarvis is actually reading the inbox. Tighten back to
  * "in:inbox is:unread newer_than:7d" once confirmed.
  */
 export const INBOX_LOOKBACK_QUERY = process.env.GOOGLE_INBOX_QUERY || 'in:inbox';

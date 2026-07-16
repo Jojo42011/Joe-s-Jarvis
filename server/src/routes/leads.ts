@@ -77,7 +77,7 @@ async function fireVapiCall(lead: VapiLead): Promise<void> {
     responseBody = responseText;
   }
 
-  console.log('[Arlo] Vapi response:', response.status, responseBody);
+  console.log('[Jarvis] Vapi response:', response.status, responseBody);
 
   if (!response.ok) {
     throw new Error(`Vapi returned ${response.status}: ${responseText}`);
@@ -233,8 +233,8 @@ router.post('/leads', async (req: Request, res: Response) => {
     `Address: ${trimmedAddress || 'not provided'}\nBudget: ${trimmedBudget || 'not provided'}\n` +
     `Timeline: ${trimmedTimeline || 'not provided'}`;
 
-  console.log('[Arlo] SMS notification firing', { leadId });
-  sendSms(smsMessage, 'Arlo');
+  console.log('[Jarvis] SMS notification firing', { leadId });
+  sendSms(smsMessage, 'Jarvis');
 
   const vapiLead: VapiLead = {
     name: name.trim(),
@@ -250,7 +250,7 @@ router.post('/leads', async (req: Request, res: Response) => {
     logActivity(leadId, 'call', { direction: 'out', body: 'Sofia auto-called this lead' });
     res.json({ success: true, leadId });
   } catch (err) {
-    console.error('[Arlo] Vapi call failed:', err);
+    console.error('[Jarvis] Vapi call failed:', err);
     res.json({ success: true, leadId });
   }
 });

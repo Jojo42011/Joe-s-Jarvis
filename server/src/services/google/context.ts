@@ -26,9 +26,9 @@ function shortFrom(from: string | null): string {
 }
 
 /**
- * Live snapshot of the three inboxes + calendars injected into Arlo's brain so
+ * Live snapshot of the three inboxes + calendars injected into Jarvis's brain so
  * he can actually see and talk about email — counts, senders, subjects, what's
- * hot — per mailbox. Always includes recent mail (not just flagged), so Arlo is
+ * hot — per mailbox. Always includes recent mail (not just flagged), so Jarvis is
  * never blind to a connected inbox.
  */
 export function buildInboxCalendarContext(): string {

@@ -9,7 +9,7 @@ import { broadcast } from '../ws/hub';
 /**
  * The Reflection Engine — the difference between a memory pile and a mind.
  *
- * Periodically Arlo reads his recent raw memories (facts + episodes) and asks
+ * Periodically Jarvis reads his recent raw memories (facts + episodes) and asks
  * himself: "What higher-level truths about Joe and the business do these
  * imply?" Those inferences are written back as first-class memories
  * (category 'reflection'), so future recall surfaces UNDERSTANDING, not just

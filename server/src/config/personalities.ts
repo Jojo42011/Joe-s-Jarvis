@@ -1,5 +1,5 @@
 /**
- * Arlo's selectable personalities. Each is a layer on top of the base identity
+ * Jarvis's selectable personalities. Each is a layer on top of the base identity
  * (who Joe is, the business, the boundaries) — it changes HOW he talks, not
  * WHAT he knows. Each carries its own ElevenLabs voice so switching personality
  * switches the voice too. Selection is stored in system_state.

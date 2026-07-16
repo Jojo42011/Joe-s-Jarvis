@@ -7,7 +7,7 @@ import { analyzeImage, ingestDocument } from '../services/vision';
 
 const router = Router();
 
-// Arlo's eyes: analyze an uploaded image (data URL or https URL).
+// Jarvis's eyes: analyze an uploaded image (data URL or https URL).
 router.post('/analyze', async (req: Request, res: Response) => {
   try {
     const { image, prompt } = req.body as { image?: string; prompt?: string };
@@ -78,7 +78,7 @@ router.post('/process', async (req: Request, res: Response) => {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Brain processing failed';
-    console.error('[Arlo] Brain error:', err);
+    console.error('[Jarvis] Brain error:', err);
     res.status(500).json({ error: msg });
   }
 });
@@ -92,7 +92,7 @@ router.post('/stream', async (req: Request, res: Response) => {
     }
     await streamAgentLoop({ message }, res);
   } catch (err) {
-    console.error('[Arlo] Stream error:', err);
+    console.error('[Jarvis] Stream error:', err);
     if (!res.headersSent) {
       res.status(500).json({ error: 'Stream failed' });
     }

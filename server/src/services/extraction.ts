@@ -57,7 +57,7 @@ export async function runPostConversationExtraction(
 
   const parsed = safeJsonParse<ExtractionResult>(block.text);
   if (!parsed) {
-    console.error('[Arlo] Extraction JSON parse failed');
+    console.error('[Jarvis] Extraction JSON parse failed');
     return;
   }
 
@@ -99,5 +99,5 @@ export async function runPostConversationExtraction(
   }
 
   broadcast({ type: 'memory_updated' });
-  console.log('[Arlo] Memory extraction complete');
+  console.log('[Jarvis] Memory extraction complete');
 }

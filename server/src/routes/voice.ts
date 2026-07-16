@@ -46,7 +46,7 @@ router.post('/speak', async (req: Request, res: Response) => {
     res.send(pcm);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'TTS failed';
-    console.error('[Arlo] TTS error:', err);
+    console.error('[Jarvis] TTS error:', err);
     res.status(500).json({ error: msg });
   }
 });

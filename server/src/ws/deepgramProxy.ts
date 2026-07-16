@@ -46,7 +46,7 @@ function upgradePathname(request: IncomingMessage): string {
 }
 
 export function elevenLabsSttUrl(): string {
-  // Lower = Arlo commits the turn and starts thinking sooner after Joe stops
+  // Lower = Jarvis commits the turn and starts thinking sooner after Joe stops
   // talking. 1.0s of dead air every turn was the single biggest latency drag in
   // the whole pipeline; 0.6s still gives room for a mid-sentence breath.
   const silenceSecs = process.env.ELEVENLABS_STT_SILENCE_SECS?.trim() || '0.6';
@@ -124,7 +124,7 @@ export function handleDeepgramUpgrade(
       let clientChunks = 0;
 
       // Reconnect state: Scribe idle-closes (code 1000) during the silence while
-      // Arlo speaks / between turns. We transparently reopen upstream and keep the
+      // Jarvis speaks / between turns. We transparently reopen upstream and keep the
       // client WS alive so STT never drops mid-conversation.
       let upstream: WebSocket | null = null;
       let fatal = false;
@@ -135,7 +135,7 @@ export function handleDeepgramUpgrade(
       const pending: string[] = [];
       const PENDING_CAP = 200;
 
-      // Silence keepalive: while Arlo speaks the mic is paused (no audio), and
+      // Silence keepalive: while Jarvis speaks the mic is paused (no audio), and
       // Scribe idle-closes. Feeding it periodic SILENCE (VAD ignores it — no
       // transcript) keeps the session alive so STT never drops between turns.
       let lastClientAudioAt = Date.now();
@@ -248,7 +248,7 @@ export function handleDeepgramUpgrade(
       connectUpstream(false);
 
       // Keepalive every 2.5s: WS ping + a silence chunk when the mic has been idle
-      // (Arlo speaking / between turns). Silence keeps Scribe's session alive without
+      // (Jarvis speaking / between turns). Silence keeps Scribe's session alive without
       // producing a transcript, so STT never idle-closes.
       const keepalive = setInterval(() => {
         try {

@@ -2,7 +2,7 @@
  * Outbound message style: Joe wants no dashes in anything the system sends —
  * em dashes read as obviously AI-written. Applied at the two choke points every
  * outbound email and SMS flows through (services/sms.ts and google/gmail.ts),
- * so every sender — CRM composes, confirmations, sub schedule texts, Arlo's
+ * so every sender — CRM composes, confirmations, sub schedule texts, Jarvis's
  * notifications, inbox replies — is covered without per-caller changes.
  *
  * Rules:

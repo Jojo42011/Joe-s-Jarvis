@@ -69,7 +69,7 @@ router.get('/google/callback', async (req: Request, res: Response) => {
 .card{border:1px solid rgba(255,140,0,.4);border-radius:14px;padding:34px 40px;text-align:center}
 h1{color:#FF8C00;font-size:20px;margin:0 0 8px}a{color:#FF8C00}</style></head>
 <body><div class="card"><h1>✓ ${labelForEmail(email)} connected</h1>
-<p>${email} is now wired to Arlo.</p>
+<p>${email} is now wired to Jarvis.</p>
 <p><a href="/integrations">← Back to Integrations</a></p></div></body></html>`);
   } catch (err) {
     console.error('[Google] callback error:', err);

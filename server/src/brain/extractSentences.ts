@@ -8,11 +8,11 @@ const ABBREV_RE = /\b(mr|mrs|ms|dr|jr|sr|st|ave|blvd|rd|ln|ct|ft|no|vs|etc|appro
 
 // Later chunks merge up to ~MIN_TTS_CHARS so speech flows smoothly (no per-fragment
 // prosody restart / "stutter"). But the VERY FIRST chunk ships at a much lower
-// threshold so Arlo starts talking ~0.5–1s sooner (time-to-first-word), then the
+// threshold so Jarvis starts talking ~0.5–1s sooner (time-to-first-word), then the
 // rest catches up smoothly while he's already speaking.
 const MIN_TTS_CHARS = 55;
 // Ship the FIRST complete sentence the instant it lands (even a short "Got it.")
-// so Arlo starts talking immediately; only later chunks merge for smoothness.
+// so Jarvis starts talking immediately; only later chunks merge for smoothness.
 const FIRST_CHUNK_CHARS = 1;
 
 // Belt-and-suspenders: the system prompt tells the model never to use markdown

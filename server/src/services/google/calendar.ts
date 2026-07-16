@@ -42,7 +42,7 @@ export async function listUpcoming(email: string, days: number): Promise<Upcomin
   }));
 }
 
-/** Create an event on a mailbox's calendar. Reversible, so Arlo may do this directly. */
+/** Create an event on a mailbox's calendar. Reversible, so Jarvis may do this directly. */
 export async function createEvent(email: string, ev: {
   summary: string;
   description?: string;
