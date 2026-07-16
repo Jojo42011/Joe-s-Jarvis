@@ -36,7 +36,7 @@ export function buildInboxCalendarContext(): string {
 
   const counts = emailCountsByAccount();
   const countMap = new Map(counts.map((c) => [c.account_email.toLowerCase(), c]));
-  const lines: string[] = ['## LIVE INBOX & CALENDAR — Arthur\'s three mailboxes (you have full access)'];
+  const lines: string[] = ['## LIVE INBOX & CALENDAR — Joe\'s three mailboxes (you have full access)'];
 
   // Snapshot line + recent mail per mailbox.
   for (const acct of GOOGLE_ACCOUNTS) {
@@ -84,7 +84,7 @@ export function buildInboxCalendarContext(): string {
   }
 
   if (lines.length === 1) return '';
-  lines.push('When Arthur asks about email, answer concretely from this — counts, who, subjects, what\'s hot. Reference an item by its #id. You draft replies (Arthur approves before send); you may add calendar events directly. The full working panel is at /inbox.');
+  lines.push('When Joe asks about email, answer concretely from this — counts, who, subjects, what\'s hot. Reference an item by its #id. You draft replies (Joe approves before send); you may add calendar events directly. The full working panel is at /inbox.');
 
   return lines.join('\n').slice(0, MAX_CHARS);
 }

@@ -79,7 +79,7 @@ export async function fetchGithubFile(
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github.v3+json',
-        'User-Agent': 'AquaticSEOAgent/1.0',
+        'User-Agent': 'TotallyOutdoorsSEOAgent/1.0',
       },
       signal: AbortSignal.timeout(25000),
     });
@@ -102,7 +102,7 @@ export async function listRepoHtmlFiles(repo: string, branch: string, token: str
   const headers = {
     Authorization: `Bearer ${token}`,
     Accept: 'application/vnd.github.v3+json',
-    'User-Agent': 'AquaticSEOAgent/1.0',
+    'User-Agent': 'TotallyOutdoorsSEOAgent/1.0',
   };
   const found: string[] = [];
   const skip = new Set(['node_modules', '.git', 'dist', '.next', 'vendor', '.github']);

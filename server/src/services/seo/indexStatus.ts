@@ -25,7 +25,7 @@ import { listRepoHtmlFiles } from '../seoTemplate';
 const TAG = '[Indexing]';
 
 function siteBase(): string {
-  return (process.env.SEO_WEBSITE_URL || 'https://aquaticpoolaz.com').replace(/\/+$/, '');
+  return (process.env.SEO_WEBSITE_URL || 'https://www.totallyoutdoorsllc.com').replace(/\/+$/, '');
 }
 
 function pathToUrl(filePath: string): string {
@@ -65,7 +65,7 @@ export async function updateSitemap(): Promise<{ ok: boolean; pages?: number; su
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
     Accept: 'application/vnd.github.v3+json',
-    'User-Agent': 'AquaticSEOAgent/1.0',
+    'User-Agent': 'TotallyOutdoorsSEOAgent/1.0',
   };
   try {
     // Only commit when the content actually changed (ignoring lastmod churn is

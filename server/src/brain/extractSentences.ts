@@ -33,11 +33,11 @@ function sanitizeForSpeech(text: string): string {
     // Units & symbols: eleven turbo/flash v2.5 skip full text normalization for
     // speed, so raw symbols can come out garbled or glitch the words around
     // them ("105°F"). Spell them out the way they should be spoken.
-    // URLs/domains read badly as raw tokens ("aquaticpoolaz.com" comes out
+    // URLs/domains read badly as raw tokens ("totallyoutdoorsllc.com" comes out
     // garbled). Spell the brand domain the way a person says it, and make any
     // other bare domain at least say "dot com" cleanly.
     .replace(/https?:\/\/(www\.)?/gi, '')
-    .replace(/\baquaticpoolaz\.com\b/gi, 'aquatic pool A Z dot com')
+    .replace(/\btotallyoutdoorsllc\.com\b/gi, 'totally outdoors L L C dot com')
     .replace(/\b([a-z0-9-]{2,})\.(com|net|org|io|ai)\b/gi, '$1 dot $2')
     .replace(/°\s?F\b/g, ' degrees Fahrenheit')
     .replace(/°\s?C\b/g, ' degrees Celsius')

@@ -12,7 +12,7 @@
  *     still sees calls it doesn't have.
  *  3. Reconcile (daily) — re-walks the FULL history, upserting everything
  *     (catches late cost corrections / summaries on old calls) and deleting
- *     local rows Vapi no longer has (test calls Arthur deleted, etc.).
+ *     local rows Vapi no longer has (test calls Joe deleted, etc.).
  *     Deletion only happens when the walk completed without gaps.
  * All passes share one in-flight guard so they never run concurrently, and
  * every successful pass stamps vapi_last_sync_ok so the dashboard can show

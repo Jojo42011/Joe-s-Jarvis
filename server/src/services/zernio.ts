@@ -1,6 +1,6 @@
 // ─── Zernio — social publishing + analytics (Paulie Layer 2) ──────────────────
-// Zernio (https://zernio.com) is the connection layer to Arthur's already-linked
-// Instagram (@aquaticpools) and Facebook (Aquatic Pool & Spa) accounts. Paulie uses
+// Zernio (https://zernio.com) is the connection layer to Joe's already-linked
+// Instagram (@totallyoutdoors) and Facebook (Totally Outdoors LLC) accounts. Paulie uses
 // it to (1) publish approved posts to the real platforms and (2) pull REAL audience
 // + engagement analytics for the dashboard. One Bearer key authorizes everything.
 //

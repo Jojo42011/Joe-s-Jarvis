@@ -81,7 +81,7 @@ export async function generateTtsPcm(text: string, previousText?: string): Promi
         // Each sentence in a response is a separate isolated TTS call — previous_text
         // gives ElevenLabs the prior sentence as context so pacing/prosody carries
         // across the join instead of every chunk restarting cold (a source of the
-        // "little drop" between sentences Arthur described). Trimmed on a WORD
+        // "little drop" between sentences Joe described). Trimmed on a WORD
         // boundary, never mid-word — a broken trailing word as "context" risks the
         // model treating it as something to continue/complete, which reads as a
         // stutter right at the start of the next chunk.

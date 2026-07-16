@@ -249,7 +249,7 @@ export function listEmailItems(f: InboxFilter = {}): EmailItemRow[] {
 }
 
 /**
- * Keyword search across subject/sender/summary/snippet — for when Arthur asks
+ * Keyword search across subject/sender/summary/snippet — for when Joe asks
  * about something older than the passive top-6-per-mailbox snapshot Arlo is
  * normally given (e.g. "did that vendor ever email back about the tile order").
  */

@@ -5,7 +5,7 @@ export const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY?.trim() || '';
 export const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID?.trim() || 'KLON7Nwan8mJxpF2R8Yw';
 // Multilingual v2: ElevenLabs' most stable, highest-quality model. Word-level
 // stutters survived Flash v2.5 AND Turbo v2.5 even at style=0, so quality wins
-// over the ~200-300ms of extra model latency (Arthur confirmed the headroom).
+// over the ~200-300ms of extra model latency (Joe confirmed the headroom).
 // Unlike the v2.5 models it also runs full text normalization.
 //
 // NOTE: the TTS tuning env vars are deliberately ARLO_TTS_* — production Fly
@@ -25,7 +25,7 @@ export const TTS_STABILITY = parseFloat(process.env.ARLO_TTS_STABILITY || '0.6')
 export const TTS_SIMILARITY = parseFloat(process.env.ARLO_TTS_SIMILARITY || '0.75');
 // 0: style exaggeration is documented by ElevenLabs to cause "inconsistent
 // speed, mispronunciation and the addition of extra sounds" — i.e. exactly the
-// word-level stutter Arthur kept hearing across three different voices. Their
+// word-level stutter Joe kept hearing across three different voices. Their
 // guidance is to keep it at 0, full stop.
 export const TTS_STYLE = parseFloat(process.env.ARLO_TTS_STYLE || '0');
 export const TTS_SPEED = parseFloat(process.env.ARLO_TTS_SPEED || '1.0');

@@ -13,7 +13,7 @@ export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 /** Full callback URL registered in the Google Cloud console. */
 export const GOOGLE_REDIRECT_URI =
   process.env.GOOGLE_REDIRECT_URI ||
-  'https://arthur-arlo.fly.dev/api/google/callback';
+  'https://totally-outdoors.fly.dev/api/google/callback';
 
 export function googleConfigured(): boolean {
   return !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);

@@ -1,6 +1,6 @@
 /**
  * Auth: username/password login with scrypt hashes, DB-backed session tokens
- * in an HttpOnly cookie, and three roles per Arthur's Blueprint:
+ * in an HttpOnly cookie, and three roles per Joe's Blueprint:
  *   owner — everything (Joe)
  *   sales — the CRM front-end: leads, outreach, estimates. No payments/subs/build ops.
  *   pm    — the CRM build side: stages, subs, files, payments. No estimator, no deletes.

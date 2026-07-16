@@ -23,7 +23,7 @@ export function storeCompetitor(domain: string, title?: string): void {
   const d = normalizeDomain(domain);
   if (!d || d.length < 4) return;
   if (d.includes('google.') || d.includes('vertexaisearch') || d.includes('wikipedia.')) return;
-  if (d.includes('aquatic')) return;
+  if (d.includes('totallyoutdoors')) return;
   const url = `https://${d}`;
   const db = getDb();
   db.prepare(`

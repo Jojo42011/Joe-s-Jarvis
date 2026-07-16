@@ -6,7 +6,7 @@ import { getDb } from '../../db/schema';
 const TAG = '[GSC]';
 
 function siteCandidates(): string[] {
-  const url = (process.env.SEO_WEBSITE_URL || 'https://aquaticpoolaz.com').replace(/\/+$/, '');
+  const url = (process.env.SEO_WEBSITE_URL || 'https://www.totallyoutdoorsllc.com').replace(/\/+$/, '');
   const host = url.replace(/^https?:\/\//, '');
   return [`${url}/`, url, `sc-domain:${host}`];
 }

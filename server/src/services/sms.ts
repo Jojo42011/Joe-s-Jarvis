@@ -1,7 +1,7 @@
 /**
  * Direct SMS notifications via sms-gate.app (SMS Gateway for Android, cloud mode).
  * Replaces the deleted aethon-claw hook. Uses HTTP Basic auth to POST a message
- * to Arthur's phone. All values are env-overridable — set them as Fly secrets and
+ * to Joe's phone. All values are env-overridable — set them as Fly secrets and
  * ROTATE the password (it also has a default baked in below so it works today).
  */
 
@@ -37,7 +37,7 @@ export async function sendSmsTo(phone: string, message: string, context = 'CRM')
   console.log(`[${context}] SMS sent to ${to}`);
 }
 
-/** Fire-and-forget SMS to Arthur's number. Never throws. */
+/** Fire-and-forget SMS to Joe's number. Never throws. */
 export function sendSms(message: string, context = 'SMS'): void {
   message = stripDashes(message);
   if (!SMS_GATE_USERNAME || !SMS_GATE_PASSWORD) {

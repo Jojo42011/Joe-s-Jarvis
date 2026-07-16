@@ -9,7 +9,7 @@ import { broadcast } from '../ws/hub';
 /**
  * Arlo's eyes + document reading. gpt-4o is multimodal, so this is real:
  * - analyzeImage: look at a photo (job site, damage, a document photo, a
- *   whiteboard) and describe what matters to Arthur, then remember it.
+ *   whiteboard) and describe what matters to Joe, then remember it.
  * - ingestDocument: read pasted/uploaded text (contract, spec, email), summarize
  *   it, and store durable facts into memory with embeddings.
  */

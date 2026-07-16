@@ -1,6 +1,6 @@
 // ─── Brand logo overlay for Paulie's social imagery ───────────────────────────
-// Every post Paulie ships is a brand asset — the Aquatic Pools "Luxury Living"
-// script logo goes on every generated image, composited server-side with sharp so
+// Every post Paulie ships is a brand asset — the Totally Outdoors logo
+// goes on every generated image, composited server-side with sharp so
 // the mark is always pixel-perfect (never AI-redrawn or distorted).
 //
 // Logo source order:
@@ -16,8 +16,8 @@ import sharp from 'sharp';
 const TAG = '[Paulie brand]';
 
 const DEFAULT_LOGO_URLS = [
-  'https://www.aquaticpoolaz.com/assets/logo/logo.png',
-  'https://www.aquaticpoolaz.com/assets/logo.png',
+  'https://www.totallyoutdoorsllc.com/assets/logo/logo.png',
+  'https://www.totallyoutdoorsllc.com/assets/logo.png',
 ];
 
 // undefined = not resolved yet; null = tried everything, unavailable this process.
@@ -70,8 +70,8 @@ async function resolveLogo(): Promise<Buffer | null> {
 
 /**
  * Composite the brand logo onto a generated post image (bottom-right, ~26% of the
- * image width, with a soft dark backing gradient so the red script stays legible
- * on bright water/sky). Returns the branded PNG as base64, or null if the logo is
+ * image width, with a soft dark backing gradient so the mark stays legible
+ * on bright skies and greenery). Returns the branded PNG as base64, or null if the logo is
  * unavailable or compositing fails — callers keep the original image in that case.
  */
 export async function applyBrandLogo(base64Png: string): Promise<string | null> {

@@ -98,7 +98,7 @@ router.post('/ralph/content/:id', (req: Request, res: Response) => {
   res.json({ ok: true, scheduled_for: patch.scheduled_for ?? null });
 });
 
-// Swap a post's caption with its alternate angle (Arthur picked the other one).
+// Swap a post's caption with its alternate angle (Joe picked the other one).
 router.post('/ralph/content/:id/swap-caption', (req: Request, res: Response) => {
   const ok = swapRalphCaption(Number(req.params.id));
   res.status(ok ? 200 : 400).json({ ok });

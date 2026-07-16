@@ -314,7 +314,7 @@ router.patch('/leads/:id', (req: Request, res: Response) => {
 
   // Build-stage moves are the Stage-Gate Trigger: log the move, and if a
   // milestone draw due at or before the new stage is still pending, alert
-  // Arthur (dashboard alert comes from GET /leads; SMS notify here).
+  // Joe (dashboard alert comes from GET /leads; SMS notify here).
   if (b2.build_stage !== undefined) {
     const newStage = b2.build_stage === null || b2.build_stage === '' ? null : String(b2.build_stage);
     if (newStage === null || BUILD_STAGES.some((s) => s.key === newStage)) {
@@ -503,7 +503,7 @@ router.delete('/leads/:id/payments/:pid', (req: Request, res: Response) => {
   res.json({ ok: true });
 });
 
-// ── Milestones: generate Arthur's 10/25/30/30/5 schedule from the project value ──
+// ── Milestones: generate Joe's 10/25/30/30/5 schedule from the project value ──
 router.post('/leads/:id/milestones/generate', (req: Request, res: Response) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) { res.status(400).json({ ok: false, error: 'invalid id' }); return; }
@@ -603,7 +603,7 @@ router.post('/leads/:id/subs', (req: Request, res: Response) => {
   res.json({ ok: true, id: Number(r.lastInsertRowid) });
 });
 
-// Send the schedule-confirmation text to a sub (manual trigger — Arthur taps it).
+// Send the schedule-confirmation text to a sub (manual trigger — Joe taps it).
 router.post('/leads/:id/subs/:aid/notify', async (req: Request, res: Response) => {
   const id = Number(req.params.id), aid = Number(req.params.aid);
   const db = getDb();
@@ -615,7 +615,7 @@ router.post('/leads/:id/subs/:aid/notify', async (req: Request, res: Response) =
   if (!row) { res.status(404).json({ ok: false, error: 'assignment not found' }); return; }
   if (!row.phone) { res.status(400).json({ ok: false, error: `${row.sub_name} has no phone on file` }); return; }
   const stageLabel = BUILD_STAGES.find((s) => s.key === row.stage)?.label || 'work';
-  const msg = `Hi ${row.sub_name}, Aquatic Pool & Spa has you scheduled for ${stageLabel} at the ${row.lead_name} project${row.address ? ` (${row.address})` : ''}${row.scheduled_for ? ` on ${row.scheduled_for}` : ''}. Reply YES to confirm or call Arthur to reschedule.`;
+  const msg = `Hi ${row.sub_name}, Totally Outdoors LLC has you scheduled for ${stageLabel} at the ${row.lead_name} project${row.address ? ` (${row.address})` : ''}${row.scheduled_for ? ` on ${row.scheduled_for}` : ''}. Reply YES to confirm or call Joe to reschedule.`;
   try {
     await sendSmsTo(row.phone, msg, 'CRM subs');
     db.prepare("UPDATE lead_subs SET status = 'notified' WHERE id = ?").run(aid);
@@ -626,7 +626,7 @@ router.post('/leads/:id/subs/:aid/notify', async (req: Request, res: Response) =
   }
 });
 
-// Mark a sub's schedule confirmed (their YES comes back on Arthur's phone —
+// Mark a sub's schedule confirmed (their YES comes back on Joe's phone —
 // inbound SMS isn't wired into the app, so confirmation is recorded here).
 router.post('/leads/:id/subs/:aid/confirm', (req: Request, res: Response) => {
   const id = Number(req.params.id), aid = Number(req.params.aid);

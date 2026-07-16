@@ -47,8 +47,8 @@ export const CATEGORY_ORDER = [
 
 export const INTEGRATIONS: IntegrationDef[] = [
   // ── Google Workspace (the immediate path forward) ──
-  { id: 'google_calendar', name: 'Google Calendar', category: 'Google Workspace', description: 'Book on-site inspections, protect Arthur\'s time, and reschedule around the build calendar.', envKeys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'], fallback: 'planned'},
-  { id: 'gmail', name: 'Gmail', category: 'Google Workspace', description: 'Read, draft, and send email in Arthur\'s voice; flag what needs him and handle the rest.', envKeys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'], fallback: 'planned'},
+  { id: 'google_calendar', name: 'Google Calendar', category: 'Google Workspace', description: 'Book on-site inspections, protect Joe\'s time, and reschedule around the build calendar.', envKeys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'], fallback: 'planned'},
+  { id: 'gmail', name: 'Gmail', category: 'Google Workspace', description: 'Read, draft, and send email in Joe\'s voice; flag what needs him and handle the rest.', envKeys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'], fallback: 'planned'},
   { id: 'google_contacts', name: 'Google Contacts', category: 'Google Workspace', description: 'Keep every client, sub, and vendor in sync with the memory graph.', envKeys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'], fallback: 'planned'},
   { id: 'google_drive', name: 'Google Drive', category: 'Google Workspace', description: 'Store and retrieve designs, contracts, permits, and 3D renderings.', envKeys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'], fallback: 'planned'},
   { id: 'google_sheets', name: 'Google Sheets', category: 'Google Workspace', description: 'Read and update job trackers, pricing sheets, and the lead pipeline.', envKeys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'], fallback: 'planned'},
@@ -56,7 +56,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
   // ── Voice & Telephony (already live) ──
   { id: 'vapi', name: 'Vapi', category: 'Voice & Telephony', description: 'Sofia — inbound receptionist and outbound sales calls with automatic lead capture.', envKeys: ['VAPI_API_KEY'], fallback: 'available' },
   { id: 'elevenlabs', name: 'ElevenLabs', category: 'Voice & Telephony', description: 'Arlo\'s realtime voice — Scribe speech-to-text and low-latency TTS.', envKeys: ['ELEVENLABS_API_KEY'], fallback: 'available' },
-  { id: 'sms_gate', name: 'SMS Gateway (sms-gate.app)', category: 'Messaging', description: 'Live outbound texting from Arthur\'s own Android device — manual, operator-sent texts from the CRM (automated texting to leads is off).', fallback: 'available' },
+  { id: 'sms_gate', name: 'SMS Gateway (sms-gate.app)', category: 'Messaging', description: 'Live outbound texting from Joe\'s own Android device — manual, operator-sent texts from the CRM (automated texting to leads is off).', fallback: 'available' },
   { id: 'twilio_sms', name: 'Twilio SMS', category: 'Messaging', description: 'Two-way texting on a dedicated business number — inbound texts trigger Arlo, outbound reminders and confirmations.', envKeys: ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN'], fallback: 'planned' },
 
   // ── AI & Reasoning ──
@@ -69,7 +69,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
 
   // ── Website & SEO (already live) ──
   { id: 'github', name: 'GitHub', category: 'Website & SEO', description: 'Lauren publishes SEO pages by committing straight to the live website repo.', envKeys: ['GITHUB_TOKEN'], fallback: 'available' },
-  { id: 'google_search_console', name: 'Google Search Console', category: 'Website & SEO', description: 'Real search rankings, impressions, and clicks for aquaticpoolaz.com feeding Lauren\'s SEO work.', envKeys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'], fallback: 'planned' },
+  { id: 'google_search_console', name: 'Google Search Console', category: 'Website & SEO', description: 'Real search rankings, impressions, and clicks for totallyoutdoorsllc.com feeding Lauren\'s SEO work.', envKeys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'], fallback: 'planned' },
 
   // ── Social Media (already live) — real Paulie analytics + publishing via Zernio ──
   { id: 'zernio', name: 'Zernio (Instagram + Facebook)', category: 'Social Media', description: 'Real followers, engagement, reach, and per-post stats for Paulie\'s dashboard, plus one-tap publishing to the connected Instagram and Facebook accounts.', envKeys: ['ZERNIO_API_KEY'], fallback: 'planned' },

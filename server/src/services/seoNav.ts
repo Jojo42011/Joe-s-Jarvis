@@ -22,7 +22,7 @@ export function liveHrefForPath(filePath: string): string {
 /** Absolute URL on the live website for a committed file. */
 export function liveUrlForPath(filePath: string | null | undefined): string | null {
   if (!filePath) return null;
-  const base = (process.env.SEO_WEBSITE_URL || 'https://aquaticpoolaz.com').replace(/\/+$/, '');
+  const base = (process.env.SEO_WEBSITE_URL || 'https://www.totallyoutdoorsllc.com').replace(/\/+$/, '');
   const p = cleanPath(filePath);
   return p ? `${base}/${p}` : base;
 }
@@ -32,7 +32,7 @@ function ghHeaders(token: string): Record<string, string> {
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
     Accept: 'application/vnd.github.v3+json',
-    'User-Agent': 'AquaticSEOAgent/1.0',
+    'User-Agent': 'TotallyOutdoorsSEOAgent/1.0',
   };
 }
 

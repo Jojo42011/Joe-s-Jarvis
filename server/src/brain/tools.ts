@@ -19,7 +19,7 @@ export const FUNCTION_TOOLS = [
   {
     type: 'function' as const,
     name: 'open_dashboard',
-    description: "Pull up an agent's dashboard/tab in the UI for Arthur to see (and you speak over it). Use when he asks how an agent is doing or to show him something. tab: seo=Lauren/SEO, content=Paulie, calls=Sofia, inbox=email, memory=neural map, integrations=connected tools, arlo=home.",
+    description: "Pull up an agent's dashboard/tab in the UI for Joe to see (and you speak over it). Use when he asks how an agent is doing or to show him something. tab: seo=Lauren/SEO, content=Paulie, calls=Sofia, inbox=email, memory=neural map, integrations=connected tools, arlo=home.",
     parameters: {
       type: 'object',
       properties: { tab: { type: 'string', enum: UI_TABS } },
@@ -59,7 +59,7 @@ export const FUNCTION_TOOLS = [
   {
     type: 'function' as const,
     name: 'generate_content_posts',
-    description: "Have Paulie write real on-brand social posts (caption + AI image) into the Approvals queue for Arthur to review. Runs in the background. Use when Arthur says to make posts/content, fill the queue, or 'have Paulie draft something'. count defaults to 5; optional channel.",
+    description: "Have Paulie write real on-brand social posts (caption + AI image) into the Approvals queue for Joe to review. Runs in the background. Use when Joe says to make posts/content, fill the queue, or 'have Paulie draft something'. count defaults to 5; optional channel.",
     parameters: {
       type: 'object',
       properties: {
@@ -72,13 +72,13 @@ export const FUNCTION_TOOLS = [
   {
     type: 'function' as const,
     name: 'list_pending_seo_pages',
-    description: "List Lauren's upcoming SEO pages — she writes, scores, and schedules them fully autonomously now, no approval needed. Use when Arthur asks what Lauren's working on, what's coming next, or what's live already (title, type, target keyword, SEO score, scheduled date, id).",
+    description: "List Lauren's upcoming SEO pages — she writes, scores, and schedules them fully autonomously now, no approval needed. Use when Joe asks what Lauren's working on, what's coming next, or what's live already (title, type, target keyword, SEO score, scheduled date, id).",
     parameters: { type: 'object', properties: {}, additionalProperties: false },
   },
   {
     type: 'function' as const,
     name: 'approve_seo_page',
-    description: "Fast-track a specific Lauren page to publish RIGHT NOW instead of waiting for its scheduled date — Lauren already writes and schedules autonomously, so this is only for when Arthur explicitly wants something live immediately. Confirm which page he means if ambiguous. id comes from list_pending_seo_pages.",
+    description: "Fast-track a specific Lauren page to publish RIGHT NOW instead of waiting for its scheduled date — Lauren already writes and schedules autonomously, so this is only for when Joe explicitly wants something live immediately. Confirm which page he means if ambiguous. id comes from list_pending_seo_pages.",
     parameters: {
       type: 'object',
       properties: {
@@ -91,7 +91,7 @@ export const FUNCTION_TOOLS = [
   {
     type: 'function' as const,
     name: 'add_calendar_event',
-    description: "Add an event to Arthur's calendar (reversible, so you may do it directly). Times must be ISO 8601. account is optional (defaults to Arthur's primary).",
+    description: "Add an event to Joe's calendar (reversible, so you may do it directly). Times must be ISO 8601. account is optional (defaults to Joe's primary).",
     parameters: {
       type: 'object',
       properties: {
@@ -106,7 +106,7 @@ export const FUNCTION_TOOLS = [
   {
     type: 'function' as const,
     name: 'list_calendar_events',
-    description: "List Arthur's upcoming calendar events (today forward) across one or all connected accounts. Use for 'what's on my calendar', 'am I free Thursday', 'what's next'.",
+    description: "List Joe's upcoming calendar events (today forward) across one or all connected accounts. Use for 'what's on my calendar', 'am I free Thursday', 'what's next'.",
     parameters: {
       type: 'object',
       properties: {
@@ -119,7 +119,7 @@ export const FUNCTION_TOOLS = [
   {
     type: 'function' as const,
     name: 'search_email',
-    description: "Search across all of Arthur's mailboxes for a specific email by keyword (sender, subject, or content) — use when he asks about something older than the recent snapshot you're already given, e.g. 'did that vendor ever reply about the tile order'.",
+    description: "Search across all of Joe's mailboxes for a specific email by keyword (sender, subject, or content) — use when he asks about something older than the recent snapshot you're already given, e.g. 'did that vendor ever reply about the tile order'.",
     parameters: {
       type: 'object',
       properties: {
@@ -225,7 +225,7 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
       case 'approve_seo_page': {
         // Mirrors POST /api/seo/content/:id/approve — same guards, same effect.
         // Lauren already auto-approves on generation; this just fast-tracks the
-        // publish date when Arthur explicitly wants something live sooner.
+        // publish date when Joe explicitly wants something live sooner.
         const db = getDb();
         const id = Number(args.id);
         const row = db.prepare('SELECT id, title, status, committed FROM seo_content WHERE id = ?').get(id) as

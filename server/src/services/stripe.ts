@@ -44,14 +44,14 @@ export async function createPaymentLink(opts: {
     throw new Error('Stripe not configured — set STRIPE_SECRET_KEY to enable payment links');
   }
   const base = (opts.siteUrl || process.env.PUBLIC_URL || '').replace(/\/$/, '');
-  const successUrl = base ? `${base}/crm.html?paid=1` : 'https://aquaticpoolaz.com/thank-you';
-  const cancelUrl = base ? `${base}/crm.html` : 'https://aquaticpoolaz.com';
+  const successUrl = base ? `${base}/crm.html?paid=1` : 'https://www.totallyoutdoorsllc.com/thank-you';
+  const cancelUrl = base ? `${base}/crm.html` : 'https://www.totallyoutdoorsllc.com';
 
   const body = toForm({
     mode: 'payment',
     'payment_method_types[0]': 'card',
     'line_items[0][price_data][currency]': 'usd',
-    'line_items[0][price_data][product_data][name]': `Aquatic Pool & Spa — ${opts.label}`,
+    'line_items[0][price_data][product_data][name]': `Totally Outdoors LLC — ${opts.label}`,
     'line_items[0][price_data][unit_amount]': opts.amountCents,
     'line_items[0][quantity]': 1,
     success_url: successUrl,

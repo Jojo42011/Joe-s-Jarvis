@@ -351,7 +351,7 @@ export function initDb(): Database.Database {
     );
     CREATE INDEX IF NOT EXISTS idx_lead_payments_lead ON lead_payments(lead_id);
 
-    -- === CRM v3: Arthur's Blueprint — files vault, subcontractors, estimator ===
+    -- === CRM v3: Joe's Blueprint — files vault, subcontractors, estimator ===
 
     -- Per-project "Digital Project Vault": inspiration photos, permits,
     -- contracts, design renders, field photos. data is base64 (same pattern
@@ -487,7 +487,7 @@ function migrateRalph(database: Database.Database): void {
   // Layer 3: content format (single | carousel | reel | before_after) so the UI can
   // badge it and the publisher knows how to handle it (reels are shoot-ready scripts).
   if (!names.has('format')) add("ALTER TABLE ralph_content ADD COLUMN format TEXT DEFAULT 'single'");
-  // Layer 4: an alternate caption (a second angle) Arthur can swap to at approval.
+  // Layer 4: an alternate caption (a second angle) Joe can swap to at approval.
   if (!names.has('alt_body')) add('ALTER TABLE ralph_content ADD COLUMN alt_body TEXT');
 }
 

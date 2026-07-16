@@ -32,7 +32,7 @@ export interface LeadIntakeResult {
   merged: boolean;
 }
 
-const CONFIRMATION_SUBJECT = 'Thanks for reaching out to Aquatic Pool & Spa';
+const CONFIRMATION_SUBJECT = 'Thanks for reaching out to Totally Outdoors LLC';
 
 function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] || name.trim();
@@ -40,9 +40,9 @@ function firstName(name: string): string {
 
 function confirmationEmailBody(name: string): string {
   return `Hi ${firstName(name)},\n\n` +
-    `Thanks for reaching out to Aquatic Pool & Spa! We've received your information and someone from our team will be in touch shortly to talk through your project.\n\n` +
+    `Thanks for reaching out to Totally Outdoors LLC! We've received your information and someone from our team will be in touch shortly to talk through your project.\n\n` +
     `If you'd like to get a head start, feel free to reply to this email with photos of your yard or any questions you have.\n\n` +
-    `Talk soon,\nAquatic Pool & Spa`;
+    `Talk soon,\nTotally Outdoors LLC`;
 }
 
 function looksReal(v: string | null | undefined): boolean {
@@ -67,7 +67,7 @@ async function sendConfirmation(leadId: number, name: string, email: string | un
     }
   }
 
-  // SMS confirmation is manual-only (Arthur sends it himself from the CRM drawer) —
+  // SMS confirmation is manual-only (Joe sends it himself from the CRM drawer) —
   // just flag it on the timeline so nothing gets silently missed.
   if (looksReal(phone)) {
     logActivity(leadId, 'note', { direction: 'system', body: 'Confirmation text not sent automatically — send from the CRM when ready.' });

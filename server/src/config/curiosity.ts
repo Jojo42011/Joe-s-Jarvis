@@ -66,7 +66,7 @@ export const CURIOSITY_QUESTIONS: Record<IdentityDimension, string[]> = {
     'What does success look like in three years — specifically?',
     'What would you keep even at 10x scale?',
     'What would make you walk away from everything you built?',
-    'What does Aquatic Pool & Spa become if everything goes right?',
+    'What does Totally Outdoors LLC become if everything goes right?',
     'What legacy matters more than the balance sheet?',
   ],
   CONFLICT: [

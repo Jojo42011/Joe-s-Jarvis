@@ -92,7 +92,7 @@ recoverStuckSeoRunsOnStartup();
 // CRM hygiene: fold any duplicate-phone leads into one row per person.
 try { dedupeLeads(); } catch (err) { console.error('[CRM] startup dedupe failed:', err); }
 
-// Auth: make sure Arthur can log in on a fresh database.
+// Auth: make sure Joe can log in on a fresh database.
 try { seedDefaultOwner(); } catch (err) { console.error('[Auth] owner seed failed:', err); }
 
 

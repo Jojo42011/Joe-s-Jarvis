@@ -104,7 +104,7 @@ router.get('/google/email/:id', async (req: Request, res: Response) => {
   res.json({ item, body });
 });
 
-// Compose + send a brand-new email. The panel send button IS Arthur's approval.
+// Compose + send a brand-new email. The panel send button IS Joe's approval.
 router.post('/google/send', async (req: Request, res: Response) => {
   const { account, to, subject, body } = req.body as { account?: string; to?: string; subject?: string; body?: string };
   if (!account || !to || !subject || !body) {

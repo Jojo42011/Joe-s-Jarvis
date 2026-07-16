@@ -85,7 +85,7 @@ function encodeRaw(mime: string): string {
   return Buffer.from(mime).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-/** Send a reply in-thread. Only ever called after Arthur approves the draft. */
+/** Send a reply in-thread. Only ever called after Joe approves the draft. */
 export async function sendEmailReply(email: string, opts: {
   to: string;
   subject: string;

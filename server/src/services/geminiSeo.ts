@@ -135,7 +135,7 @@ ${body}`;
 
 /** Pull usable HTML out of LLM output (fences, prose wrappers, etc.) */
 export function getSeoWebsiteUrl(): string {
-  return (process.env.SEO_WEBSITE_URL || 'https://aquaticpoolaz.com').replace(/\/$/, '');
+  return (process.env.SEO_WEBSITE_URL || 'https://www.totallyoutdoorsllc.com').replace(/\/$/, '');
 }
 
 function resolveAssetUrl(path: string, siteBase: string): string {

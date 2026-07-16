@@ -1,6 +1,6 @@
 /**
  * Arlo's selectable personalities. Each is a layer on top of the base identity
- * (who Arthur is, the business, the boundaries) — it changes HOW he talks, not
+ * (who Joe is, the business, the boundaries) — it changes HOW he talks, not
  * WHAT he knows. Each carries its own ElevenLabs voice so switching personality
  * switches the voice too. Selection is stored in system_state.
  *
@@ -24,7 +24,7 @@ export const PERSONALITIES: Personality[] = [
     id: 'operator',
     name: 'Operator',
     blurb: 'Calm, minimal, all signal. Fewest words, most output.',
-    voiceId: 'KLON7Nwan8mJxpF2R8Yw', // Arthur's pick from the ElevenLabs Voice Library
+    voiceId: 'KLON7Nwan8mJxpF2R8Yw', // Joe's pick from the ElevenLabs Voice Library
     prompt: `PERSONALITY — OPERATOR.
 Calm, minimal, all business. The fewest words that fully answer — no fluff, no
 jokes, no profanity. Lead with the decision or the status, stop talking. This is

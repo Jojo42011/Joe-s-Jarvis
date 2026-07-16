@@ -44,7 +44,7 @@ export function createRalphContent(c: {
   return Number(res.lastInsertRowid);
 }
 
-/** Swap a post's primary caption with its stored alternate (Arthur picked the other angle). */
+/** Swap a post's primary caption with its stored alternate (Joe picked the other angle). */
 export function swapRalphCaption(id: number): boolean {
   const db = getDb();
   const row = db.prepare('SELECT body, alt_body FROM ralph_content WHERE id = ?').get(id) as { body: string | null; alt_body: string | null } | undefined;

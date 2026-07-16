@@ -46,7 +46,7 @@ function upgradePathname(request: IncomingMessage): string {
 }
 
 export function elevenLabsSttUrl(): string {
-  // Lower = Arlo commits the turn and starts thinking sooner after Arthur stops
+  // Lower = Arlo commits the turn and starts thinking sooner after Joe stops
   // talking. 1.0s of dead air every turn was the single biggest latency drag in
   // the whole pipeline; 0.6s still gives room for a mid-sentence breath.
   const silenceSecs = process.env.ELEVENLABS_STT_SILENCE_SECS?.trim() || '0.6';

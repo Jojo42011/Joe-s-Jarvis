@@ -105,7 +105,7 @@ export async function publishContentToGithub(
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
     Accept: 'application/vnd.github.v3+json',
-    'User-Agent': 'AquaticSEOAgent/1.0',
+    'User-Agent': 'TotallyOutdoorsSEOAgent/1.0',
   };
 
   try {
@@ -262,7 +262,7 @@ export async function unpublishContentFromGithub(
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
       Accept: 'application/vnd.github.v3+json',
-      'User-Agent': 'AquaticSEOAgent/1.0',
+      'User-Agent': 'TotallyOutdoorsSEOAgent/1.0',
     };
     try {
       const getUrl = `https://api.github.com/repos/${repo}/contents/${encodeURI(item.file_path)}?ref=${branch}`;

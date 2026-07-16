@@ -1,4 +1,4 @@
-# Arthur-Arlo — System Architecture & Operating Guide
+# Joe-Arlo — System Architecture & Operating Guide
 
 > Read this first. It's the map of the whole system: what it is, how every piece
 > works, the conventions to follow, and the gotchas that will bite you. Written so a
@@ -9,20 +9,20 @@
 
 ## 1. What this is
 
-**Arthur-Arlo** is an "Aethon Intelligence" — an AI operations platform for a single
-business: **Aquatic Pool & Spa**, a custom pool builder in the Phoenix Valley, AZ,
-owned by **Arthur Garcia**. It is not one chatbot; it's a set of named AI "employees"
+**Joe-Arlo** is an "Aethon Intelligence" — an AI operations platform for a single
+business: **Totally Outdoors LLC**, a custom pool builder in the Phoenix Valley, AZ,
+owned by **Joe**. It is not one chatbot; it's a set of named AI "employees"
 sharing one backend and one SQLite brain:
 
 | Persona | Role | UI tab | Engine |
 |---|---|---|---|
-| **Arlo** | Arthur's right-hand man / chief of staff (voice + text). The digital twin. | `/arlo` | OpenAI `gpt-4o` |
+| **Arlo** | Joe's right-hand man / chief of staff (voice + text). The digital twin. | `/arlo` | OpenAI `gpt-4o` |
 | **Lauren** ("Atlas") | Autonomous SEO agent — researches, writes & publishes landing pages | `/atlas` | Gemini (+ Claude fallback) |
 | **Ralph** (was "Nova") | Content manager — generates on-brand posts + images, publishes live to IG/FB, real analytics | `/ralph` | Gemini text + image; Zernio publish + analytics |
 | **Sofia** | Phone agent (inbound receptionist + outbound sales) | `/calls` | Vapi |
 
 The whole thing runs as **one Express + better-sqlite3 app** deployed on **Fly.io**
-(`arthur-arlo`, region `lax`, 512 MB / 1 shared CPU, persistent volume at
+(`totally-outdoors`, region `lax`, 512 MB / 1 shared CPU, persistent volume at
 `/data/arlo.db`), Dockerized, auto-deployed by GitHub Actions on push to `main`/`master`.
 
 Design philosophy (the "hull" + "founder layer"): a universal cognitive engine (memory,
@@ -93,7 +93,7 @@ server/src/
     deepgramProxy.ts      STT proxy: client <-> ElevenLabs Scribe, reconnect + silence keepalive
     hub.ts                Generic WS broadcast hub (/ws) — pushes 'memory_updated'/'inbox_updated' to UIs
   routes/                 brain, voice, memory, leads, calls, vapiWebhook, seo, integrations, google, ralph, health
-  seed/founderSeed.ts     Idempotent seeding of Arthur's facts/rules/graph into memory on boot
+  seed/founderSeed.ts     Idempotent seeding of Joe's facts/rules/graph into memory on boot
 
 client/
   shell.html              THE APP SHELL (served at /). Collapsible sidebar + tabbed iframes + voice nav.
@@ -170,7 +170,7 @@ follows the selected personality** (each has its own ElevenLabs voice id). Switc
 `POST /api/brain/personality` or the selector in `/arlo`'s top bar.
 
 **Conversation style** lives in `ARLO_SYSTEM_PROMPT`: right-hand-man (not client-facing
-— Sofia handles clients), talk-to-Arthur not at-him, one thought at a time, react
+— Sofia handles clients), talk-to-Joe not at-him, one thought at a time, react
 before reporting, tasteful wit + earned profanity, ask one natural question when
 needed. He also knows he has live web search + eyes (vision) + document reading + the
 three mailboxes/calendars, and must never deny those.
@@ -208,7 +208,7 @@ the "neurons forming" layer.
 backfill on boot.
 
 **Founder seed** (`seed/founderSeed.ts`): idempotent (guarded by `system_state`
-`founder_seeded_v1`) — pre-loads Arthur's facts/rules/graph on boot so the Neural Map
+`founder_seeded_v1`) — pre-loads Joe's facts/rules/graph on boot so the Neural Map
 (`/memory`) is alive immediately.
 
 > **Curiosity engine** (`config/curiosity.ts`, `services/curiosity.ts`): the old random
@@ -265,7 +265,7 @@ the voice id follows the active personality.
 ## 8. Google integration (`services/google/*`, `routes/google.ts`)
 
 One OAuth "Web application" credential authorizes **three mailboxes individually**:
-`arthur.garcia@`, `info@`, `support@aquaticpoolaz.com`. Tokens stored per-account in
+`totallyoutdoors@gmail.com` and any linked mailboxes. Tokens stored per-account in
 `google_accounts` (refresh token durable; access token auto-refreshed).
 
 - **OAuth:** `/api/google/connect?account=…` → Google consent → `/api/google/callback`.
@@ -274,7 +274,7 @@ One OAuth "Web application" credential authorizes **three mailboxes individually
   `webmasters.readonly` (Search Console). **Adding a scope requires re-consent** — the
   user must reconnect each account.
 - **Monitor** (`google/monitor.ts`, every 15 min): pulls each inbox, triages with
-  Arlo's judgment (priority/category/flag/summary + a draft reply in Arthur's voice),
+  Arlo's judgment (priority/category/flag/summary + a draft reply in Joe's voice),
   refreshes the calendar cache. Emails land in `email_items`, events in
   `calendar_events`.
 - **Awareness** (`google/context.ts`): a compact live inbox/calendar snapshot is
@@ -358,8 +358,8 @@ every post (converts 5–15% vs ~1–3% for "link in bio").
 
 **Layer 2 — LIVE (real publishing + analytics via Zernio).** `services/zernio.ts`
 wraps [Zernio](https://zernio.com) (`https://zernio.com/api/v1`, `Authorization:
-Bearer $ZERNIO_API_KEY`), the connection layer to Arthur's already-linked **Instagram**
-(AQUATIC POOLS) and **Facebook** (Aquatic Pool & Spa) accounts.
+Bearer $ZERNIO_API_KEY`), the connection layer to Joe's already-linked **Instagram**
+(Totally Outdoors) and **Facebook** (Totally Outdoors LLC) accounts.
   - `listZernioAccounts()` → connected accounts (id, platform, followers, pageId),
     cached 5 min. `GET /api/ralph/accounts` surfaces them.
   - `publishToZernio()` → `POST /posts` with `{content, mediaItems:[{type:'image',url}],
@@ -378,21 +378,21 @@ Bearer $ZERNIO_API_KEY`), the connection layer to Arthur's already-linked **Inst
     publish; blog/email/gbp/linkedin stay in-app.
   - Schema: `migrateRalph()` adds `external_post_id`, `external_url`, `publish_error`.
   - **Secrets:** `ZERNIO_API_KEY` (Fly secret — never committed). Optional
-    `PUBLIC_BASE_URL` (defaults to the request origin, then `https://arthur-arlo.fly.dev`)
+    `PUBLIC_BASE_URL` (defaults to the request origin, then `https://totally-outdoors.fly.dev`)
     so Zernio can fetch the post image. Note: IG follower count isn't exposed in Zernio
     account metadata (shows null); FB fan_count + all engagement/reach are real.
 
   - Carousels publish all their images (Zernio `mediaItems`, up to 10). **Reels do NOT
     auto-publish** — they're shoot-ready scripts (no rendered video); `publishRalphPost`
     blocks them with a clear "film it, then upload" message. Reels flip to published when
-    Arthur produces + posts them.
+    Joe produces + posts them.
 
 **Layer 3 — LEAD CAPTURE (next, the piece that closes the loop).** Content drives people
-to comment/DM a keyword; to turn that into real leads for Arthur we watch the connected
+to comment/DM a keyword; to turn that into real leads for Joe we watch the connected
 inbox and respond. Zernio exposes `/inbox/conversations`, `/comments` (reply), and
 `/inbox/messages` (send DM) on the same key. Planned: a keyword listener that auto-replies
 to "DESIGN/QUOTE/POOL" comments with a DM, captures the contact into `leads`, and pings
-Arthur/Sofia. Also: follower-history/demographics charts and scheduled auto-posting.
+Joe/Sofia. Also: follower-history/demographics charts and scheduled auto-posting.
 
 ---
 
@@ -463,7 +463,7 @@ confirm no runtime errors. Client HTML/JS is **not** compiled — test by boot +
 - **Graceful degradation is mandatory** — missing key/integration → warn + no-op.
 - **Gated actions:** reversible/in-house things Arlo may do directly (draft, schedule an
   inspection, add a calendar event, open a tab). Anything leaving the building or
-  committing money/promises (send email, pricing) is **gated to Arthur's approval**.
+  committing money/promises (send email, pricing) is **gated to Joe's approval**.
 - **Voice:** never block the mic-resume on async work; keep ordered TTS; always seal the
   TTS pipeline (`markTtsComplete`); keep the STT silence keepalive.
 - **Nav wiring (Lauren):** keep balanced-`<ul>` insertion; new sections are top-level
@@ -500,4 +500,4 @@ README, for dropping the "hull" UI into other systems. No colors, no Arlo specif
 
 ---
 
-*Aquatic Pool & Spa · Arthur-Arlo. Keep this doc updated when the architecture changes.*
+*Totally Outdoors LLC · Joe-Arlo. Keep this doc updated when the architecture changes.*
