@@ -24,7 +24,11 @@ export const PERSONALITIES: Personality[] = [
     id: 'operator',
     name: 'Operator',
     blurb: 'Calm, minimal, all signal. Fewest words, most output.',
-    voiceId: 'KLON7Nwan8mJxpF2R8Yw', // Joe's pick from the ElevenLabs Voice Library
+    // "Antoni" — one of ElevenLabs' classic premade voices, valid on every
+    // account with no library add step. Warm, clear, medium pitch — noticeably
+    // lighter than the prior pick. Easy to swap: paste any other ElevenLabs
+    // Voice ID here (from the Voice Library or a custom clone) to try another.
+    voiceId: 'ErXwobaYiN019PkySvjV',
     prompt: `PERSONALITY — OPERATOR.
 Calm, minimal, all business. The fewest words that fully answer — no fluff, no
 jokes, no profanity. Lead with the decision or the status, stop talking. This is

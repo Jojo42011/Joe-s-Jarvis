@@ -566,6 +566,13 @@
     api.setState("LISTENING");
     api.orbLabelEl.textContent = "CONNECTING…";
 
+    // Fire the activation greeting immediately — it's just an LLM+TTS round
+    // trip and doesn't depend on the mic/STT pipeline at all. Previously this
+    // waited behind the STT WebSocket handshake, getUserMedia, AND
+    // waitForSessionReady before even starting, stacking 1-3s of dead air in
+    // front of every greeting. Run it in parallel instead.
+    const greetingPromise = playActivationGreeting();
+
     return new Promise(function (resolve, reject) {
       const wsUrl = wsOrigin() + "/api/voice/deepgram/listen";
       console.log("[Jarvis] STT connecting:", wsUrl);
@@ -604,7 +611,7 @@
           await startCapture();
           await waitForSessionReady(10000);
           api.orbLabelEl.textContent = "LISTENING…";
-          await playActivationGreeting();
+          await greetingPromise;
           resolve();
         } catch (err) {
           reject(err);
