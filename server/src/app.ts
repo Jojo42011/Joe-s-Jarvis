@@ -175,18 +175,6 @@ app.get('/calls', (_req, res) => {
 
 });
 
-app.get('/marketing', (_req, res) => {
-
-  res.sendFile(path.join(clientPath, 'marketing.html'));
-
-});
-
-app.get('/atlas', (_req, res) => {
-
-  res.sendFile(path.join(clientPath, 'atlas.html'));
-
-});
-
 app.get('/memory', (_req, res) => {
 
   res.sendFile(path.join(clientPath, 'memory.html'));
@@ -205,12 +193,6 @@ app.get('/login', (_req, res) => {
 
 });
 
-app.get('/team', (_req, res) => {
-
-  res.sendFile(path.join(clientPath, 'team.html'));
-
-});
-
 app.get('/integrations', (_req, res) => {
 
   res.sendFile(path.join(clientPath, 'integrations.html'));
@@ -223,11 +205,6 @@ app.get('/inbox', (_req, res) => {
 
 });
 
-app.get('/ralph', (_req, res) => {
-
-  res.sendFile(path.join(clientPath, 'ralph.html'));
-
-});
 
 
 
