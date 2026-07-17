@@ -10,10 +10,12 @@
 export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 
-/** Full callback URL registered in the Google Cloud console. */
+/** Full callback URL registered in the Google Cloud console. Must match the
+ *  domain this app actually runs on (joes-jarvis.fly.dev) — override with
+ *  GOOGLE_REDIRECT_URI if the domain ever changes. */
 export const GOOGLE_REDIRECT_URI =
   process.env.GOOGLE_REDIRECT_URI ||
-  'https://totally-outdoors.fly.dev/api/google/callback';
+  'https://joes-jarvis.fly.dev/api/google/callback';
 
 export function googleConfigured(): boolean {
   return !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
