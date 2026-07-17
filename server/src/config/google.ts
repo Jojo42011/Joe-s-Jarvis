@@ -7,8 +7,18 @@
  * screen — no code changes. Everything degrades gracefully when the secrets are absent.
  */
 
-export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
-export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+// Aliased to GMAIL_CLIENT_ID/SECRET too — Joe's Fly secrets from the prior
+// JARVIS build use that naming, and it's the same Google Cloud OAuth client
+// either way. No need to rename anything already set.
+export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.GMAIL_CLIENT_ID || '';
+export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || process.env.GMAIL_CLIENT_SECRET || '';
+
+/** A long-lived refresh token already granted under the prior JARVIS build for
+ *  the same mailbox (same scopes: gmail read/send/modify + calendar, a
+ *  superset of what this app needs). When present, boot wires it straight into
+ *  google_accounts for GOOGLE_ACCOUNTS[0] — no new consent-screen click
+ *  required. See services/google/bootstrap.ts. */
+export const LEGACY_GMAIL_REFRESH_TOKEN = process.env.GMAIL_REFRESH_TOKEN?.trim() || '';
 
 /** Full callback URL registered in the Google Cloud console. Must match the
  *  domain this app actually runs on (joes-jarvis.fly.dev) — override with

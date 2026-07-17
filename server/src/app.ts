@@ -41,6 +41,7 @@ import stripeWebhookRouter from './routes/stripeWebhook';
 import authRouter from './routes/auth';
 
 import { apiAuthGuard, pageAuthGuard, seedDefaultOwner, userFromRequest } from './services/auth';
+import { bootstrapLegacyGmailAccount } from './services/google/bootstrap';
 
 import { registerClient, startHeartbeat } from './ws/hub';
 
@@ -94,6 +95,10 @@ try { dedupeLeads(); } catch (err) { console.error('[CRM] startup dedupe failed:
 
 // Auth: make sure Joe can log in on a fresh database.
 try { seedDefaultOwner(); } catch (err) { console.error('[Auth] owner seed failed:', err); }
+
+// Reuse a legacy GMAIL_REFRESH_TOKEN (from the prior JARVIS build) if present,
+// so Joe's already-granted Gmail access works without a new consent click.
+try { bootstrapLegacyGmailAccount(); } catch (err) { console.error('[Google] legacy bootstrap failed:', err); }
 
 
 

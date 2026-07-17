@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { OPERATOR_NAME, CLIENT_NAME } from '../config/constants';
 import { ANTHROPIC_MODEL } from '../config/models';
+import { googleConfigured, GOOGLE_ACCOUNTS } from '../config/google';
+import { getGoogleAccount } from '../db/google';
 
 const router = Router();
 
@@ -8,13 +10,18 @@ const router = Router();
  *  see at a glance what still needs a Fly secret without exposing anything. */
 function connectionStatus() {
   const has = (k: string) => !!(process.env[k] && process.env[k]!.trim());
+  const primaryMailbox = GOOGLE_ACCOUNTS[0];
+  const gmailConnected = primaryMailbox
+    ? !!getGoogleAccount(primaryMailbox.email)?.refresh_token
+    : false;
   return {
     brain_anthropic: has('ANTHROPIC_API_KEY'),        // required — Jarvis's brain, eyes, classification
     web_search_brave: has('BRAVE_API_KEY') || has('BRAVE_SEARCH_API_KEY'),
     voice_elevenlabs: has('ELEVENLABS_API_KEY'),      // voice STT + TTS
     phone_vapi: has('VAPI_API_KEY'),                  // Sofia (phone)
     images_gemini: has('GEMINI_API_KEY'),             // Lauren/Paulie image gen
-    google_oauth: has('GOOGLE_CLIENT_ID') && has('GOOGLE_CLIENT_SECRET'),
+    google_oauth_configured: googleConfigured(),      // client id/secret present (either GOOGLE_* or GMAIL_* names)
+    google_mailbox_connected: gmailConnected,          // an actual refresh token is stored — inbox/calendar will sync
     social_zernio: has('ZERNIO_API_KEY'),             // Paulie publishing
     sms_gateway: has('SMS_GATE_USERNAME') && has('SMS_GATE_PASSWORD'),
     seo_github: has('GITHUB_TOKEN'),                  // Lauren publishes pages
