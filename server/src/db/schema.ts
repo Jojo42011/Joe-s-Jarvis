@@ -406,6 +406,66 @@ export function initDb(): Database.Database {
     );
     CREATE INDEX IF NOT EXISTS idx_lead_estimate_lead ON lead_estimate_items(lead_id);
 
+    -- === Supply chain: suppliers, purchase orders, price history ===
+    -- Local wholesale nurseries / rock yards / material suppliers. These are
+    -- phone-and-email businesses (no APIs) — the automation is drafting POs,
+    -- tracking status against the build schedule, and price history.
+    CREATE TABLE IF NOT EXISTS suppliers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      category TEXT DEFAULT 'other',       -- nursery | stone | aggregate | mulch | hardscape | equipment | other
+      contact_name TEXT,
+      phone TEXT,
+      email TEXT,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- A purchase order: usually tied to a project (lead) and a supplier.
+    -- Items are seeded from the project's estimate line items (the blueprint)
+    -- or dictated by Joe. email_draft holds the composed PO email until sent.
+    CREATE TABLE IF NOT EXISTS material_orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      lead_id INTEGER,
+      supplier_id INTEGER,
+      po_number TEXT,
+      status TEXT DEFAULT 'draft',         -- draft | ready | ordered | delivered | cancelled
+      needed_by TEXT,                      -- ISO date the crew needs it on site
+      needed_by_stage TEXT,                -- build stage this order must precede (e.g. site_prep)
+      email_draft TEXT,
+      sent_at DATETIME,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (lead_id) REFERENCES leads(id),
+      FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_material_orders_lead ON material_orders(lead_id);
+
+    CREATE TABLE IF NOT EXISTS material_order_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL,
+      label TEXT NOT NULL,                 -- "Unilock Beacon Hill pavers", "#57 limestone"
+      qty REAL DEFAULT 1,
+      unit TEXT,                           -- pallet | ton | yard | each | flat
+      unit_price_cents INTEGER DEFAULT 0,  -- 0 = price unknown / to be quoted
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (order_id) REFERENCES material_orders(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_material_order_items_order ON material_order_items(order_id);
+
+    -- Quoted-price ledger per material per supplier over time — this is what
+    -- makes "mulch is up $4/yard from last spring" a real answer, not a guess.
+    CREATE TABLE IF NOT EXISTS material_prices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      material TEXT NOT NULL,
+      supplier_id INTEGER,
+      unit TEXT,
+      price_cents INTEGER NOT NULL,
+      quoted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_material_prices_material ON material_prices(material);
+
     -- Full Vapi call history, synced on an interval (every call, every assistant,
     -- costs included) — the dashboard reads THIS, not Vapi directly, so counts
     -- and cost totals cover the whole lifetime instead of a capped live fetch.
@@ -545,6 +605,11 @@ function migrateLeadPayments(database: Database.Database): void {
   // Stripe Checkout payment links: track the session so the webhook can mark it paid.
   if (!names.has('stripe_session_id')) add('ALTER TABLE lead_payments ADD COLUMN stripe_session_id TEXT');
   if (!names.has('payment_url')) add('ALTER TABLE lead_payments ADD COLUMN payment_url TEXT');
+  // Milestone invoicing: sequential invoice number, when the invoice email went
+  // out, and the composed email body held for Joe's approval before sending.
+  if (!names.has('invoice_no')) add('ALTER TABLE lead_payments ADD COLUMN invoice_no TEXT');
+  if (!names.has('invoice_sent_at')) add('ALTER TABLE lead_payments ADD COLUMN invoice_sent_at DATETIME');
+  if (!names.has('invoice_draft')) add('ALTER TABLE lead_payments ADD COLUMN invoice_draft TEXT');
 }
 
 function migrateSeoContent(database: Database.Database): void {

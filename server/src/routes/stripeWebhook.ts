@@ -3,6 +3,7 @@ import express from 'express';
 import { getDb } from '../db/schema';
 import { verifyStripeSignature } from '../services/stripe';
 import { logActivity } from '../services/leadShared';
+import { sendSms } from '../services/sms';
 
 const router = Router();
 
@@ -45,6 +46,9 @@ router.post('/stripe', express.raw({ type: 'application/json' }), (req: Request,
         body: `Paid online via Stripe: ${payment?.label || 'Payment'} — $${((payment?.amount_cents || 0) / 100).toLocaleString()}`,
         meta: { stripeSessionId: session?.id },
       });
+      // Money hit the account — Joe hears about it immediately.
+      const leadName = (db.prepare('SELECT name FROM leads WHERE id = ?').get(leadId) as { name?: string } | undefined)?.name || `lead #${leadId}`;
+      sendSms(`✅ PAID: ${leadName} — ${payment?.label || 'payment'} $${((payment?.amount_cents || 0) / 100).toLocaleString()} came through Stripe.`, 'Billing');
       console.log('[Stripe] payment confirmed', { leadId, paymentId });
     }
   }

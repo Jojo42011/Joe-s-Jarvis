@@ -171,6 +171,15 @@
   .sub-status.confirmed { background:rgba(18,183,106,0.12); color:var(--success); }
   .mini-act { padding:4px 9px; font-size:11.5px; font-weight:600; border:1px solid var(--border); background:var(--card); color:var(--body); border-radius:6px; cursor:pointer; }
   .mini-act:hover { border-color:var(--teal); color:var(--teal-deep); }
+  .mini-act:disabled { opacity:.45; cursor:not-allowed; border-color:var(--border); color:var(--muted); }
+  .po-status { font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; padding:2px 8px; border-radius:12px; background:var(--card-2); color:var(--muted); }
+  .po-status.ready { background:rgba(183,121,31,0.12); color:#B7791F; }
+  .po-status.ordered { background:rgba(37,99,235,0.12); color:var(--info); }
+  .po-status.delivered { background:rgba(18,183,106,0.12); color:var(--success); }
+  .po-status.cancelled { background:rgba(217,45,32,0.10); color:var(--danger); }
+  .po-sel { font-size:11px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; background:var(--card); color:var(--body); font-family:var(--sans); }
+  .pay-link { font-size:11px; color:var(--teal-deep); text-decoration:none; white-space:nowrap; }
+  .pay-link:hover { text-decoration:underline; }
   .file-thumb { width:44px; height:44px; object-fit:cover; border-radius:7px; border:1px solid var(--border); }
   .kind-tag { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); background:var(--card-2); padding:2px 7px; border-radius:5px; }
   .est-total { padding:8px 0 2px; font-size:13px; color:var(--text); font-weight:600; }
@@ -507,6 +516,28 @@
           <button class="btn" id="estApply" style="margin-top:8px">Apply total as project value</button>
         </div>
         <div class="dr-sec">
+          <h3>Materials &amp; POs</h3>
+          <div id="drMaterials"></div>
+          <div class="add-inline" style="margin-bottom:2px">
+            <button class="btn" id="poFromEstimate" title="Drafts a purchase order from the estimate line items">PO from estimate</button>
+          </div>
+          <div id="poItemRows"></div>
+          <button class="mini-act" id="poAddRow" style="margin-top:6px">+ item</button>
+          <div class="add-inline" style="margin-top:6px">
+            <select id="poSupplier"></select>
+            <select id="poStage"></select>
+            <input type="date" id="poNeededBy" title="Needed by" />
+            <button id="poCreate">Create PO</button>
+          </div>
+          <div class="add-inline" style="margin-top:6px;grid-template-columns:1fr .8fr .8fr 1fr auto">
+            <input type="text" id="newSupName" placeholder="New supplier: name" />
+            <input type="text" id="newSupCategory" placeholder="Category" />
+            <input type="text" id="newSupPhone" placeholder="Phone" />
+            <input type="email" id="newSupEmail" placeholder="Email" />
+            <button id="newSupAdd">Save supplier</button>
+          </div>
+        </div>
+        <div class="dr-sec">
           <h3>Notes</h3>
           <div class="note-add"><input type="text" id="noteInput" placeholder="Add a note to the timeline…" /><button id="noteAdd">Save</button></div>
         </div>
@@ -624,6 +655,9 @@
     drFiles:$("drFiles"), fileKind:$("fileKind"), fileInput:$("fileInput"),
     drEstimate:$("drEstimate"), estLabel:$("estLabel"), estQty:$("estQty"), estUnit:$("estUnit"),
     estCost:$("estCost"), estMarkup:$("estMarkup"), estAdd:$("estAdd"), estApply:$("estApply"),
+    drMaterials:$("drMaterials"), poFromEstimate:$("poFromEstimate"), poItemRows:$("poItemRows"), poAddRow:$("poAddRow"),
+    poSupplier:$("poSupplier"), poStage:$("poStage"), poNeededBy:$("poNeededBy"), poCreate:$("poCreate"),
+    newSupName:$("newSupName"), newSupCategory:$("newSupCategory"), newSupPhone:$("newSupPhone"), newSupEmail:$("newSupEmail"), newSupAdd:$("newSupAdd"),
     smsModal:$("smsModal"), smsWho:$("smsWho"), smsBody:$("smsBody"), smsSend:$("smsSend"), smsCancel:$("smsCancel"),
     emailModal:$("emailModal"), emailWho:$("emailWho"), emailFrom:$("emailFrom"), emailFromWrap:$("emailFromWrap"),
     emailSubject:$("emailSubject"), emailBody:$("emailBody"), emailSend:$("emailSend"), emailCancel:$("emailCancel")
@@ -698,6 +732,20 @@
       : '<option value="">No subs saved yet</option>';
     els.newSubTrade.innerHTML = SUB_TRADES.map(function(t){ return '<option value="' + t + '">' + t + '</option>'; }).join("");
     els.subStage.innerHTML = BUILD_STAGES.map(function(s){ return '<option value="' + s.key + '">' + esc(s.label) + '</option>'; }).join("");
+    els.poStage.innerHTML = '<option value="">— needed by stage —</option>' + BUILD_STAGES.map(function(s){ return '<option value="' + s.key + '">' + esc(s.label) + '</option>'; }).join("");
+  }
+
+  var allSuppliers = [];   // material supplier address book
+  function loadSuppliers(){
+    fetch("/api/suppliers").then(function(r){ return r.json(); }).then(function(d){
+      allSuppliers = (d && d.suppliers) || [];
+      renderSupplierPicker();
+    }).catch(function(){});
+  }
+  function renderSupplierPicker(){
+    els.poSupplier.innerHTML = '<option value="">— supplier —</option>' + allSuppliers.map(function(s){
+      return '<option value="' + s.id + '">' + esc(s.name) + (s.category ? ' (' + esc(s.category) + ')' : '') + '</option>';
+    }).join("");
   }
 
   fetch("/api/crm/email-accounts").then(function(r){ return r.json(); }).then(function(d){
@@ -867,6 +915,7 @@
     renderDrawerHead();
     els.drTimeline.innerHTML = '<div class="dim">Loading…</div>';
     els.drPayments.innerHTML = "";
+    els.drMaterials.innerHTML = "";
     refreshDrawer();
     renderLeads(); // refresh the selected highlight in the list
   }
@@ -908,6 +957,7 @@
 
   function refreshDrawer(){
     if (!drawerLead) return;
+    loadMaterials();
     fetch("/api/leads/" + drawerLead.id)
       .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
       .then(function(d){
@@ -1124,14 +1174,171 @@
       });
   });
 
+  /* ── Blueprint: materials & purchase orders ── */
+  var PO_STATUSES = ["draft","ready","ordered","delivered","cancelled"];
+
+  function loadMaterials(){
+    if (!drawerLead) return;
+    var lid = drawerLead.id;
+    fetch("/api/materials/orders?lead_id=" + lid)
+      .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+      .then(function(d){
+        if (!drawerLead || drawerLead.id !== lid) return;
+        renderMaterials((d && d.orders) || []);
+      })
+      .catch(function(e){ console.error("[CRM materials]", e); });
+  }
+
+  function renderMaterials(orders){
+    if (!orders.length){
+      els.drMaterials.innerHTML = '<div class="dim" style="font-size:12.5px;padding:2px 0 6px">No purchase orders yet — draft one from the estimate or add items below</div>';
+      return;
+    }
+    els.drMaterials.innerHTML = orders.map(function(o){
+      var items = o.items || [];
+      var total = 0;
+      var itemLines = items.map(function(it){
+        var line = Math.round((Number(it.qty) || 0) * (it.unit_price_cents || 0));
+        total += line;
+        return esc(it.label) + ' ×' + (Number(it.qty) || 0) + (it.unit ? ' ' + esc(it.unit) : '') + ' — ' + fmtMoney(line);
+      }).join('<br>');
+      var stageLabel = (BUILD_STAGES.find(function(b){ return b.key === o.needed_by_stage; }) || {}).label || o.needed_by_stage || "";
+      var needBits = [];
+      if (stageLabel) needBits.push("before " + stageLabel);
+      if (o.needed_by) needBits.push(o.needed_by);
+      var sup = o.supplier || null;
+      var canEmail = !!(sup && sup.email);
+      var closed = o.status === "delivered" || o.status === "cancelled";
+      return '<div class="sub-row" style="align-items:flex-start">' +
+        '<div style="flex:1;min-width:0">' +
+          '<b>' + esc(o.po_number || ("PO #" + o.id)) + '</b>' +
+          ' <span class="dim">' + (sup ? esc(sup.name) : "no supplier") + (needBits.length ? " · " + esc(needBits.join(" · ")) : "") + '</span>' +
+          '<div class="dim" style="font-size:11.5px;margin-top:2px">' +
+            (items.length
+              ? itemLines + '<div style="margin-top:2px">' + items.length + ' item' + (items.length > 1 ? 's' : '') + ' · <b style="color:var(--text)">' + fmtMoney(total) + '</b></div>'
+              : 'no items') +
+          '</div>' +
+        '</div>' +
+        '<span class="po-status ' + esc(o.status) + '">' + esc(o.status) + '</span>' +
+        '<select class="po-sel" data-po-status="' + o.id + '" title="Change PO status">' +
+          PO_STATUSES.map(function(s){ return '<option value="' + s + '"' + (s === o.status ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
+        '</select>' +
+        (!closed && o.status !== "ordered"
+          ? '<button class="mini-act" data-po-send="' + o.id + '"' + (canEmail ? ' title="Email this PO to the supplier"' : ' disabled title="Supplier has no email on file"') + '>✉ Email PO</button>'
+          : (o.sent_at ? '<span class="dim" style="font-size:11px">sent ' + formatDate(o.sent_at) + '</span>' : '')) +
+        '</div>';
+    }).join("");
+  }
+
+  els.drMaterials.addEventListener("change", function(e){
+    var s = e.target.closest("select[data-po-status]");
+    if (!s || !drawerLead) return;
+    fetch("/api/materials/orders/" + s.getAttribute("data-po-status"), { method:"PATCH", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ status: s.value }) })
+      .then(function(){ toast("PO status updated"); loadMaterials(); })
+      .catch(function(){ toast("Update failed"); loadMaterials(); });
+  });
+  els.drMaterials.addEventListener("click", function(e){
+    var b = e.target.closest("[data-po-send]");
+    if (!b || !drawerLead || b.disabled) return;
+    b.disabled = true; b.textContent = "Sending…";
+    fetch("/api/materials/orders/" + b.getAttribute("data-po-send") + "/send", { method:"POST" })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d.ok){ alert(d.error || "Couldn't email the PO"); loadMaterials(); return; }
+        toast("PO emailed to the supplier");
+        loadMaterials();
+      })
+      .catch(function(){ toast("PO email failed"); loadMaterials(); });
+  });
+
+  els.poFromEstimate.addEventListener("click", function(){
+    if (!drawerLead) return;
+    els.poFromEstimate.disabled = true;
+    fetch("/api/leads/" + drawerLead.id + "/materials", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ from_estimate:true }) })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        els.poFromEstimate.disabled = false;
+        if (d && d.error){ toast(esc(d.error)); return; }
+        toast("Draft PO created from the estimate");
+        loadMaterials();
+      })
+      .catch(function(){ els.poFromEstimate.disabled = false; toast("Couldn't create the PO"); });
+  });
+
+  function poItemRowHtml(){
+    return '<div class="add-inline po-item-row" style="margin-top:6px">' +
+      '<input type="text" data-po-label placeholder="Item (Pavers…)" />' +
+      '<input type="text" data-po-qty placeholder="Qty" />' +
+      '<input type="text" data-po-unit placeholder="Unit" />' +
+      '<input type="text" data-po-price placeholder="$/unit" />' +
+      '</div>';
+  }
+  function resetPoItemRows(){ els.poItemRows.innerHTML = poItemRowHtml(); }
+  resetPoItemRows();
+  els.poAddRow.addEventListener("click", function(){
+    els.poItemRows.insertAdjacentHTML("beforeend", poItemRowHtml());
+  });
+
+  els.poCreate.addEventListener("click", function(){
+    if (!drawerLead) return;
+    var items = [];
+    els.poItemRows.querySelectorAll(".po-item-row").forEach(function(row){
+      var label = row.querySelector("[data-po-label]").value.trim();
+      if (!label) return;
+      var qty = parseFloat(row.querySelector("[data-po-qty]").value) || 1;
+      var price = parseFloat(String(row.querySelector("[data-po-price]").value).replace(/[^0-9.]/g, "")) || 0;
+      items.push({ label: label, qty: qty, unit: row.querySelector("[data-po-unit]").value.trim(), unit_price_cents: Math.round(price * 100) });
+    });
+    if (!items.length){ toast("Add at least one item"); return; }
+    var body = { items: items };
+    if (els.poSupplier.value) body.supplier_id = Number(els.poSupplier.value);
+    if (els.poNeededBy.value) body.needed_by = els.poNeededBy.value;
+    if (els.poStage.value) body.needed_by_stage = els.poStage.value;
+    fetch("/api/leads/" + drawerLead.id + "/materials", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d && d.error){ toast(esc(d.error)); return; }
+        resetPoItemRows(); els.poNeededBy.value = "";
+        toast("Draft PO created");
+        loadMaterials();
+      })
+      .catch(function(){ toast("Couldn't create the PO"); });
+  });
+
+  els.newSupAdd.addEventListener("click", function(){
+    var name = els.newSupName.value.trim();
+    if (!name){ toast("Enter the supplier's name"); return; }
+    fetch("/api/suppliers", { method:"POST", headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({ name: name, category: els.newSupCategory.value.trim(), phone: els.newSupPhone.value.trim(), email: els.newSupEmail.value.trim() }) })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d && d.error){ toast(esc(d.error)); return; }
+        els.newSupName.value = ""; els.newSupCategory.value = ""; els.newSupPhone.value = ""; els.newSupEmail.value = "";
+        toast("Supplier saved");
+        loadSuppliers();
+      })
+      .catch(function(){ toast("Couldn't save the supplier"); });
+  });
+
+  function leadHasEmail(){
+    return !!(drawerLead && drawerLead.email && !/not provided/i.test(drawerLead.email));
+  }
+
   function renderPayments(payments){
     if (!payments.length){ els.drPayments.innerHTML = '<div class="dim" style="padding:4px 2px 2px">No payments yet</div>'; return; }
     var totalPaid = 0, totalPending = 0, html = "";
     payments.forEach(function(p){
       if (p.status === "paid") totalPaid += p.amount_cents; else totalPending += p.amount_cents;
+      var meta = esc(p.method||"") + (p.paid_at ? " · " + formatDate(p.paid_at) : "") +
+        (p.invoice_no ? " · " + esc(p.invoice_no) : "") +
+        (p.invoice_sent_at ? " · invoiced " + formatDate(p.invoice_sent_at) : "");
       html += '<div class="pay-row' + (p.status === "pending" ? " pending" : "") + '">' +
-        '<div class="pl">' + esc(p.label||"Payment") + '<div class="pm">' + esc(p.method||"") + (p.paid_at ? " · " + formatDate(p.paid_at) : "") + '</div></div>' +
+        '<div class="pl">' + esc(p.label||"Payment") + '<div class="pm">' + meta + '</div></div>' +
+        (p.payment_url ? '<a class="pay-link" href="' + esc(p.payment_url) + '" target="_blank">pay link</a>' : "") +
         '<span class="amt">' + fmtMoney(p.amount_cents) + '</span>' +
+        (p.status === "pending" && leadHasEmail()
+          ? '<button class="pst" data-pay-invoice="' + p.id + '" title="' + (p.invoice_sent_at ? "Resend the invoice email" : "Email the milestone invoice") + '">' + (p.invoice_sent_at ? "Invoiced ✓" : "Send invoice") + '</button>'
+          : "") +
         (p.status === "pending" ? '<button class="pst" data-pay-link="' + p.id + '" title="Create a Stripe payment link">' + (p.payment_url ? "Link ✓" : "Link") + '</button>' : "") +
         '<button class="pst" data-pay-toggle="' + p.id + '">' + (p.status === "paid" ? "Paid" : "Pending") + '</button>' +
         '<button class="px" data-pay-del="' + p.id + '">×</button>' +
@@ -1142,9 +1349,20 @@
   }
 
   els.drPayments.addEventListener("click", function(e){
-    var t = e.target.closest("[data-pay-toggle]"), d = e.target.closest("[data-pay-del]"), l = e.target.closest("[data-pay-link]");
+    var t = e.target.closest("[data-pay-toggle]"), d = e.target.closest("[data-pay-del]"), l = e.target.closest("[data-pay-link]"), inv = e.target.closest("[data-pay-invoice]");
     if (!drawerLead) return;
-    if (t){
+    if (inv){
+      var ipid = inv.getAttribute("data-pay-invoice");
+      inv.disabled = true; inv.textContent = "Sending…";
+      fetch("/api/leads/" + drawerLead.id + "/payments/" + ipid + "/send-invoice", { method:"POST" })
+        .then(function(r){ return r.json(); })
+        .then(function(res){
+          if (!res.ok){ alert(res.error || "Couldn't send the invoice"); refreshDrawer(); return; }
+          toast("Invoice <b>" + esc(res.invoice_no || "") + "</b> sent to " + esc(res.to || "client"));
+          lastPayload=""; refreshDrawer(); loadLeads();
+        })
+        .catch(function(){ toast("Invoice send failed"); refreshDrawer(); });
+    } else if (t){
       fetch("/api/leads/" + drawerLead.id + "/payments/" + t.getAttribute("data-pay-toggle") + "/toggle", { method:"POST" })
         .then(function(){ lastPayload=""; refreshDrawer(); loadLeads(); });
     } else if (d){
@@ -1414,6 +1632,7 @@
 
   loadLeads();
   loadSubs();
+  loadSuppliers();
   loadOtherCalls();
   setInterval(function(){ if (visible && !document.hidden) loadOtherCalls(); }, 60000);
   startPolling();

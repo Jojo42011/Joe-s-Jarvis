@@ -9,6 +9,11 @@ import {
 } from '../services/leadShared';
 import { createLead } from '../services/leadIntake';
 import { createPaymentLink, isStripeConfigured } from '../services/stripe';
+import { triggerStageInvoices, sendMilestoneInvoice, listOutstandingInvoices } from '../services/invoicing';
+import {
+  addSupplier, listSuppliers, createOrder, listOrders, getOrder, updateOrderStatus,
+  sendPurchaseOrder, priceHistory, checkMaterialReadiness, SUPPLIER_CATEGORIES,
+} from '../services/materials';
 
 const router = Router();
 
@@ -312,9 +317,11 @@ router.patch('/leads/:id', (req: Request, res: Response) => {
     updates.push('inspections = ?'); values.push(JSON.stringify(b2.inspections));
   }
 
-  // Build-stage moves are the Stage-Gate Trigger: log the move, and if a
-  // milestone draw due at or before the new stage is still pending, alert
-  // Joe (dashboard alert comes from GET /leads; SMS notify here).
+  // Build-stage moves are the Stage-Gate Trigger: log the move, then fire the
+  // billing engine (auto-prepares/sends any milestone invoice that just came
+  // due — invoice number, Stripe link, drafted email) and the materials
+  // readiness check (flags POs that should precede this stage but aren't
+  // ordered). Both run after the row update commits, fire-and-forget.
   if (b2.build_stage !== undefined) {
     const newStage = b2.build_stage === null || b2.build_stage === '' ? null : String(b2.build_stage);
     if (newStage === null || BUILD_STAGES.some((s) => s.key === newStage)) {
@@ -324,14 +331,10 @@ router.patch('/leads/:id', (req: Request, res: Response) => {
         logActivity(id, 'stage', { direction: 'system', body: `Build stage → ${label}` });
         // Entering construction seeds the default inspection checklist once.
         if (!lead.inspections) { updates.push('inspections = ?'); values.push(JSON.stringify(DEFAULT_INSPECTIONS)); }
-        const stageIdx = buildStageIndex(newStage);
-        const pending = db.prepare("SELECT label FROM lead_payments WHERE lead_id = ? AND status = 'pending'").all(id) as { label: string }[];
-        const owed = MILESTONES.filter((m) => buildStageIndex(m.dueAtStage) <= stageIdx && pending.some((p) => p.label === m.label));
-        if (owed.length) {
-          const msg = `Stage gate — ${lead.name}: moved to ${label} with ${owed.map((m) => m.label).join(', ')} still uncollected.`;
-          logActivity(id, 'note', { direction: 'system', body: msg });
-          sendSms(msg, 'CRM');
-        }
+        setImmediate(() => {
+          triggerStageInvoices(id, newStage).catch((err) => console.error('[Billing] stage trigger failed:', err));
+          checkMaterialReadiness(id, newStage);
+        });
       }
     }
   }
@@ -775,6 +778,81 @@ router.post('/leads/:id/estimate/apply', (req: Request, res: Response) => {
   db.prepare('UPDATE leads SET project_value_cents = ? WHERE id = ?').run(total, id);
   logActivity(id, 'note', { direction: 'system', body: `Estimate applied as project value: $${(total / 100).toLocaleString()}` });
   res.json({ ok: true, total_cents: total });
+});
+
+// ── Supply chain: suppliers + purchase orders ───────────────────────────────
+
+router.get('/suppliers', (_req: Request, res: Response) => {
+  res.json({ suppliers: listSuppliers(), categories: SUPPLIER_CATEGORIES });
+});
+
+router.post('/suppliers', (req: Request, res: Response) => {
+  const b = req.body as { name?: string; category?: string; contact_name?: string; phone?: string; email?: string; notes?: string };
+  if (!b.name?.trim()) { res.status(400).json({ ok: false, error: 'name required' }); return; }
+  const id = addSupplier({ name: b.name, category: b.category, contact_name: b.contact_name, phone: b.phone, email: b.email, notes: b.notes });
+  res.json({ ok: true, id });
+});
+
+router.get('/materials/orders', (req: Request, res: Response) => {
+  const leadId = req.query.lead_id ? Number(req.query.lead_id) : undefined;
+  const status = req.query.status ? String(req.query.status) : undefined;
+  const openOnly = req.query.open === '1';
+  res.json({ orders: listOrders({ leadId, status, openOnly }) });
+});
+
+router.post('/leads/:id/materials', (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ ok: false, error: 'invalid id' }); return; }
+  const b = req.body as {
+    items?: { label: string; qty?: number; unit?: string; unit_price_cents?: number }[];
+    from_estimate?: boolean; supplier_id?: number; needed_by?: string; needed_by_stage?: string; notes?: string;
+  };
+  try {
+    const result = createOrder({
+      leadId: id,
+      supplierId: b.supplier_id ?? null,
+      items: (b.items || []).map((it) => ({ label: it.label, qty: it.qty || 1, unit: it.unit || null, unit_price_cents: it.unit_price_cents || 0 })),
+      fromEstimate: !!b.from_estimate,
+      neededBy: b.needed_by ?? null,
+      neededByStage: b.needed_by_stage ?? null,
+      notes: b.notes ?? null,
+    });
+    res.json({ ok: true, ...result, order: getOrder(result.orderId) });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err instanceof Error ? err.message : 'order failed' });
+  }
+});
+
+router.patch('/materials/orders/:id', (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  const status = String((req.body as { status?: string })?.status || '');
+  const result = updateOrderStatus(id, status);
+  if (!result.ok) { res.status(400).json(result); return; }
+  res.json({ ok: true, order: getOrder(id) });
+});
+
+router.post('/materials/orders/:id/send', async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  const result = await sendPurchaseOrder(id).catch((err) => ({ ok: false as const, error: err instanceof Error ? err.message : 'send failed' }));
+  res.status(result.ok ? 200 : 400).json(result);
+});
+
+router.get('/materials/prices', (req: Request, res: Response) => {
+  const q = String(req.query.q || '').trim();
+  if (!q) { res.status(400).json({ ok: false, error: 'q required' }); return; }
+  res.json({ history: priceHistory(q) });
+});
+
+// ── Milestone invoicing ─────────────────────────────────────────────────────
+
+router.get('/invoices/outstanding', (_req: Request, res: Response) => {
+  res.json({ invoices: listOutstandingInvoices() });
+});
+
+router.post('/leads/:id/payments/:pid/send-invoice', async (req: Request, res: Response) => {
+  const pid = Number(req.params.pid);
+  const result = await sendMilestoneInvoice(pid).catch((err) => ({ ok: false as const, error: err instanceof Error ? err.message : 'send failed' }));
+  res.status(result.ok ? 200 : 400).json(result);
 });
 
 export default router;
