@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Materials — Totally Outdoors LLC</title>
+<style>
+  :root {
+    --bg: #F4F7F9; --panel: #FFFFFF; --card-2: #F8FAFB;
+    --red: #C81A10; --red-bright: #A01109;
+    --text: #0E1B24; --muted: #6B7C86; --label: #9AA9B2;
+    --line: #E5EBEF; --line-strong: #D3DDE3;
+    --green: #12B76A; --danger: #E5484D;
+    --shadow: 0 1px 3px rgba(14,27,36,0.07), 0 10px 26px -16px rgba(14,27,36,0.22);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; min-height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+  #wrap { max-width: 1060px; margin: 0 auto; padding: 28px 20px 60px; }
+  h1 { font-size: 20px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .cols { display: grid; grid-template-columns: 1fr 320px; gap: 20px; margin-top: 22px; align-items: start; }
+  @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; margin-bottom: 20px; }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .po { padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .po:last-child { border-bottom: none; }
+  .po-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .po-no { font-family: var(--mono); font-size: 12.5px; color: var(--red); font-weight: 700; }
+  .po-proj { font-weight: 600; font-size: 14px; }
+  .po-sup { color: var(--muted); font-size: 12.5px; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; background: var(--card-2); color: var(--muted); border: 1px solid var(--line); text-transform: capitalize; }
+  .pill.ordered { background: rgba(18,183,106,0.12); color: #0B8A50; border-color: transparent; }
+  .pill.delivered { background: rgba(18,183,106,0.2); color: #0B8A50; border-color: transparent; }
+  .pill.draft, .pill.ready { background: rgba(200,26,16,0.10); color: var(--red); border-color: transparent; }
+  .items { margin-top: 8px; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+  .meta { margin-top: 6px; font-size: 11.5px; color: var(--label); }
+  .acts { margin-top: 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .btn { font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--panel); color: var(--text); cursor: pointer; }
+  .btn:hover { border-color: var(--red); color: var(--red); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn.primary { background: var(--red); border-color: var(--red); color: #fff; }
+  .btn.primary:hover { background: var(--red-bright); color: #fff; }
+  select { font-size: 12px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--panel); color: var(--text); }
+  .sup { padding: 12px 18px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .sup:last-child { border-bottom: none; }
+  .sup b { font-size: 13.5px; }
+  .sup .cat { font-size: 11px; color: var(--label); text-transform: uppercase; letter-spacing: 0.06em; margin-left: 6px; }
+  .sup .c { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .empty { padding: 30px 18px; text-align: center; color: var(--muted); font-size: 13.5px; }
+  .form { padding: 14px 18px; display: grid; gap: 8px; }
+  .form input, .form select { width: 100%; font-size: 13px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--panel); color: var(--text); }
+  .note { font-size: 12px; color: var(--label); margin-top: 4px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>Materials &amp; Purchase Orders</h1>
+  <div class="sub">Every open PO across every project, tied to the build stage it must precede — you get flagged before a crew hits an empty site. POs are drafted from each project's estimate in the CRM or by telling Jarvis.</div>
+
+  <div class="cols">
+    <div>
+      <div class="card">
+        <h2>Open purchase orders</h2>
+        <div id="poList"><div class="empty">Loading…</div></div>
+      </div>
+      <div class="note">Create POs from a project's drawer in the <a href="/crm" style="color:var(--red)">CRM</a> ("PO from estimate") or by voice: "Jarvis, order the materials for the Reynolds job." Delivered and cancelled orders drop off this list.</div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Suppliers</h2>
+        <div id="supList"><div class="empty">Loading…</div></div>
+        <div class="form">
+          <input id="nsName" placeholder="Supplier name" />
+          <select id="nsCat"></select>
+          <input id="nsPhone" placeholder="Phone" />
+          <input id="nsEmail" placeholder="Email (POs send here)" />
+          <button class="btn primary" id="nsAdd">Add supplier</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var STATUSES = ['draft', 'ready', 'ordered', 'delivered', 'cancelled'];
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function money(c) { return '$' + (c / 100).toLocaleString('en-US', { minimumFractionDigits: 2 }); }
+
+  function renderOrders(orders) {
+    var el = document.getElementById('poList');
+    if (!orders.length) { el.innerHTML = '<div class="empty">No open purchase orders.</div>'; return; }
+    el.innerHTML = orders.map(function (o) {
+      var total = (o.items || []).reduce(function (s, it) { return s + (it.unit_price_cents || 0) * (it.qty || 1); }, 0);
+      var items = (o.items || []).map(function (it) {
+        var p = it.unit_price_cents > 0 ? ' @ ' + money(it.unit_price_cents) + (it.unit ? '/' + esc(it.unit) : '') : '';
+        return esc(it.qty) + ' ' + esc(it.unit || 'x') + ' — ' + esc(it.label) + p;
+      }).join('<br>');
+      var needs = o.needed_by_stage ? 'needed before <b>' + esc(o.needed_by_stage.replace(/_/g, ' ')) + '</b>' : '';
+      if (o.needed_by) needs += (needs ? ' · ' : '') + 'on site by ' + esc(o.needed_by);
+      var sel = '<select data-status="' + o.id + '">' + STATUSES.map(function (s) {
+        return '<option value="' + s + '"' + (s === o.status ? ' selected' : '') + '>' + s + '</option>';
+      }).join('') + '</select>';
+      var canEmail = o.supplier && o.supplier.email && (o.status === 'draft' || o.status === 'ready');
+      var emailBtn = canEmail ? '<button class="btn primary" data-email="' + o.id + '">Email PO</button>'
+        : (o.supplier && !o.supplier.email && o.status !== 'ordered' && o.status !== 'delivered'
+          ? '<span class="meta">no supplier email' + (o.supplier.phone ? ' — call ' + esc(o.supplier.phone) : '') + '</span>' : '');
+      return '<div class="po">' +
+        '<div class="po-head"><span class="po-no">' + esc(o.po_number || '') + '</span>' +
+        '<span class="po-proj">' + esc(o.lead_name || 'No project') + '</span>' +
+        '<span class="pill ' + esc(o.status) + '">' + esc(o.status) + '</span>' +
+        (o.supplier ? '<span class="po-sup">' + esc(o.supplier.name) + '</span>' : '') + '</div>' +
+        '<div class="items">' + items + (total > 0 ? '<br><b>Est. total ' + money(total) + '</b>' : '') + '</div>' +
+        (needs ? '<div class="meta">' + needs + '</div>' : '') +
+        '<div class="acts">' + sel + emailBtn + '</div>' +
+      '</div>';
+    }).join('');
+
+    el.querySelectorAll('[data-status]').forEach(function (s) {
+      s.addEventListener('change', function () {
+        fetch('/api/materials/orders/' + s.getAttribute('data-status'), {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: s.value }),
+        }).then(function () { load(); });
+      });
+    });
+    el.querySelectorAll('[data-email]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        b.disabled = true; b.textContent = 'Sending…';
+        fetch('/api/materials/orders/' + b.getAttribute('data-email') + '/send', { method: 'POST' })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (!d.ok) { alert(d.error || 'Send failed'); }
+            load();
+          })
+          .catch(function () { alert('Send failed'); load(); });
+      });
+    });
+  }
+
+  function renderSuppliers(suppliers, categories) {
+    var el = document.getElementById('supList');
+    var cat = document.getElementById('nsCat');
+    if (!cat.options.length) {
+      cat.innerHTML = (categories || []).map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
+    }
+    if (!suppliers.length) { el.innerHTML = '<div class="empty">No suppliers yet — add your nurseries and rock yards below.</div>'; return; }
+    el.innerHTML = suppliers.map(function (s) {
+      var c = [s.phone, s.email].filter(Boolean).map(esc).join(' · ');
+      return '<div class="sup"><b>' + esc(s.name) + '</b><span class="cat">' + esc(s.category || '') + '</span>' +
+        (c ? '<div class="c">' + c + '</div>' : '') + '</div>';
+    }).join('');
+  }
+
+  function load() {
+    fetch('/api/materials/orders?open=1').then(function (r) { return r.json(); })
+      .then(function (d) { renderOrders(d.orders || []); })
+      .catch(function () { document.getElementById('poList').innerHTML = '<div class="empty">Could not load orders.</div>'; });
+    fetch('/api/suppliers').then(function (r) { return r.json(); })
+      .then(function (d) { renderSuppliers(d.suppliers || [], d.categories || []); })
+      .catch(function () { document.getElementById('supList').innerHTML = '<div class="empty">Could not load suppliers.</div>'; });
+  }
+
+  document.getElementById('nsAdd').addEventListener('click', function () {
+    var name = document.getElementById('nsName').value.trim();
+    if (!name) { alert('Supplier name required'); return; }
+    fetch('/api/suppliers', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: name,
+        category: document.getElementById('nsCat').value,
+        phone: document.getElementById('nsPhone').value.trim(),
+        email: document.getElementById('nsEmail').value.trim(),
+      }),
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d.ok) { alert(d.error || 'Add failed'); return; }
+      document.getElementById('nsName').value = '';
+      document.getElementById('nsPhone').value = '';
+      document.getElementById('nsEmail').value = '';
+      load();
+    });
+  });
+
+  load();
+  setInterval(load, 60000);
+</script>
+</body>
+</html>

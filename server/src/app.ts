@@ -192,6 +192,18 @@ app.get('/crm', (_req, res) => {
 
 });
 
+app.get('/billing', (_req, res) => {
+
+  res.sendFile(path.join(clientPath, 'billing.html'));
+
+});
+
+app.get('/materials', (_req, res) => {
+
+  res.sendFile(path.join(clientPath, 'materials.html'));
+
+});
+
 app.get('/login', (_req, res) => {
 
   res.sendFile(path.join(clientPath, 'login.html'));

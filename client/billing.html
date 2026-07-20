@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Billing — Totally Outdoors LLC</title>
+<style>
+  :root {
+    --bg: #F4F7F9; --panel: #FFFFFF; --card-2: #F8FAFB;
+    --red: #C81A10; --red-bright: #A01109;
+    --text: #0E1B24; --muted: #6B7C86; --label: #9AA9B2;
+    --line: #E5EBEF; --line-strong: #D3DDE3;
+    --green: #12B76A; --danger: #E5484D;
+    --shadow: 0 1px 3px rgba(14,27,36,0.07), 0 10px 26px -16px rgba(14,27,36,0.22);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; min-height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+  #wrap { max-width: 1060px; margin: 0 auto; padding: 28px 20px 60px; }
+  h1 { font-size: 20px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .stats { display: flex; gap: 12px; margin: 20px 0; flex-wrap: wrap; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; box-shadow: var(--shadow); min-width: 160px; }
+  .stat .n { font-size: 22px; font-weight: 700; font-family: var(--mono); }
+  .stat .l { font-size: 11px; color: var(--label); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; margin-bottom: 22px; }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--label); padding: 10px 18px; border-bottom: 1px solid var(--line); }
+  td { padding: 12px 18px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .inv { font-family: var(--mono); font-size: 12.5px; color: var(--red); font-weight: 600; }
+  .amt { font-family: var(--mono); font-weight: 700; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; }
+  .pill.sent { background: rgba(18,183,106,0.12); color: #0B8A50; }
+  .pill.draft { background: rgba(200,26,16,0.10); color: var(--red); }
+  .btn { font-size: 12px; font-weight: 600; padding: 7px 13px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--panel); color: var(--text); cursor: pointer; }
+  .btn:hover { border-color: var(--red); color: var(--red); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn.primary { background: var(--red); border-color: var(--red); color: #fff; }
+  .btn.primary:hover { background: var(--red-bright); color: #fff; }
+  a.pay { font-size: 12px; color: var(--red); }
+  .empty { padding: 34px 18px; text-align: center; color: var(--muted); font-size: 13.5px; }
+  .note { font-size: 12px; color: var(--label); margin-top: 10px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>Billing</h1>
+  <div class="sub">Milestone invoices across every project — drafted the moment a build stage makes them due. Nothing sends without your say-so.</div>
+
+  <div class="stats">
+    <div class="stat"><div class="n" id="stOutstanding">–</div><div class="l">Outstanding</div></div>
+    <div class="stat"><div class="n" id="stCount">–</div><div class="l">Open invoices</div></div>
+    <div class="stat"><div class="n" id="stSent">–</div><div class="l">Sent, awaiting payment</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Outstanding invoices</h2>
+    <div id="tableWrap"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="note">Invoices are generated automatically from each project's 50/50 milestone schedule when its build stage moves (update stages in the CRM or just tell Jarvis a phase is done). Payment links appear when Stripe is connected. Paid invoices land on the project timeline and you get a text.</div>
+</div>
+
+<script>
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function money(c) { return '$' + (c / 100).toLocaleString('en-US', { minimumFractionDigits: 2 }); }
+
+  function render(invoices) {
+    var wrap = document.getElementById('tableWrap');
+    document.getElementById('stCount').textContent = invoices.length;
+    document.getElementById('stOutstanding').textContent = money(invoices.reduce(function (s, i) { return s + (i.amount_cents || 0); }, 0));
+    document.getElementById('stSent').textContent = invoices.filter(function (i) { return i.invoice_sent_at; }).length;
+
+    if (!invoices.length) { wrap.innerHTML = '<div class="empty">Nothing outstanding — everyone\'s paid up.</div>'; return; }
+
+    var rows = invoices.map(function (i) {
+      var status = i.invoice_sent_at
+        ? '<span class="pill sent">Invoiced</span>'
+        : '<span class="pill draft">' + (i.invoice_no ? 'Drafted' : 'Pending') + '</span>';
+      var pay = i.payment_url ? '<a class="pay" href="' + esc(i.payment_url) + '" target="_blank" rel="noopener">pay link</a>' : '<span style="color:var(--label);font-size:12px">—</span>';
+      var btn = '<button class="btn' + (i.invoice_sent_at ? '' : ' primary') + '" data-send="' + i.payment_id + '">' + (i.invoice_sent_at ? 'Resend' : 'Send invoice') + '</button>';
+      return '<tr>' +
+        '<td class="inv">' + esc(i.invoice_no || '—') + '</td>' +
+        '<td><a href="/crm" style="color:inherit">' + esc(i.lead_name) + '</a></td>' +
+        '<td>' + esc(i.label || '') + '</td>' +
+        '<td class="amt">' + money(i.amount_cents) + '</td>' +
+        '<td>' + status + '</td>' +
+        '<td>' + pay + '</td>' +
+        '<td style="text-align:right">' + btn + '</td>' +
+      '</tr>';
+    }).join('');
+
+    wrap.innerHTML = '<table><thead><tr><th>Invoice</th><th>Project</th><th>Milestone</th><th>Amount</th><th>Status</th><th>Pay link</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
+
+    wrap.querySelectorAll('[data-send]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var pid = b.getAttribute('data-send');
+        b.disabled = true; b.textContent = 'Sending…';
+        fetch('/api/leads/0/payments/' + pid + '/send-invoice', { method: 'POST' })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (!d.ok) { alert(d.error || 'Send failed'); b.disabled = false; b.textContent = 'Send invoice'; return; }
+            load();
+          })
+          .catch(function () { alert('Send failed'); b.disabled = false; b.textContent = 'Send invoice'; });
+      });
+    });
+  }
+
+  function load() {
+    fetch('/api/invoices/outstanding')
+      .then(function (r) { return r.json(); })
+      .then(function (d) { render(d.invoices || []); })
+      .catch(function () { document.getElementById('tableWrap').innerHTML = '<div class="empty">Could not load invoices.</div>'; });
+  }
+  load();
+  setInterval(load, 60000);
+</script>
+</body>
+</html>

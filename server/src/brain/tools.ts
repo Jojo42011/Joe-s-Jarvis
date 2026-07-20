@@ -15,7 +15,7 @@ import {
 } from '../services/materials';
 
 /** Dashboards Jarvis can pull up in the UI. Keys match the shell's tab keys. */
-export const UI_TABS = ['arlo', 'calls', 'inbox', 'memory', 'integrations'];
+export const UI_TABS = ['arlo', 'calls', 'inbox', 'billing', 'materials', 'memory', 'integrations'];
 
 /**
  * Function tools for Jarvis's brain (Responses API — flat shape). Kept to safe,
@@ -26,7 +26,7 @@ export const FUNCTION_TOOLS = [
   {
     type: 'function' as const,
     name: 'open_dashboard',
-    description: "Pull up a tab in the UI for Joe to see (and you speak over it). Use when he asks to show him something. tab: calls=Sofia/phone log, inbox=email, memory=neural map, integrations=connected tools, arlo=home.",
+    description: "Pull up a tab in the UI for Joe to see (and you speak over it). Use when he asks to show him something. tab: calls=Sofia/phone log, inbox=email, billing=outstanding invoices, materials=purchase orders/suppliers, memory=neural map, integrations=connected tools, arlo=home.",
     parameters: {
       type: 'object',
       properties: { tab: { type: 'string', enum: UI_TABS } },
