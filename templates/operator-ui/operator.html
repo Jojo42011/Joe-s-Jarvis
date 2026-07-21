@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>{{OPERATOR_DISPLAY}}</title>
+<style>
+  :root {
+    /* =====================================================================
+       THEME  —  the ONE place to recolor this operator UI for a client.
+       To change the accent, edit BOTH the hex and its matching r,g,b triple
+       (they must describe the same color). Everything downstream — status
+       pill, glow, hex grid, active states — reads these tokens.
+       A second, matching THEME block lives in the orb <script> below for the
+       canvas/WebGL colors; recolor that too. CURRENT THEME: BLUE.
+       ===================================================================== */
+    --bg: #0a0a0a;
+    --accent:        #1C6DD0;              /* primary accent */
+    --accent-bright: #39B4FF;              /* bright accent (glow / active) */
+    --accent-rgb:        28, 109, 208;     /* == --accent as r,g,b */
+    --accent-bright-rgb: 57, 180, 255;     /* == --accent-bright as r,g,b */
+    --silver: #C6CAD1;                      /* neutral secondary (nav links) */
+    --silver-deep: #8A8F98;
+    --text: #E0E0E0;
+    --label: #666;
+    --white: #FFFFFF;
+    --mono: "Courier New", Courier, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Hex grid texture overlay across full viewport */
+  #hexgrid {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  /* ===== App shell ===== */
+  #app {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ===== Top bar ===== */
+  #topbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 52px;
+    padding: 0 22px;
+    border-bottom: 1px solid rgba(var(--accent-rgb), 0.55);
+    background: rgba(10, 10, 10, 0.55);
+    backdrop-filter: blur(2px);
+  }
+  #brand {
+    font-family: var(--mono);
+    font-size: 18px;
+    letter-spacing: 0.55em;
+    color: var(--text);
+    text-transform: uppercase;
+    padding-left: 2px;
+  }
+  #topright {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--label);
+    text-transform: uppercase;
+  }
+  #topright .val { color: var(--text); }
+  #topright .seg { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+  #topright .seg .k { color: var(--label); font-size: 9px; }
+  #clock { color: var(--accent-bright); }
+
+  /* ===== Middle row ===== */
+  #middle {
+    flex: 1 1 auto;
+    display: flex;
+    min-height: 0;
+    position: relative;
+  }
+
+  /* ===== Center ===== */
+  #center {
+    flex: 1 1 auto;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    overflow: hidden;
+  }
+  #orb-wrap {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #three-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    z-index: 1;
+  }
+  #status-pill {
+    position: absolute;
+    top: 26px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    padding: 7px 18px;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    background: rgba(0, 6, 14, 0.45);
+    transition: color 0.4s, border-color 0.4s, background 0.4s, box-shadow 0.4s;
+    pointer-events: none;
+  }
+  /* status variants */
+  #status-pill.standby {
+    color: rgba(var(--accent-bright-rgb), 0.6);
+    border-color: rgba(var(--accent-rgb), 0.5);
+  }
+  #status-pill.listening {
+    color: var(--accent-bright);
+    border-color: var(--accent-bright);
+    background: rgba(var(--accent-rgb), 0.25);
+    box-shadow: 0 0 18px rgba(var(--accent-bright-rgb), 0.35);
+  }
+  #status-pill.processing {
+    color: var(--accent-bright);
+    border-color: var(--accent-bright);
+    background: rgba(var(--accent-rgb), 0.3);
+    animation: pillPulse 0.9s ease-in-out infinite;
+  }
+  #status-pill.responding {
+    color: var(--accent-bright);
+    border-color: var(--accent-bright);
+    background: rgba(var(--accent-rgb), 0.18);
+    box-shadow: 0 0 14px rgba(var(--accent-bright-rgb), 0.25);
+  }
+  @keyframes pillPulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(var(--accent-bright-rgb), 0.3); opacity: 0.7; }
+    50% { box-shadow: 0 0 26px rgba(var(--accent-bright-rgb), 0.7); opacity: 1; }
+  }
+
+  #orb-label {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: var(--label);
+    text-transform: uppercase;
+    text-align: center;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  #voice-note {
+    position: absolute;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: rgba(var(--accent-bright-rgb), 0.55);
+    text-transform: uppercase;
+    display: none;
+    pointer-events: none;
+  }
+
+  /* scrollbars */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(var(--accent-rgb), 0.35); }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 860px) {
+    #topright .seg.owner { display: none; }
+  }
+</style>
+</head>
+<body>
+  <canvas id="hexgrid"></canvas>
+
+  <div id="app">
+    <!-- TOP BAR -->
+    <header id="topbar">
+      <div id="brand">{{OPERATOR_DISPLAY}}</div>
+      <div id="topright">
+        <div class="seg owner">
+          <span class="k">OPERATOR</span>
+          <span class="val">{{OPERATOR_USER}}</span>
+        </div>
+        <div class="seg">
+          <span class="k">ATTACH</span>
+          <span class="val"><a href="#" id="attach-btn" style="color:#C6CAD1;text-decoration:none;">📎 IMAGE / DOC</a></span>
+        </div>
+        <div class="seg">
+          <span class="k">EMAIL</span>
+          <span class="val"><a href="/inbox" style="color:#C6CAD1;text-decoration:none;">INBOX</a></span>
+        </div>
+        <div class="seg">
+          <span class="k">MEMORY</span>
+          <span class="val"><a href="/memory" style="color:#C6CAD1;text-decoration:none;">NEURAL MAP</a></span>
+        </div>
+        <div class="seg">
+          <span class="k">LOCAL TIME</span>
+          <span class="val" id="clock">--:--:--</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- MIDDLE -->
+    <div id="middle">
+      <!-- CENTER -->
+      <main id="center">
+        <div id="orb-wrap">
+          <canvas id="three-canvas"></canvas>
+          <div id="status-pill" class="standby">STANDBY</div>
+          <div id="orb-label">TAP CORE TO SPEAK</div>
+          <div id="voice-note">VOICE UNAVAILABLE</div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="/js/voice.js"></script>
+  <script>
+  (function () {
+    "use strict";
+
+    /* =====================================================================
+       THEME (canvas / WebGL colors) — recolor alongside the CSS :root tokens
+       above. Used by the hex-grid background and the orb's inner glow. Keep in
+       sync with --accent / --accent-bright. CURRENT THEME: BLUE.
+       ===================================================================== */
+    const THEME = {
+      hexGrid:   "rgba(28, 109, 208, 0.10)",   // faint background grid
+      glowInner: "rgba(57, 180, 255, 0.90)",   // orb core (bright accent)
+      glowMid:   "rgba(28, 109, 208, 0.50)",   // mid (accent)
+      glowOuter: "rgba(12, 44, 96, 0.15)"      // outer falloff (dark accent)
+    };
+
+    /* ============================================================
+       HEX GRID BACKGROUND
+       ============================================================ */
+    const hexCanvas = document.getElementById("hexgrid");
+    const hexCtx = hexCanvas.getContext("2d");
+
+    function drawHexGrid() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      hexCanvas.width = w * dpr;
+      hexCanvas.height = h * dpr;
+      hexCanvas.style.width = w + "px";
+      hexCanvas.style.height = h + "px";
+      hexCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      hexCtx.clearRect(0, 0, w, h);
+
+      const r = 26;                 // hex radius
+      const hw = Math.sqrt(3) * r;  // horizontal spacing
+      const vh = 1.5 * r;           // vertical spacing
+      hexCtx.strokeStyle = THEME.hexGrid;
+      hexCtx.lineWidth = 1;
+
+      for (let row = -1, y = 0; y < h + r; row++, y = row * vh) {
+        const xOff = (row % 2) * (hw / 2);
+        for (let x = -hw; x < w + hw; x += hw) {
+          drawHex(x + xOff, y, r);
+        }
+      }
+    }
+    function drawHex(cx, cy, r) {
+      hexCtx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = Math.PI / 180 * (60 * i - 30);
+        const px = cx + r * Math.cos(a);
+        const py = cy + r * Math.sin(a);
+        if (i === 0) hexCtx.moveTo(px, py);
+        else hexCtx.lineTo(px, py);
+      }
+      hexCtx.closePath();
+      hexCtx.stroke();
+    }
+    drawHexGrid();
+
+    /* ============================================================
+       LIVE CLOCK
+       ============================================================ */
+    const clockEl = document.getElementById("clock");
+    function tickClock() {
+      const d = new Date();
+      const p = (n) => String(n).padStart(2, "0");
+      clockEl.textContent = p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+    }
+    tickClock();
+    setInterval(tickClock, 1000);
+
+    /* ============================================================
+       SIMPLEX-LIKE NOISE (3D)  — compact public-domain implementation
+       ============================================================ */
+    const SimplexNoise = (function () {
+      const grad3 = new Float32Array([
+        1,1,0, -1,1,0, 1,-1,0, -1,-1,0,
+        1,0,1, -1,0,1, 1,0,-1, -1,0,-1,
+        0,1,1, 0,-1,1, 0,1,-1, 0,-1,-1
+      ]);
+      function build() {
+        const p = new Uint8Array(256);
+        for (let i = 0; i < 256; i++) p[i] = i;
+        for (let i = 255; i > 0; i--) {
+          const n = Math.floor(Math.random() * (i + 1));
+          const t = p[i]; p[i] = p[n]; p[n] = t;
+        }
+        const perm = new Uint8Array(512);
+        const permMod12 = new Uint8Array(512);
+        for (let i = 0; i < 512; i++) {
+          perm[i] = p[i & 255];
+          permMod12[i] = perm[i] % 12;
+        }
+        return { perm, permMod12 };
+      }
+      const { perm, permMod12 } = build();
+      const F3 = 1 / 3, G3 = 1 / 6;
+
+      function noise3D(xin, yin, zin) {
+        let n0, n1, n2, n3;
+        const s = (xin + yin + zin) * F3;
+        const i = Math.floor(xin + s);
+        const j = Math.floor(yin + s);
+        const k = Math.floor(zin + s);
+        const t = (i + j + k) * G3;
+        const X0 = i - t, Y0 = j - t, Z0 = k - t;
+        const x0 = xin - X0, y0 = yin - Y0, z0 = zin - Z0;
+        let i1, j1, k1, i2, j2, k2;
+        if (x0 >= y0) {
+          if (y0 >= z0)      { i1=1;j1=0;k1=0; i2=1;j2=1;k2=0; }
+          else if (x0 >= z0) { i1=1;j1=0;k1=0; i2=1;j2=0;k2=1; }
+          else               { i1=0;j1=0;k1=1; i2=1;j2=0;k2=1; }
+        } else {
+          if (y0 < z0)       { i1=0;j1=0;k1=1; i2=0;j2=1;k2=1; }
+          else if (x0 < z0)  { i1=0;j1=1;k1=0; i2=0;j2=1;k2=1; }
+          else               { i1=0;j1=1;k1=0; i2=1;j2=1;k2=0; }
+        }
+        const x1 = x0 - i1 + G3, y1 = y0 - j1 + G3, z1 = z0 - k1 + G3;
+        const x2 = x0 - i2 + 2*G3, y2 = y0 - j2 + 2*G3, z2 = z0 - k2 + 2*G3;
+        const x3 = x0 - 1 + 3*G3, y3 = y0 - 1 + 3*G3, z3 = z0 - 1 + 3*G3;
+        const ii = i & 255, jj = j & 255, kk = k & 255;
+
+        let t0 = 0.6 - x0*x0 - y0*y0 - z0*z0;
+        if (t0 < 0) n0 = 0; else { const gi0 = permMod12[ii+perm[jj+perm[kk]]]*3; t0*=t0; n0 = t0*t0*(grad3[gi0]*x0+grad3[gi0+1]*y0+grad3[gi0+2]*z0); }
+        let t1 = 0.6 - x1*x1 - y1*y1 - z1*z1;
+        if (t1 < 0) n1 = 0; else { const gi1 = permMod12[ii+i1+perm[jj+j1+perm[kk+k1]]]*3; t1*=t1; n1 = t1*t1*(grad3[gi1]*x1+grad3[gi1+1]*y1+grad3[gi1+2]*z1); }
+        let t2 = 0.6 - x2*x2 - y2*y2 - z2*z2;
+        if (t2 < 0) n2 = 0; else { const gi2 = permMod12[ii+i2+perm[jj+j2+perm[kk+k2]]]*3; t2*=t2; n2 = t2*t2*(grad3[gi2]*x2+grad3[gi2+1]*y2+grad3[gi2+2]*z2); }
+        let t3 = 0.6 - x3*x3 - y3*y3 - z3*z3;
+        if (t3 < 0) n3 = 0; else { const gi3 = permMod12[ii+1+perm[jj+1+perm[kk+1]]]*3; t3*=t3; n3 = t3*t3*(grad3[gi3]*x3+grad3[gi3+1]*y3+grad3[gi3+2]*z3); }
+
+        return 32 * (n0 + n1 + n2 + n3);
+      }
+      return { noise3D };
+    })();
+
+    /* ============================================================
+       STATE MACHINE
+       ============================================================ */
+    const STATES = {
+      STANDBY:    { name: "STANDBY",    pill: "standby",    label: "TAP CORE TO SPEAK", amp: 0.10, speed: 0.10, spread: 0.04, glow: 0.25, rotate: 0.03 },
+      LISTENING:  { name: "LISTENING",  pill: "listening",  label: "LISTENING…",         amp: 0.22, speed: 0.45, spread: 0.10, glow: 0.5,  rotate: 0.10 },
+      PROCESSING: { name: "PROCESSING", pill: "processing", label: "PROCESSING…",        amp: 0.55, speed: 1.30, spread: 0.45, glow: 0.95, rotate: 0.22 },
+      RESPONDING: { name: "RESPONDING", pill: "responding", label: "RESPONDING…",        amp: 0.30, speed: 0.55, spread: 0.16, glow: 0.65, rotate: 0.08 }
+    };
+
+    // animated (interpolated) parameters
+    const params = {
+      amp: STATES.STANDBY.amp,
+      speed: STATES.STANDBY.speed,
+      spread: STATES.STANDBY.spread,
+      glow: STATES.STANDBY.glow,
+      rotate: STATES.STANDBY.rotate
+    };
+    let target = STATES.STANDBY;
+    let currentState = "STANDBY";
+    let stateTimers = [];
+
+    const pillEl = document.getElementById("status-pill");
+    const orbLabelEl = document.getElementById("orb-label");
+
+    function clearTimers() {
+      stateTimers.forEach((t) => clearTimeout(t));
+      stateTimers = [];
+    }
+
+    function setState(stateKey) {
+      currentState = stateKey;
+      target = STATES[stateKey];
+      pillEl.textContent = target.name;
+      pillEl.className = target.pill;
+      orbLabelEl.textContent = target.label;
+    }
+
+    /* ============================================================
+       VOICE — delegated to /js/voice.js (Aethon pipeline)
+       ============================================================ */
+    const voiceNoteEl = document.getElementById("voice-note");
+
+    OperatorVoice.init({
+      setState: setState,
+      clearTimers: clearTimers,
+      stateTimers: stateTimers,
+      getCurrentState: function () { return currentState; },
+      orbLabelEl: orbLabelEl,
+      voiceNoteEl: voiceNoteEl
+    });
+
+    function onOrbClick() {
+      OperatorVoice.onOrbClick();
+    }
+
+    /* ============================================================
+       THREE.JS PARTICLE ORB
+       ============================================================ */
+    const canvas = document.getElementById("three-canvas");
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+    camera.position.z = 4.2;
+
+    const orbGroup = new THREE.Group();
+    scene.add(orbGroup);
+
+    // ---- Build particle sphere ----
+    const PARTICLE_COUNT = 4200;
+    const positions = new Float32Array(PARTICLE_COUNT * 3);
+    const sizes = new Float32Array(PARTICLE_COUNT);
+    const colors = new Float32Array(PARTICLE_COUNT * 3);
+    // store base unit-direction + radius factor for each particle
+    const baseDir = new Float32Array(PARTICLE_COUNT * 3);
+    const radiusFactor = new Float32Array(PARTICLE_COUNT);
+    const seedOffset = new Float32Array(PARTICLE_COUNT);
+
+    const BASE_RADIUS = 1.35;
+
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      // even sphere distribution (fibonacci)
+      const phi = Math.acos(1 - 2 * (i + 0.5) / PARTICLE_COUNT);
+      const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+      const x = Math.sin(phi) * Math.cos(theta);
+      const y = Math.sin(phi) * Math.sin(theta);
+      const z = Math.cos(phi);
+
+      baseDir[i*3] = x;
+      baseDir[i*3+1] = y;
+      baseDir[i*3+2] = z;
+
+      // most particles near surface, some drift outward (fuzzy edge)
+      const drift = Math.pow(Math.random(), 3); // skew toward 0
+      radiusFactor[i] = 1 + drift * 0.5;
+      seedOffset[i] = Math.random() * 100;
+
+      positions[i*3]   = x * BASE_RADIUS;
+      positions[i*3+1] = y * BASE_RADIUS;
+      positions[i*3+2] = z * BASE_RADIUS;
+
+      sizes[i] = 0.012 + Math.random() * 0.022;
+
+      // white to light gray
+      const g = 0.72 + Math.random() * 0.28;
+      colors[i*3] = g;
+      colors[i*3+1] = g;
+      colors[i*3+2] = g;
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute("size", new THREE.BufferAttribute(sizes, 1));
+    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+    // Round soft particle sprite
+    const sprite = (function () {
+      const c = document.createElement("canvas");
+      c.width = c.height = 64;
+      const g = c.getContext("2d");
+      const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grd.addColorStop(0, "rgba(255,255,255,1)");
+      grd.addColorStop(0.35, "rgba(255,255,255,0.85)");
+      grd.addColorStop(1, "rgba(255,255,255,0)");
+      g.fillStyle = grd;
+      g.fillRect(0, 0, 64, 64);
+      const tex = new THREE.CanvasTexture(c);
+      return tex;
+    })();
+
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        uTexture: { value: sprite }
+      },
+      vertexShader: `
+        attribute float size;
+        varying vec3 vColor;
+        void main() {
+          vColor = color;
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = size * (300.0 / -mvPosition.z);
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D uTexture;
+        varying vec3 vColor;
+        void main() {
+          vec4 tex = texture2D(uTexture, gl_PointCoord);
+          if (tex.a < 0.02) discard;
+          gl_FragColor = vec4(vColor, tex.a);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      vertexColors: true
+    });
+
+    const points = new THREE.Points(geometry, material);
+    orbGroup.add(points);
+
+    // ---- Inner dark-red glow (sprite behind sphere) ----
+    const glowTex = (function () {
+      const c = document.createElement("canvas");
+      c.width = c.height = 256;
+      const g = c.getContext("2d");
+      const grd = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+      grd.addColorStop(0, THEME.glowInner);
+      grd.addColorStop(0.25, THEME.glowMid);
+      grd.addColorStop(0.6, THEME.glowOuter);
+      grd.addColorStop(1, "rgba(0, 0, 0, 0)");
+      g.fillStyle = grd;
+      g.fillRect(0, 0, 256, 256);
+      return new THREE.CanvasTexture(c);
+    })();
+    const glowMat = new THREE.SpriteMaterial({
+      map: glowTex,
+      color: 0xffffff,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: false
+    });
+    const glowSprite = new THREE.Sprite(glowMat);
+    glowSprite.scale.set(4.2, 4.2, 1);
+    glowSprite.position.z = -0.6;
+    scene.add(glowSprite);
+
+    // ---- Resize ----
+    function resize() {
+      const wrap = document.getElementById("orb-wrap");
+      const w = wrap.clientWidth;
+      const h = wrap.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+
+      // scale orb to roughly 40% of viewport height
+      const targetDiameter = window.innerHeight * 0.40;
+      // approximate fov-based scale so the orb fills target size
+      const dist = camera.position.z;
+      const visibleH = 2 * Math.tan((camera.fov * Math.PI / 180) / 2) * dist;
+      const pxPerUnit = h / visibleH;
+      const desiredUnits = targetDiameter / pxPerUnit;
+      const scale = desiredUnits / (BASE_RADIUS * 2);
+      orbGroup.scale.setScalar(scale);
+      glowSprite.scale.set(scale * 4.2, scale * 4.2, 1);
+
+      camera.updateProjectionMatrix();
+    }
+    resize();
+
+    /* ============================================================
+       ANIMATION LOOP
+       ============================================================ */
+    const posAttr = geometry.getAttribute("position");
+    let timeAccum = 0;
+    let lastTS = performance.now();
+
+    // ripple phase used by LISTENING / RESPONDING
+    let ripplePhase = 0;
+
+    function lerp(a, b, t) { return a + (b - a) * t; }
+
+    function animate(ts) {
+      const dt = Math.min((ts - lastTS) / 1000, 0.05);
+      lastTS = ts;
+
+      // smooth interpolate params toward target (no snapping)
+      const k = 1 - Math.pow(0.001, dt); // frame-rate independent ease
+      params.amp    = lerp(params.amp, target.amp, k);
+      params.speed  = lerp(params.speed, target.speed, k);
+      params.spread = lerp(params.spread, target.spread, k);
+      params.glow   = lerp(params.glow, target.glow, k);
+      params.rotate = lerp(params.rotate, target.rotate, k);
+
+      timeAccum += dt * params.speed;
+      ripplePhase += dt * (params.speed * 2.0);
+
+      const nScale = 1.4; // noise spatial frequency
+      const arr = posAttr.array;
+
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const ix = i * 3;
+        const dx = baseDir[ix];
+        const dy = baseDir[ix+1];
+        const dz = baseDir[ix+2];
+
+        // flowing surface noise
+        const n = SimplexNoise.noise3D(
+          dx * nScale + timeAccum,
+          dy * nScale + timeAccum * 0.8,
+          dz * nScale + seedOffset[i] * 0.01
+        );
+
+        // rhythmic ripple radiating from center (state-dependent)
+        let ripple = 0;
+        if (currentState === "LISTENING" || currentState === "RESPONDING") {
+          ripple = Math.sin(ripplePhase * 1.6 - radiusFactor[i] * 6.0 - i * 0.0008) * 0.12;
+        }
+
+        const displacement = n * params.amp + ripple + (radiusFactor[i] - 1) * params.spread * 3.0;
+        const r = BASE_RADIUS * radiusFactor[i] + displacement;
+
+        arr[ix]   = dx * r;
+        arr[ix+1] = dy * r;
+        arr[ix+2] = dz * r;
+      }
+      posAttr.needsUpdate = true;
+
+      // rotation
+      orbGroup.rotation.y += dt * params.rotate;
+      orbGroup.rotation.x += dt * params.rotate * 0.18;
+
+      // breathing scale
+      const breathe = 1 + Math.sin(ts * 0.0009) * 0.012;
+      points.scale.setScalar(breathe);
+
+      // glow intensity
+      glowMat.opacity = params.glow;
+
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+
+    /* ============================================================
+       EVENTS
+       ============================================================ */
+    canvas.addEventListener("click", onOrbClick);
+    canvas.addEventListener("touchstart", function (e) {
+      e.preventDefault();
+      onOrbClick();
+    }, { passive: false });
+
+    let resizeRAF = null;
+    window.addEventListener("resize", function () {
+      if (resizeRAF) cancelAnimationFrame(resizeRAF);
+      resizeRAF = requestAnimationFrame(function () {
+        drawHexGrid();
+        resize();
+      });
+    });
+
+    // initialize state visuals
+    setState("STANDBY");
+  })();
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <input type="file" id="attach-input" accept="image/*,.txt,.md,.csv,text/*,application/pdf,.pdf" style="display:none" />
+  <div id="attach-result" style="display:none;position:fixed;right:22px;bottom:22px;max-width:420px;max-height:60vh;overflow-y:auto;z-index:9000;background:rgba(10,10,10,0.96);border:1px solid rgba(var(--accent-rgb),0.55);border-radius:12px;padding:16px 18px;font-size:13px;line-height:1.55;color:#e0e0e0;box-shadow:0 20px 50px rgba(0,0,0,0.5)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="color:var(--accent-bright);font-size:11px;letter-spacing:0.14em">JARVIS — WHAT I SEE</b><span id="attach-close" style="cursor:pointer;color:#888">✕</span></div>
+    <div id="attach-body">…</div>
+  </div>
+  <script>
+  // Attach: image → Jarvis's eyes; text file → document ingestion.
+  (function () {
+    var btn = document.getElementById("attach-btn"), inp = document.getElementById("attach-input");
+    var box = document.getElementById("attach-result"), body = document.getElementById("attach-body");
+    if (!btn) return;
+    document.getElementById("attach-close").onclick = function(){ box.style.display="none"; };
+    btn.onclick = function(e){ e.preventDefault(); inp.click(); };
+    inp.onchange = function(){
+      var f = inp.files[0]; if (!f) return;
+      box.style.display="block"; body.textContent = "Reading " + f.name + "…";
+      var isPdf = f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+      function ingest(text){
+        fetch("/api/brain/ingest", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ text: text, filename: f.name }) })
+          .then(function(r){return r.json();}).then(function(d){ body.textContent = d.summary ? (d.summary + (d.stored?("\n\n(Remembered "+d.stored+" detail"+(d.stored>1?"s":"")+".)"):"")) : (d.error||"No response"); })
+          .catch(function(){ body.textContent = "Failed to read document."; });
+      }
+      var reader = new FileReader();
+      if (f.type.indexOf("image/") === 0) {
+        reader.onload = function(){
+          fetch("/api/brain/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ image: reader.result }) })
+            .then(function(r){return r.json();}).then(function(d){ body.textContent = d.text || d.error || "No response"; })
+            .catch(function(){ body.textContent = "Failed to analyze image."; });
+        };
+        reader.readAsDataURL(f);
+      } else if (isPdf && window.pdfjsLib) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        reader.onload = function(){
+          window.pdfjsLib.getDocument({ data: reader.result }).promise.then(function(pdf){
+            var pages = []; var chain = Promise.resolve();
+            for (var p=1; p<=pdf.numPages; p++) (function(p){
+              chain = chain.then(function(){ return pdf.getPage(p).then(function(pg){ return pg.getTextContent().then(function(tc){ pages.push(tc.items.map(function(i){return i.str;}).join(" ")); }); }); });
+            })(p);
+            chain.then(function(){ ingest(pages.join("\n\n").slice(0, 40000) || "(no extractable text)"); });
+          }).catch(function(){ body.textContent = "Couldn't read that PDF."; });
+        };
+        reader.readAsArrayBuffer(f);
+      } else {
+        reader.onload = function(){ ingest(reader.result); };
+        reader.readAsText(f);
+      }
+      inp.value = "";
+    };
+  })();
+  </script>
+  <script>
+  // Personality selector — switches Jarvis's voice + character live.
+  (function () {
+    var sel = document.getElementById("persona-select");
+    if (!sel) return;
+    fetch("/api/brain/personalities").then(function (r) { return r.json(); }).then(function (d) {
+      sel.innerHTML = (d.personalities || []).map(function (p) {
+        return '<option value="' + p.id + '"' + (p.id === d.current ? ' selected' : '') + '>' + p.name.toUpperCase() + '</option>';
+      }).join("");
+      sel.title = (d.personalities.find(function (p) { return p.id === d.current; }) || {}).blurb || "";
+    }).catch(function () {});
+    sel.addEventListener("change", function () {
+      fetch("/api/brain/personality", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: sel.value })
+      }).catch(function () {});
+    });
+  })();
+  </script>
+</body>
+</html>
