@@ -231,15 +231,15 @@
         </div>
         <div class="seg">
           <span class="k">ATTACH</span>
-          <span class="val"><a href="#" id="attach-btn" style="color:#C6CAD1;text-decoration:none;">📎 IMAGE / DOC</a></span>
+          <span class="val"><a href="#" id="attach-btn" style="color:var(--silver);text-decoration:none;">📎 IMAGE / DOC</a></span>
         </div>
         <div class="seg">
           <span class="k">EMAIL</span>
-          <span class="val"><a href="/inbox" style="color:#C6CAD1;text-decoration:none;">INBOX</a></span>
+          <span class="val"><a href="/inbox" style="color:var(--silver);text-decoration:none;">INBOX</a></span>
         </div>
         <div class="seg">
           <span class="k">MEMORY</span>
-          <span class="val"><a href="/memory" style="color:#C6CAD1;text-decoration:none;">NEURAL MAP</a></span>
+          <span class="val"><a href="/memory" style="color:var(--silver);text-decoration:none;">NEURAL MAP</a></span>
         </div>
         <div class="seg">
           <span class="k">LOCAL TIME</span>
@@ -714,11 +714,11 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <input type="file" id="attach-input" accept="image/*,.txt,.md,.csv,text/*,application/pdf,.pdf" style="display:none" />
   <div id="attach-result" style="display:none;position:fixed;right:22px;bottom:22px;max-width:420px;max-height:60vh;overflow-y:auto;z-index:9000;background:rgba(10,10,10,0.96);border:1px solid rgba(var(--accent-rgb),0.55);border-radius:12px;padding:16px 18px;font-size:13px;line-height:1.55;color:#e0e0e0;box-shadow:0 20px 50px rgba(0,0,0,0.5)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="color:var(--accent-bright);font-size:11px;letter-spacing:0.14em">JARVIS — WHAT I SEE</b><span id="attach-close" style="cursor:pointer;color:#888">✕</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="color:var(--accent-bright);font-size:11px;letter-spacing:0.14em">{{OPERATOR_DISPLAY}} — WHAT I SEE</b><span id="attach-close" style="cursor:pointer;color:#888">✕</span></div>
     <div id="attach-body">…</div>
   </div>
   <script>
-  // Attach: image → Jarvis's eyes; text file → document ingestion.
+  // Attach: image -> vision analysis; text/PDF -> document ingestion.
   (function () {
     var btn = document.getElementById("attach-btn"), inp = document.getElementById("attach-input");
     var box = document.getElementById("attach-result"), body = document.getElementById("attach-body");
@@ -763,7 +763,7 @@
   })();
   </script>
   <script>
-  // Personality selector — switches Jarvis's voice + character live.
+  // Personality selector — switches the operator's voice + character live.
   (function () {
     var sel = document.getElementById("persona-select");
     if (!sel) return;

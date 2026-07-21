@@ -438,7 +438,7 @@
 
   // Fire-and-forget: never block the next turn on memory extraction. We capture and
   // clear the batch synchronously (no race with the next turn's pushes), then let
-  // the extraction run in the background while Jarvis is already listening again.
+  // the extraction run in the background while the operator is already listening again.
   function flushTranscriptToMemory() {
     if (sessionTranscript.length < 2) {
       sessionTranscript = [];
@@ -468,7 +468,7 @@
       const res = await fetch("/api/brain/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userText, sessionId: "arlo-session" })
+        body: JSON.stringify({ message: userText, sessionId: "operator-session" })
       });
 
       if (!res.ok || !res.body) throw new Error("Brain stream failed");
@@ -498,8 +498,8 @@
             });
           }
           if (data.type === "navigate" && data.tab) {
-            // Jarvis pulls up an agent's dashboard in the shell (he keeps speaking over it).
-            try { window.parent.postMessage({ type: "arlo-navigate", tab: data.tab }, "*"); } catch (_) {}
+            // Ask the shell to open a dashboard tab (operator keeps speaking over it).
+            try { window.parent.postMessage({ type: "operator-navigate", tab: data.tab }, "*"); } catch (_) {}
           }
           if (data.type === "curiosity" && data.question) {
             sessionTranscript.push({ role: "assistant", content: data.question, ts: Date.now() });
