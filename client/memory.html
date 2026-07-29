@@ -3,118 +3,109 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>J.A.R.V.I.S // Neural Map</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<title>Totally Outdoors OS · Memory</title>
+<link rel="stylesheet" href="/fonts.css" />
+<link rel="stylesheet" href="/signal.css" />
+<script src="/theme-sync.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <style>
-  :root {
-    --app-bg:#F4F7F9; --card:#FFFFFF; --card-2:#F8FAFB;
-    --border:#E5EBEF; --border-strong:#D3DDE3;
-    --text:#0E1B24; --body:#33454F; --muted:#6B7C86; --faint:#9AA9B2;
-    --red:#D9301B; --red-hover:#BC2714; --red-soft:rgba(217,48,27,0.08);
-    --teal:#15A6BC; --teal-deep:#0E8194; --teal-soft:rgba(21,166,188,0.10);
-    --success:#12B76A; --danger:#E5484D; --info:#2563EB;
-    --shadow-sm:0 1px 2px rgba(14,27,36,0.06);
-    --shadow:0 1px 3px rgba(14,27,36,0.07), 0 10px 26px -16px rgba(14,27,36,0.22);
-    --shadow-lg:0 24px 60px -20px rgba(14,27,36,0.28);
-    --bg-0: var(--app-bg);
-    --bg-1: var(--card);
-    --bg-2: var(--card-2);
-    --line: var(--border);
-    --line-strong: var(--border-strong);
-    --orange: var(--teal);
-    --orange-bright: var(--teal-deep);
-    --dim: var(--muted);
-    --dimmer: var(--faint);
-    --ok: var(--success);
-    --sans:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    --mono:'JetBrains Mono',monospace;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--app-bg);
-    color: var(--body);
-    font-family: var(--sans);
-    height: 100vh;
-    overflow: hidden;
-  }
+  /* ── Screen aliases ───────────────────────────────────────────────────
+     The panel renderer writes a couple of inline var(--dim) / var(--text)
+     references, so those two names are kept and pointed at signal tokens. */
+  :root { --dim: var(--muted); --text: var(--ink); }
+
+  body { height: 100vh; overflow: hidden; color: var(--ink-2); }
+
   #topbar {
     height: 52px; display: flex; align-items: center; justify-content: space-between;
     padding: 0 22px; border-bottom: 1px solid var(--border);
-    background: var(--card); box-shadow: var(--shadow-sm);
+    background: var(--panel); box-shadow: var(--sh-rest);
   }
-  #topbar a { color: var(--teal-deep); text-decoration: none; font-family: var(--sans); font-weight: 600; font-size: 12px; letter-spacing: 0.04em; }
-  #title { font-family: var(--sans); font-weight: 700; font-size: 14px; letter-spacing: 0.06em; color: var(--text); }
+  #topbar a { color: var(--brand); text-decoration: none; font-weight: 600; font-size: 12px; letter-spacing: .05em; }
+  #title { font-weight: 700; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink); }
+
   #layout { display: flex; height: calc(100vh - 52px - 36px); }
-  #graph-wrap { flex: 1; position: relative; background: var(--app-bg); }
+  #graph-wrap { flex: 1; position: relative; background: var(--bg); }
   #graph { width: 100%; height: 100%; }
+
   #panel {
     width: 320px; border-left: 1px solid var(--border);
-    background: var(--card); padding: 18px; overflow-y: auto;
+    background: var(--panel); padding: 18px; overflow-y: auto;
   }
-  #panel h3 { font-family: var(--sans); font-weight: 700; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  #panel h3 {
+    font-weight: 700; font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--ink-3); margin-bottom: 12px;
+  }
+  #panel h2 { color: var(--ink); }
+
   #bottombar {
     height: 36px; display: flex; align-items: center; gap: 16px;
-    padding: 0 22px; border-top: 1px solid var(--border);
-    background: var(--card);
-    font-family: var(--sans); font-weight: 600; font-size: 11px; letter-spacing: 0.03em; color: var(--muted);
+    padding: 0 22px; border-top: 1px solid var(--border); background: var(--panel);
+    font-family: var(--mono); font-weight: 600; font-size: 11px; letter-spacing: .03em; color: var(--muted);
   }
   .stat-sep { color: var(--border-strong); }
-  .type-badge { display: inline-block; padding: 2px 8px; font-size: 9px; border-radius: 20px; margin-bottom: 8px; color: #fff; font-weight: 600; }
-  .fact-row { font-size: 12px; margin-bottom: 8px; color: var(--body); line-height: 1.4; }
-  .bar-bg { height: 4px; background: var(--card-2); border: 1px solid var(--border); border-radius: 3px; margin-top: 4px; }
-  .bar-fill { height: 100%; background: var(--teal); border-radius: 3px; width: 0; transition: width 0.8s ease; }
+
+  .type-badge {
+    display: inline-block; padding: 2px 9px; font-size: 9.5px; border-radius: var(--r-pill);
+    margin-bottom: 8px; color: #fff; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    text-shadow: 0 1px 2px rgba(0,0,0,.35); /* keeps the label legible on every node colour */
+  }
+  .fact-row { font-size: 12px; margin-bottom: 8px; color: var(--ink-2); line-height: 1.45; }
+
+  .bar-bg { height: 4px; background: var(--fill); border: 1px solid var(--border); border-radius: 3px; margin-top: 4px; }
+  .bar-fill { height: 100%; background: var(--indigo); border-radius: 3px; width: 0; transition: width .8s var(--ease); }
   .dim-row { margin-bottom: 10px; }
   .dim-label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; }
-  .dim-name { font-family: var(--sans); font-weight: 600; color: var(--muted); letter-spacing: 0.02em; }
-  .dim-pct { color: var(--teal-deep); font-weight: 600; }
+  .dim-name { font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+  .dim-pct { color: var(--indigo); font-weight: 700; font-family: var(--mono); }
 
   #topright { display: flex; align-items: center; gap: 16px; }
-  #sync { font-size: 11px; color: var(--muted); }
+  #sync { font-size: 11px; color: var(--muted); font-family: var(--mono); }
   #about-btn {
-    font-family: var(--sans); font-weight: 600; font-size: 12px; letter-spacing: 0.02em;
-    color: var(--teal-deep); background: var(--card); border: 1px solid var(--border);
-    padding: 6px 12px; border-radius: 8px; cursor: pointer; transition: all 0.15s ease;
-    box-shadow: var(--shadow-sm);
+    font-family: inherit; font-weight: 600; font-size: 12px; letter-spacing: .02em;
+    color: var(--ink-2); background: var(--panel); border: 1px solid var(--border-strong);
+    padding: 6px 12px; border-radius: var(--r-btn); cursor: pointer;
+    transition: background .15s var(--ease), border-color .15s var(--ease), color .15s var(--ease);
+    box-shadow: var(--sh-rest);
   }
-  #about-btn:hover { background: var(--teal-soft); border-color: var(--teal); }
+  #about-btn:hover { background: var(--brand-bg); border-color: var(--brand); color: var(--brand); }
 
   #about-overlay {
     position: fixed; inset: 0; z-index: 10000;
-    background: rgba(14,27,36,0.42); backdrop-filter: blur(2px);
+    background: rgba(0,0,0,.45); backdrop-filter: blur(2px);
     display: none; align-items: center; justify-content: center; padding: 24px;
   }
   #about-overlay.open { display: flex; }
   #about-card {
     position: relative; max-width: 640px; max-height: 86vh; overflow-y: auto;
-    background: var(--card);
-    border: 1px solid var(--border); border-radius: 16px; padding: 30px 34px;
-    box-shadow: var(--shadow-lg);
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--r-card); padding: 30px 34px; box-shadow: var(--sh-lift);
   }
-  #about-card h2 { font-family: var(--sans); font-weight: 700; font-size: 18px; letter-spacing: 0.01em; color: var(--text); margin-bottom: 16px; }
-  #about-card h3 { font-family: var(--sans); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--teal-deep); margin: 22px 0 10px; }
-  #about-card p { font-size: 13px; line-height: 1.7; color: var(--body); margin-bottom: 10px; }
-  #about-card p.lede { font-size: 14px; color: var(--text); }
-  #about-card p.foot { font-size: 11px; color: var(--muted); margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
+  #about-card h2 { font-weight: 700; font-size: 18px; letter-spacing: -.01em; color: var(--ink); margin-bottom: 16px; }
+  #about-card h3 {
+    font-weight: 700; font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--indigo); margin: 22px 0 10px;
+  }
+  #about-card p { font-size: 13px; line-height: 1.7; color: var(--ink-2); margin-bottom: 10px; }
+  #about-card p.lede { font-size: 14px; color: var(--ink); }
+  #about-card p.foot { font-size: 11.5px; color: var(--muted); margin-top: 18px; border-top: 1px solid var(--divider); padding-top: 14px; }
   #about-card ul { list-style: none; margin: 0; padding: 0; }
-  #about-card li { font-size: 12.5px; line-height: 1.65; color: var(--body); padding-left: 16px; position: relative; margin-bottom: 10px; }
-  #about-card li::before { content: '▸'; position: absolute; left: 0; color: var(--teal); }
-  #about-card b { color: var(--text); }
+  #about-card li { font-size: 12.5px; line-height: 1.65; color: var(--ink-2); padding-left: 16px; position: relative; margin-bottom: 10px; }
+  #about-card li::before { content: '▸'; position: absolute; left: 0; color: var(--indigo); }
+  #about-card b { color: var(--ink); }
   #about-close {
     position: absolute; top: 16px; right: 18px; background: transparent; border: none;
     color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1;
   }
-  #about-close:hover { color: var(--red); }
+  #about-close:hover { color: var(--brand); }
 </style>
 </head>
 <body>
   <header id="topbar">
-    <a href="/">← BACK TO CORE</a>
-    <div id="title">J.A.R.V.I.S // NEURAL MAP</div>
+    <a href="/">← Back to core</a>
+    <div id="title">Jarvis · Neural Map</div>
     <div id="topright">
-      <button id="about-btn" type="button">ⓘ ABOUT</button>
+      <button id="about-btn" type="button">ⓘ About</button>
       <span id="sync">SYNCING…</span>
     </div>
   </header>
@@ -122,7 +113,7 @@
   <div id="about-overlay" aria-hidden="true">
     <div id="about-card">
       <button id="about-close" type="button" aria-label="Close">✕</button>
-      <h2>THE NEURAL MAP</h2>
+      <h2>The Neural Map</h2>
       <p class="lede">This is Jarvis's mind — a live picture of everything he knows about Joe and Totally Outdoors LLC. Every client, project, value, and decision is a <b>node</b>; every relationship is an <b>edge</b>. It grows after every conversation.</p>
 
       <h3>WHY IT MATTERS</h3>
@@ -154,9 +145,10 @@
 (function () {
   "use strict";
 
+  // Node colours are signal tokens so the graph re-themes with the page.
   const NODE_COLORS = {
-    client: "#15A6BC", person: "#0E8194", company: "#D9301B",
-    project: "#12B76A", tool: "#2563EB", concept: "#8B5CF6", unknown: "#9AA9B2"
+    client: "var(--indigo)", person: "var(--indigo-deep)", company: "var(--brand)",
+    project: "var(--green)", tool: "var(--amber)", concept: "var(--money)", unknown: "var(--faint)"
   };
 
   let nodes = [], edges = [], allFacts = [], simulation = null;
@@ -240,7 +232,7 @@
       return sid === d.id || tid === d.id;
     });
     let html = "<div class='type-badge' style='background:" + (NODE_COLORS[d.type] || NODE_COLORS.unknown) + "'>" + d.type + "</div>";
-    html += "<h2 style='font-family:Inter;font-weight:700;font-size:16px;margin-bottom:12px;color:var(--text);'>" + d.name + "</h2>";
+    html += "<h2 style='font-family:var(--sans);font-weight:700;font-size:16px;margin-bottom:12px;color:var(--text);'>" + d.name + "</h2>";
     if (conns.length) {
       html += "<h3>CONNECTIONS</h3>";
       conns.forEach(function (e) {
@@ -261,20 +253,21 @@
 
     if (!nodes.length) {
       graphGroup.append("text").attr("x", width / 2).attr("y", height / 2 - 10)
-        .attr("text-anchor", "middle").style("font-family", "Inter").style("font-weight", "700").style("font-size", "14px")
-        .style("fill", "#9AA9B2").style("letter-spacing", "1px").text("NEURAL MAP // EMPTY");
+        .attr("text-anchor", "middle").style("font-family", "var(--sans)").style("font-weight", "700").style("font-size", "14px")
+        .style("fill", "var(--ink-3)").style("letter-spacing", "1px").text("NEURAL MAP // EMPTY");
       graphGroup.append("text").attr("x", width / 2).attr("y", height / 2 + 20)
-        .attr("text-anchor", "middle").style("font-size", "12px").style("fill", "#9AA9B2")
+        .attr("text-anchor", "middle").style("font-size", "12px").style("fill", "var(--muted)")
+        .style("font-family", "var(--sans)")
         .text("Start a conversation to grow the memory graph.");
       return;
     }
 
     const link = graphGroup.append("g").selectAll("line").data(edges).join("line")
-      .style("stroke", "rgba(21,166,188,0.35)").style("stroke-width", function (d) { return Math.max(0.5, (d.strength || 1) * 2); });
+      .style("stroke", "var(--border-strong)").style("stroke-width", function (d) { return Math.max(0.5, (d.strength || 1) * 2); });
 
     const node = graphGroup.append("g").selectAll("circle").data(nodes).join("circle")
       .attr("r", function (d) { return nodeRadius(d); })
-      .attr("fill", function (d) { return NODE_COLORS[d.type] || NODE_COLORS.unknown; })
+      .style("fill", function (d) { return NODE_COLORS[d.type] || NODE_COLORS.unknown; })
       .attr("filter", "url(#glow-orange)")
       .style("cursor", "pointer")
       .call(d3.drag()
@@ -286,7 +279,7 @@
 
     const labels = graphGroup.append("g").selectAll("text").data(nodes).join("text")
       .text(function (d) { return d.name.length > 18 ? d.name.slice(0, 15) + "…" : d.name; })
-      .style("font-family", "Inter").style("font-weight", "600").style("font-size", "10px").style("fill", "#33454F")
+      .style("font-family", "var(--sans)").style("font-weight", "600").style("font-size", "10px").style("fill", "var(--ink-2)")
       .attr("text-anchor", "middle").attr("dy", function (d) { return nodeRadius(d) + 14; });
 
     simulation = d3.forceSimulation(nodes)

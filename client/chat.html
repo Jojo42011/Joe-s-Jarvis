@@ -3,116 +3,115 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>Jarvis — Chat</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<title>Totally Outdoors OS · Chat</title>
+<link rel="stylesheet" href="/fonts.css" />
+<link rel="stylesheet" href="/signal.css" />
+<script src="/theme-sync.js"></script>
 <style>
-  :root {
-    --bg: #0B0D0F;
-    --panel: #141719;
-    --panel-2: #1A1E21;
-    --line: rgba(255,255,255,0.08);
-    --text: #ECEFF1;
-    --muted: #8B979E;
-    --accent: #C81A10;
-    --accent-bright: #F5382A;
-    --accent-glow: rgba(245,56,42,0.45);
-    --column: 760px;
-    --mono: 'JetBrains Mono', monospace;
-    --sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
-  body { display: flex; flex-direction: column; overflow: hidden; }
+  /* ── Chat is a full-height column: header, thread, composer. ─────────── */
+  :root { --column: 760px; }
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
 
   /* ── Header ── */
   header {
     flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
-    padding: 16px max(22px, env(safe-area-inset-right)) 16px max(22px, env(safe-area-inset-left));
+    padding: 12px max(22px, env(safe-area-inset-right)) 12px max(22px, env(safe-area-inset-left));
+    background: var(--panel); border-bottom: 1px solid var(--border);
   }
-  .brand { display: flex; align-items: center; gap: 9px; font-family: var(--mono); font-size: 12px; font-weight: 600; letter-spacing: 0.34em; text-transform: uppercase; }
-  .brand .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent-glow); animation: breathe 3s ease-in-out infinite; }
-  @keyframes breathe { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
-  #newchat { background: none; border: none; color: var(--muted); font-family: var(--sans); font-size: 13px; cursor: pointer; padding: 8px 10px; border-radius: 8px; transition: color .15s, background .15s; }
-  #newchat:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+  .brand {
+    display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 700;
+    letter-spacing: .22em; text-transform: uppercase; color: var(--ink);
+  }
+  .brand .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--green-bg); animation: breathe 3s ease-in-out infinite; }
+  @keyframes breathe { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
+  @media (prefers-reduced-motion:reduce) { .brand .dot { animation: none; } }
 
   /* ── Thread ── */
   #scroll { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
-  #thread { max-width: var(--column); margin: 0 auto; padding: 8px 22px 24px; display: flex; flex-direction: column; gap: 26px; }
+  #thread { max-width: var(--column); margin: 0 auto; padding: 18px 22px 24px; display: flex; flex-direction: column; gap: 18px; }
 
   /* Empty state */
   #empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 24px; min-height: 55vh; }
-  #empty h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; }
-  #empty p { margin-top: 10px; color: var(--muted); font-size: 15px; }
-  #chips { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 26px; }
+  #empty h1 { font-size: 30px; font-weight: 700; letter-spacing: -.02em; color: var(--ink); }
+  #empty p { margin-top: 10px; color: var(--muted); font-size: 14.5px; }
+  #chips { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 24px; }
   .chip {
-    border: 1px solid var(--line); background: transparent; color: var(--text);
-    font-family: var(--sans); font-size: 13.5px; padding: 10px 16px; border-radius: 100px; cursor: pointer;
-    transition: background .15s, border-color .15s;
+    font-family: inherit; font-size: 13px; font-weight: 600; padding: 9px 16px; cursor: pointer;
+    border: 1px solid var(--border-strong); border-radius: var(--r-pill);
+    background: var(--panel); color: var(--ink-2); box-shadow: var(--sh-rest);
+    transition: border-color .15s var(--ease), color .15s var(--ease), background .15s var(--ease);
   }
-  .chip:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.18); }
+  .chip:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-bg); }
 
-  /* Messages */
+  /* Messages — both sides are cards; Joe's turn is brand-tinted, Jarvis's is a panel. */
   .turn { display: flex; }
   .turn.user { justify-content: flex-end; }
   .turn.user .bubble {
-    max-width: 82%; background: var(--panel-2); border: 1px solid var(--line);
-    padding: 12px 16px; border-radius: 18px 18px 4px 18px; font-size: 14.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+    max-width: 82%; background: var(--brand-bg); color: var(--ink);
+    border: 1px solid var(--border); border-radius: var(--r-card) var(--r-card) 4px var(--r-card);
+    padding: 12px 16px; font-size: 14.5px; line-height: 1.6;
+    white-space: pre-wrap; word-break: break-word; box-shadow: var(--sh-rest);
   }
-  .turn.bot { gap: 14px; align-items: flex-start; }
-  .avatar {
+  .turn.bot { gap: 12px; align-items: flex-start; }
+  .turn.bot .avatar {
     flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%; margin-top: 2px;
-    background: radial-gradient(circle at 38% 35%, rgba(245,56,42,0.9), rgba(200,26,16,0.3) 60%, transparent 75%);
-    box-shadow: 0 0 14px var(--accent-glow), inset 0 0 6px rgba(255,255,255,0.25);
+    background: var(--mark); box-shadow: var(--sh-rest);
   }
-  .bot .body { font-size: 14.5px; line-height: 1.72; max-width: calc(100% - 46px); word-break: break-word; }
+  .bot .body {
+    flex: 1 1 auto; font-size: 14.5px; line-height: 1.7; max-width: calc(100% - 42px); word-break: break-word;
+    background: var(--panel); color: var(--ink-2);
+    border: 1px solid var(--border); border-radius: var(--r-card) var(--r-card) var(--r-card) 4px;
+    padding: 12px 16px; box-shadow: var(--sh-rest);
+  }
   .bot .body p { margin: 0 0 10px; } .bot .body p:last-child { margin-bottom: 0; }
-  .bot .body code { font-family: var(--mono); font-size: 12.5px; background: rgba(255,255,255,0.07); padding: 2px 6px; border-radius: 5px; }
-  .bot .body pre { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; overflow-x: auto; margin: 10px 0; }
+  .bot .body code { font-family: var(--mono); font-size: 12.5px; background: var(--fill); color: var(--ink); padding: 2px 6px; border-radius: 5px; }
+  .bot .body pre { background: var(--panel-alt); border: 1px solid var(--border); border-radius: var(--r-btn); padding: 12px 14px; overflow-x: auto; margin: 10px 0; }
   .bot .body pre code { background: none; padding: 0; }
   .bot .body ul { margin: 8px 0 8px 20px; } .bot .body li { margin: 4px 0; }
-  .bot .body b { font-weight: 600; }
-  .bot .body .err { color: #E5484D; }
-  .caret { display: inline-block; width: 7px; height: 15px; background: var(--accent); margin-left: 2px; vertical-align: -2px; animation: blink 0.9s steps(1) infinite; }
+  .bot .body b { font-weight: 700; color: var(--ink); }
+  .bot .body .err { color: var(--money); }
+  .caret { display: inline-block; width: 7px; height: 15px; background: var(--brand); margin-left: 2px; vertical-align: -2px; animation: blink .9s steps(1) infinite; }
   @keyframes blink { 50% { opacity: 0; } }
 
   /* Typing dots */
-  .dots { display: inline-flex; gap: 5px; padding: 6px 0; }
+  .dots { display: inline-flex; gap: 5px; padding: 4px 0; }
   .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: hop 1.2s ease-in-out infinite; }
-  .dots i:nth-child(2) { animation-delay: 0.15s; } .dots i:nth-child(3) { animation-delay: 0.3s; }
+  .dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
   @keyframes hop { 0%,60%,100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-4px); opacity: 1; } }
 
   /* ── Composer ── */
-  #composer-wrap { flex: 0 0 auto; padding: 10px max(18px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); }
+  #composer-wrap {
+    flex: 0 0 auto;
+    padding: 10px max(18px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+    background: var(--bg);
+  }
   #composer {
     max-width: var(--column); margin: 0 auto; display: flex; align-items: flex-end; gap: 10px;
-    background: var(--panel); border: 1px solid var(--line); border-radius: 26px; padding: 8px 8px 8px 20px;
-    transition: border-color .15s, box-shadow .15s;
+    background: var(--panel); border: 1px solid var(--border-strong); border-radius: 26px;
+    padding: 8px 8px 8px 18px; box-shadow: var(--sh-rest);
+    transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
   }
-  #composer:focus-within { border-color: rgba(245,56,42,0.5); box-shadow: 0 0 0 3px rgba(245,56,42,0.12); }
+  #composer:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-bg); }
   #input {
-    flex: 1; background: none; border: none; outline: none; resize: none; color: var(--text);
-    font-family: var(--sans); font-size: 14.5px; line-height: 1.55; padding: 8px 0; max-height: 160px;
+    flex: 1; width: auto; background: none; border: none; outline: none; resize: none; color: var(--ink);
+    font-family: inherit; font-size: 14.5px; line-height: 1.55; padding: 8px 0; max-height: 160px; border-radius: 0;
   }
+  #input:focus { outline: none; border: none; box-shadow: none; }
   #input::placeholder { color: var(--muted); }
   #send {
     flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer;
-    background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center;
-    transition: opacity .15s, transform .15s;
+    background: var(--brand); color: #fff; display: flex; align-items: center; justify-content: center;
+    transition: opacity .15s var(--ease), transform .15s var(--ease), background .15s var(--ease);
   }
-  #send:disabled { opacity: 0.35; cursor: default; }
-  #send:not(:disabled):hover { transform: translateY(-1px); }
+  #send:not(:disabled):hover { background: var(--brand-deep); transform: translateY(-1px); }
+  #send:disabled { opacity: .35; cursor: default; }
   #send svg { width: 17px; height: 17px; }
   #hint { max-width: var(--column); margin: 8px auto 0; text-align: center; }
-  #hint span { display: inline-block; width: 44px; height: 4px; border-radius: 4px; background: rgba(255,255,255,0.14); }
-
-  ::-webkit-scrollbar { width: 8px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 8px; }
+  #hint span { display: inline-block; width: 44px; height: 4px; border-radius: 4px; background: var(--border-strong); }
 
   @media (max-width: 640px) {
-    #empty h1 { font-size: 25px; }
+    #empty h1 { font-size: 24px; }
     .turn.user .bubble { max-width: 92%; }
   }
 </style>
@@ -120,7 +119,7 @@
 <body>
   <header>
     <div class="brand"><span class="dot"></span><span id="brand-name">JARVIS</span></div>
-    <button id="newchat">New chat</button>
+    <button id="newchat" class="btn btn-sm btn-ghost">New chat</button>
   </header>
 
   <div id="scroll">
@@ -208,7 +207,7 @@
     var blocks = [];
     s = s.replace(/```([\s\S]*?)```/g, function (_, code) {
       blocks.push("<pre><code>" + code.replace(/^\n|\n$/g, "") + "</code></pre>");
-      return " " + (blocks.length - 1) + " ";
+      return " " + (blocks.length - 1) + " ";
     });
     s = s.replace(/`([^`\n]+)`/g, "<code>$1</code>");
     s = s.replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>");
@@ -222,7 +221,7 @@
     });
     if (list) out.push("<ul>" + list.join("") + "</ul>");
     var html = out.join("");
-    blocks.forEach(function (b, i) { html = html.replace(" " + i + " ", b); });
+    blocks.forEach(function (b, i) { html = html.replace(" " + i + " ", b); });
     return html || "<p></p>";
   }
 
