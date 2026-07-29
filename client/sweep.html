@@ -2,7 +2,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Totally Outdoors OS · What you missed</title>
 <link rel="stylesheet" href="/fonts.css" /><link rel="stylesheet" href="/signal.css" />
-<script src="/theme-sync.js"></script></head><body><div class="wrap">
+<script src="/theme-sync.js"></script>
+<style>
+  /* Pill tabs for the line-by-line strip. The active pill inverts to ink so the
+     selected channel is unmistakable; each pill carries its own count. */
+  .tabstrip {
+    display:flex; flex-wrap:wrap; gap:8px;
+    padding:14px 18px 0; border-top:1px solid var(--divider);
+  }
+  .tabpill {
+    display:inline-flex; align-items:center; gap:8px;
+    padding:7px 13px; border-radius:999px; cursor:pointer;
+    background:var(--fill); border:1px solid var(--border);
+    color:var(--ink-2); font-size:13px; font-weight:600; line-height:1;
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tabpill:hover { border-color:var(--border-strong); color:var(--ink); }
+  .tabpill .c {
+    font-family:var(--mono); font-size:11.5px; font-weight:700;
+    padding:2px 7px; border-radius:999px; background:var(--panel); color:var(--muted);
+  }
+  .tabpill.on { background:var(--ink); border-color:var(--ink); color:var(--panel); }
+  .tabpill.on .c { background:rgba(255,255,255,.18); color:#fff; }
+</style>
+</head><body><div class="wrap">
 
   <div class="page-head">
     <div class="between">
@@ -124,7 +147,9 @@ function getJson(url) {
 /* ── State ────────────────────────────────────────────────────────────── */
 var days = 7;
 var data = null;
-var openSections = { calls: false, leads: false, other: false, emails: false };
+// Which line-by-line tab is showing. Calls first — it is the channel with the
+// most traffic and the one a missed item costs the most in.
+var activeTab = 'calls';
 
 /* ── Render ───────────────────────────────────────────────────────────── */
 function kpi(n, label, cls) {
@@ -229,22 +254,6 @@ function renderUnactioned() {
   el.innerHTML = head + notice + body + '</div></div>';
 }
 
-function section(key, title, count, contentHtml, capNote) {
-  var open = !!openSections[key];
-  return '<div class="card">' +
-    '<div class="head" data-section="' + key + '" style="cursor:pointer">' +
-      '<h2>' + esc(title) + '</h2>' +
-      '<div class="flex">' +
-        '<span class="badge quiet">' + esc(count) + '</span>' +
-        '<button class="btn btn-sm btn-ghost" data-section="' + key + '">' + (open ? 'Hide' : 'Show') + '</button>' +
-      '</div>' +
-    '</div>' +
-    '<div class="' + (open ? 'fade-in' : 'hide') + '">' + contentHtml +
-      (capNote ? '<div class="meta" style="padding:10px 18px;border-top:1px solid var(--divider)">' + esc(capNote) + '</div>' : '') +
-    '</div>' +
-  '</div>';
-}
-
 function emptyBlock(title, scope) {
   return '<div class="empty"><div class="t">' + esc(title) + '</div><div class="scope">' + esc(scope) + '</div></div>';
 }
@@ -312,12 +321,41 @@ function renderSections() {
       'Scope: the connected mailboxes, ' + sinceLabel + '. Read from the 200 most recent messages Jarvis has synced, then filtered to this window.');
   }
 
+  // One card, pill tabs across the top — the whole window is line-by-line in a
+  // single place instead of four separate collapsibles. Each tab carries its own
+  // count so Joe can see the shape of the window without opening anything.
+  var TABS = [
+    { key:'calls',  label:'Calls',       count:calls.length,  html:callsHtml,
+      scope:'Every call Sofia logged ' + sinceLabel + ', inbound and outbound, uncapped.' },
+    { key:'leads',  label:'Leads',       count:leads.length,  html:leadsHtml,
+      scope:'Every lead record created ' + sinceLabel + ', from every source, uncapped.' },
+    { key:'emails', label:'Email',       count:data.emailsConnected ? emails.length : 'n/a', html:emailsHtml,
+      scope:data.emailsConnected
+        ? 'Read from the 200 most recently synced messages, then narrowed to this window — older mail in the window may not appear.'
+        : 'No mailbox is connected, so email in this window is unknown — not zero.' },
+    { key:'other',  label:'Other calls', count:other.length,  html:otherHtml,
+      scope:'Calls Jarvis classified as not a customer prospect — suppliers, spam, recruiters — logged ' + sinceLabel + '.' },
+  ];
+  if (!TABS.some(function (t) { return t.key === activeTab; })) activeTab = 'calls';
+  var active = TABS.filter(function (t) { return t.key === activeTab; })[0];
+
   el.innerHTML =
-    section('calls', 'All customer calls', calls.length, callsHtml, null) +
-    section('leads', 'All leads', leads.length, leadsHtml, null) +
-    section('other', 'Other calls', other.length, otherHtml, null) +
-    section('emails', 'All email', data.emailsConnected ? emails.length : 'n/a', emailsHtml,
-      data.emailsConnected ? 'Email is read from the 200 most recently synced messages, then narrowed to this window — older mail in the window may not appear.' : null);
+    '<div class="card">' +
+      '<div class="head"><h2>Everything, line by line</h2>' +
+        '<span class="badge quiet">' + esc(sinceLabel) + '</span></div>' +
+      '<div class="tabstrip">' +
+        TABS.map(function (t) {
+          return '<button class="tabpill' + (t.key === activeTab ? ' on' : '') + '" data-tab="' + t.key + '">' +
+            esc(t.label) + '<span class="c">' + esc(t.count) + '</span></button>';
+        }).join('') +
+      '</div>' +
+      '<div class="meta" style="padding:10px 18px 0">' + esc(active.scope) + '</div>' +
+      '<div class="fade-in">' + active.html + '</div>' +
+    '</div>';
+
+  el.querySelectorAll('[data-tab]').forEach(function (b) {
+    b.addEventListener('click', function () { activeTab = b.getAttribute('data-tab'); renderSections(); });
+  });
 
   document.getElementById('scopeNote').innerHTML =
     'Window: ' + esc(absDate(data.since)) + ' to now (' + esc(w) + ' day' + (w === 1 ? '' : 's') + '). ' +
@@ -380,12 +418,6 @@ document.addEventListener('click', function (e) {
   var retry = e.target.closest('[data-retry]');
   if (retry) { load(); return; }
 
-  var sec = e.target.closest('[data-section]');
-  if (sec) {
-    var k = sec.getAttribute('data-section');
-    openSections[k] = !openSections[k];
-    renderSections();
-  }
 });
 
 load();
