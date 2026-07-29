@@ -9,6 +9,7 @@
 
 import { Router, Request, Response } from 'express';
 import { getDb } from '../db/schema';
+import { getLastExecution } from '../db/queries';
 import { PIPELINE, BUILD_STAGES } from '../services/leadShared';
 import { emailCountsByAccount, listEmailItems, listUpcomingEvents, anyGoogleAccountConnected } from '../db/google';
 import { listOutstandingInvoices } from '../services/invoicing';
@@ -58,9 +59,9 @@ router.get('/home', (_req: Request, res: Response) => {
     'SELECT customer_name, number, started_at, summary FROM vapi_calls ORDER BY COALESCE(started_at, created_at) DESC LIMIT 1'
   ).get() as { customer_name?: string; number?: string; started_at?: string; summary?: string } | undefined;
 
-  const lastExec = db.prepare(
-    'SELECT action, detail, created_at FROM execution_log ORDER BY created_at DESC LIMIT 1'
-  ).get() as { action?: string; detail?: string; created_at?: string } | undefined;
+  // Resolved against the table's real columns — this deployment's execution_log
+  // predates the current schema and has neither `detail` nor `created_at`.
+  const lastExec = getLastExecution();
 
   const callCount = (db.prepare('SELECT COUNT(*) c FROM vapi_calls').get() as { c: number }).c;
 
