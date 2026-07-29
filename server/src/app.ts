@@ -159,6 +159,13 @@ app.get('/', (_req, res) => {
 
 });
 
+// Home. The shell's home frame loads /dashboard; /deck is the old alias.
+app.get('/dashboard', (_req, res) => {
+
+  res.sendFile(path.join(clientPath, 'dashboard.html'));
+
+});
+
 app.get('/deck', (_req, res) => {
 
   res.sendFile(path.join(clientPath, 'dashboard.html'));
@@ -249,12 +256,6 @@ app.get('/memory', (_req, res) => {
 app.get('/crm', (_req, res) => {
 
   res.sendFile(path.join(clientPath, 'crm.html'));
-
-});
-
-app.get('/billing', (_req, res) => {
-
-  res.sendFile(path.join(clientPath, 'billing.html'));
 
 });
 

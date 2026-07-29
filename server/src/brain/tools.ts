@@ -14,8 +14,13 @@ import {
   SUPPLIER_CATEGORIES, ORDER_STATUSES,
 } from '../services/materials';
 
-/** Dashboards Jarvis can pull up in the UI. Keys match the shell's tab keys. */
-export const UI_TABS = ['arlo', 'calls', 'inbox', 'billing', 'materials', 'memory', 'integrations'];
+/** Dashboards Jarvis can pull up in the UI. Keys match the shell's tab keys
+ *  exactly (client/shell.html SCREENS) — a key the shell doesn't know lands
+ *  on Home instead of the screen Joe asked for. */
+export const UI_TABS = [
+  'home', 'approve', 'sweep', 'jarvis', 'chat', 'phones', 'crm', 'pipeline',
+  'leads', 'inbox', 'money', 'materials', 'spend', 'sync', 'memory', 'team', 'hire',
+];
 
 /**
  * Function tools for Jarvis's brain (Responses API — flat shape). Kept to safe,
@@ -26,7 +31,7 @@ export const FUNCTION_TOOLS = [
   {
     type: 'function' as const,
     name: 'open_dashboard',
-    description: "Pull up a tab in the UI for Joe to see (and you speak over it). Use when he asks to show him something. tab: calls=Sofia/phone log, inbox=email, billing=outstanding invoices, materials=purchase orders/suppliers, memory=neural map, integrations=connected tools, arlo=home.",
+    description: "Pull up a tab on Joe's screen (and keep talking over it). Use it whenever he says pull up / show me / let me see / bring up / open / take me to — otherwise you'll describe a page instead of displaying it. tab: home=everything at a glance, approve=email replies waiting on him, sweep=what he missed, jarvis=voice, chat=text, phones=Sofia's call log, crm=leads and the control panel, pipeline=weighted forecast, leads=message someone, inbox=email, money=outstanding invoices, materials=purchase orders and suppliers, spend=what the business pays for, sync=integrations, memory=neural map, team=who can sign in, hire=propose a new agent.",
     parameters: {
       type: 'object',
       properties: { tab: { type: 'string', enum: UI_TABS } },
