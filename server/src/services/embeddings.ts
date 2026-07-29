@@ -12,19 +12,75 @@ import { getDb } from '../db/schema';
  */
 
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || 'text-embedding-3-small';
+// gemini-embedding-001 is what Joe's key actually serves — the older
+// text-embedding-004 404s on this project. Overridable if that changes.
+const GEMINI_EMBEDDING_MODEL = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001';
 
 let warnedNoKey = false;
 
+/**
+ * Which provider backs semantic recall.
+ *
+ * OpenAI wins when its key is present (it is what the vectors were originally
+ * written with), but Gemini is a first-class alternative so a deployment holding
+ * only GEMINI_API_KEY still gets meaning-based recall instead of silently
+ * dropping to keyword matching.
+ */
+export function embeddingProvider(): 'openai' | 'gemini' | null {
+  if (process.env.OPENAI_API_KEY) return 'openai';
+  if (process.env.GEMINI_API_KEY) return 'gemini';
+  return null;
+}
+
 export function embeddingsEnabled(): boolean {
-  return !!process.env.OPENAI_API_KEY;
+  return embeddingProvider() !== null;
+}
+
+/**
+ * Vectors from different providers have different dimensions and live in
+ * different spaces, so they can never be compared. cosineSimilarity already
+ * returns 0 on a length mismatch, which means a provider switch degrades to
+ * keyword scoring rather than producing confident nonsense — the stored vectors
+ * from the old provider simply stop matching until they are re-embedded.
+ */
+async function embedViaGemini(clean: string): Promise<Float32Array | null> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_EMBEDDING_MODEL}:embedContent?key=${encodeURIComponent(apiKey)}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: `models/${GEMINI_EMBEDDING_MODEL}`,
+      content: { parts: [{ text: clean.slice(0, 8000) }] },
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Gemini embedContent returned ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  }
+  const json = await res.json() as { embedding?: { values?: number[] } };
+  const vec = json.embedding?.values;
+  if (!vec || !vec.length) return null;
+  return Float32Array.from(vec);
+}
+
+async function embedViaOpenAI(clean: string): Promise<Float32Array | null> {
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const res = await client.embeddings.create({
+    model: EMBEDDING_MODEL,
+    input: clean.slice(0, 8000),
+  });
+  const vec = res.data?.[0]?.embedding;
+  if (!vec || !vec.length) return null;
+  return Float32Array.from(vec);
 }
 
 /** Embed a single string. Returns null on any failure (never throws). */
 export async function embedText(text: string): Promise<Float32Array | null> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
+  const provider = embeddingProvider();
+  if (!provider) {
     if (!warnedNoKey) {
-      console.log('[Memory] OPENAI_API_KEY missing — semantic recall disabled, using keyword fallback');
+      console.log('[Memory] no OPENAI_API_KEY or GEMINI_API_KEY — semantic recall disabled, using keyword fallback');
       warnedNoKey = true;
     }
     return null;
@@ -33,16 +89,9 @@ export async function embedText(text: string): Promise<Float32Array | null> {
   if (!clean) return null;
 
   try {
-    const client = new OpenAI({ apiKey });
-    const res = await client.embeddings.create({
-      model: EMBEDDING_MODEL,
-      input: clean.slice(0, 8000),
-    });
-    const vec = res.data?.[0]?.embedding;
-    if (!vec || !vec.length) return null;
-    return Float32Array.from(vec);
+    return provider === 'openai' ? await embedViaOpenAI(clean) : await embedViaGemini(clean);
   } catch (err) {
-    console.error('[Memory] embedText failed:', err instanceof Error ? err.message : err);
+    console.error(`[Memory] embedText failed (${provider}):`, err instanceof Error ? err.message : err);
     return null;
   }
 }
@@ -93,7 +142,7 @@ export async function backfillEmbeddings(limit = 100): Promise<void> {
   `).all(limit) as { id: number; content: string }[];
 
   if (rows.length === 0) return;
-  console.log(`[Memory] Backfilling embeddings for ${rows.length} fact(s)…`);
+  console.log(`[Memory] Backfilling embeddings for ${rows.length} fact(s) via ${embeddingProvider()}…`);
 
   const update = db.prepare('UPDATE facts SET embedding = ? WHERE id = ?');
   let done = 0;

@@ -110,8 +110,16 @@ export function searchFactsSemantic(
     let relevance = kw; // fallback relevance if no vector
     if (row.embedding) {
       try {
-        const sim = cosineSimilarity(queryEmbedding, bufferToVector(row.embedding));
-        relevance = Math.max(0, sim); // clamp negative similarity to 0
+        const vec = bufferToVector(row.embedding);
+        // A dimension mismatch means this vector was written by a different
+        // embedding provider and cannot be compared. cosineSimilarity returns 0
+        // for that, which would rank the fact as actively irrelevant rather than
+        // simply unmeasured — so fall back to keyword overlap instead.
+        if (vec.length === queryEmbedding.length) {
+          relevance = Math.max(0, cosineSimilarity(queryEmbedding, vec)); // clamp negatives to 0
+        } else {
+          relevance = kw;
+        }
       } catch {
         relevance = kw;
       }

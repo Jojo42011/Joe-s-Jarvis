@@ -3,6 +3,7 @@ import { OPERATOR_NAME, CLIENT_NAME } from '../config/constants';
 import { ANTHROPIC_MODEL } from '../config/models';
 import { googleConfigured, GOOGLE_ACCOUNTS } from '../config/google';
 import { getGoogleAccount } from '../db/google';
+import { embeddingProvider } from '../services/embeddings';
 
 const router = Router();
 
@@ -25,7 +26,10 @@ function connectionStatus() {
     social_zernio: has('ZERNIO_API_KEY'),             // Paulie publishing
     sms_gateway: has('SMS_GATE_USERNAME') && has('SMS_GATE_PASSWORD'),
     seo_github: has('GITHUB_TOKEN'),                  // Lauren publishes pages
-    embeddings_openai: has('OPENAI_API_KEY'),         // optional — semantic recall (keyword fallback otherwise)
+    // Semantic recall runs on OpenAI when available and Gemini otherwise, so
+    // report the resolved provider rather than one vendor's key.
+    memory_semantic_recall: embeddingProvider() !== null,
+    memory_embedding_provider: embeddingProvider() || 'none (keyword fallback)',
   };
 }
 

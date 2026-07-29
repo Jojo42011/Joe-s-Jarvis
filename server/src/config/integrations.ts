@@ -60,9 +60,9 @@ export const INTEGRATIONS: IntegrationDef[] = [
   { id: 'twilio_sms', name: 'Twilio SMS', category: 'Messaging', description: 'Two-way texting on a dedicated business number — inbound texts trigger Jarvis, outbound reminders and confirmations.', envKeys: ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN'], fallback: 'planned' },
 
   // ── AI & Reasoning ──
-  { id: 'openai', name: 'OpenAI', category: 'AI & Reasoning', description: 'Jarvis\'s conversational brain and the embeddings behind semantic memory recall.', envKeys: ['OPENAI_API_KEY'], fallback: 'available' },
-  { id: 'anthropic', name: 'Anthropic Claude', category: 'AI & Reasoning', description: 'Memory extraction, reflection, weekly synthesis, and briefings.', envKeys: ['ANTHROPIC_API_KEY'], fallback: 'available' },
-  { id: 'gemini', name: 'Google Gemini', category: 'AI & Reasoning', description: 'Lauren\'s SEO research (Google-grounded) and AI image generation for pages.', envKeys: ['GEMINI_API_KEY'], fallback: 'available' },
+  { id: 'anthropic', name: 'Anthropic Claude', category: 'AI & Reasoning', description: 'Jarvis\'s brain: conversation, tool use, photo reading, call classification, memory extraction and the weekly synthesis.', envKeys: ['ANTHROPIC_API_KEY'], fallback: 'available' },
+  { id: 'gemini', name: 'Google Gemini', category: 'AI & Reasoning', description: 'Semantic memory recall (embeddings) whenever OpenAI is not configured, plus AI image generation.', envKeys: ['GEMINI_API_KEY'], fallback: 'available' },
+  { id: 'openai', name: 'OpenAI', category: 'AI & Reasoning', description: 'Optional alternative embedding provider for semantic memory recall. Not required — Gemini covers this.', envKeys: ['OPENAI_API_KEY'], fallback: 'available' },
 
   // ── Search & Web ──
   { id: 'brave', name: 'Brave Search', category: 'Search & Web', description: 'Real-time web search for pricing, competitors, and current information.', envKeys: ['BRAVE_API_KEY'], fallback: 'available' },
