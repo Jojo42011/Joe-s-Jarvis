@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>J.A.R.V.I.S</title>
+<title>Totally Outdoors OS · Ask Jarvis</title>
 <style>
   :root {
     --bg: #0a0a0a;
@@ -65,6 +65,9 @@
     backdrop-filter: blur(2px);
   }
   #brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     font-family: var(--mono);
     font-size: 18px;
     letter-spacing: 0.55em;
@@ -72,6 +75,24 @@
     text-transform: uppercase;
     padding-left: 2px;
   }
+  /* Totally Outdoors mark — a slow breathing glow so the badge feels alive
+     next to the orb. Decorative only: it never reports state. */
+  #brand .mark {
+    width: 34px; height: 34px; object-fit: contain; flex: 0 0 auto;
+    filter: drop-shadow(0 0 6px rgba(200, 26, 16, 0.55));
+    animation: markGlow 5s ease-in-out infinite;
+  }
+  @keyframes markGlow {
+    0%, 100% { filter: drop-shadow(0 0 5px rgba(200, 26, 16, 0.45)); transform: scale(1); }
+    50%      { filter: drop-shadow(0 0 13px rgba(245, 56, 42, 0.75)); transform: scale(1.04); }
+  }
+  #brand .who { display: flex; flex-direction: column; gap: 1px; }
+  #brand .co {
+    font-size: 8.5px; letter-spacing: 0.26em; color: var(--silver-deep);
+    font-family: var(--mono);
+  }
+  @media (prefers-reduced-motion: reduce) { #brand .mark { animation: none; } }
+  @media (max-width: 620px) { #brand .co { display: none; } #brand { font-size: 15px; letter-spacing: 0.4em; } }
   #topright {
     display: flex;
     align-items: center;
@@ -214,7 +235,13 @@
   <div id="app">
     <!-- TOP BAR -->
     <header id="topbar">
-      <div id="brand">J.A.R.V.I.S</div>
+      <div id="brand">
+        <img class="mark" src="/assets/totally-outdoors-logo.png" alt="Totally Outdoors LLC" />
+        <span class="who">
+          <span>J.A.R.V.I.S</span>
+          <span class="co">Totally Outdoors Landscaping</span>
+        </span>
+      </div>
       <div id="topright">
         <div class="seg owner">
           <span class="k">OPERATOR</span>

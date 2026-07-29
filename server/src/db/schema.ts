@@ -466,6 +466,38 @@ export function initDb(): Database.Database {
     );
     CREATE INDEX IF NOT EXISTS idx_material_prices_material ON material_prices(material);
 
+    -- === Wasted spend (deliberately manual) ===
+    -- Nothing here can see Joe's bank or ad accounts, so the only honest way to
+    -- track what the business pays for is for him to say. The value isn't the
+    -- list — it's the annualised total and cost-per-lead on anything claiming
+    -- to generate leads.
+    CREATE TABLE IF NOT EXISTS spend_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      kind TEXT DEFAULT 'subscription',    -- subscription | ad | tool | service | other
+      cost_cents INTEGER DEFAULT 0,
+      cycle TEXT DEFAULT 'monthly',        -- monthly | yearly | one_time
+      purpose TEXT,
+      lead_source TEXT,                    -- matches leads.source when it claims to generate leads
+      last_used TEXT,
+      cancel_url TEXT,
+      active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- === Hire a new agent ===
+    -- A proposal is a SPEC, not an agent. Approving one records that Joe wants
+    -- it built. Nothing self-assembles — the UI must not imply otherwise.
+    CREATE TABLE IF NOT EXISTS agent_proposals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ask TEXT NOT NULL,
+      spec TEXT,
+      status TEXT DEFAULT 'proposed',      -- proposed | approved | declined | built
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      decided_at DATETIME
+    );
+
     -- Full Vapi call history, synced on an interval (every call, every assistant,
     -- costs included) — the dashboard reads THIS, not Vapi directly, so counts
     -- and cost totals cover the whole lifetime instead of a capped live fetch.

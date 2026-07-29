@@ -2,488 +2,290 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>Totally Outdoors LLC — Command Deck</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Totally Outdoors OS · Home</title>
+<link rel="stylesheet" href="/fonts.css" />
+<link rel="stylesheet" href="/signal.css" />
+<script src="/theme-sync.js"></script>
 <style>
-  :root {
-    --app-bg:#F4F7F9; --card:#FFFFFF; --card-2:#F8FAFB;
-    --border:#E5EBEF; --border-strong:#D3DDE3;
-    --text: #0E1B24;
-    --muted: #6B7C86;
-    --label: #9AA9B2;
-    --line: #E5EBEF;
-    --red:#D9301B; --red-hover:#BC2714; --red-soft:rgba(217,48,27,0.08);
-    --teal:#15A6BC; --teal-deep:#0E8194; --teal-soft:rgba(21,166,188,0.10);
-    --success:#12B76A; --danger:#E5484D; --info:#2563EB;
-    --shadow-sm:0 1px 2px rgba(14,27,36,0.06);
-    --shadow:0 1px 3px rgba(14,27,36,0.07), 0 10px 26px -16px rgba(14,27,36,0.22);
-    --shadow-lg:0 24px 60px -20px rgba(14,27,36,0.28);
-    --mono: 'JetBrains Mono', monospace;
-    --sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* ── Branded hero: the Totally Outdoors mark, alive ──────────────────
+     A slow drift of light across the badge plus a soft pulse ring. The
+     motion is decorative only — nothing here reports state, so it can
+     never be mistaken for a live indicator. */
+  .hero.brand-hero { display:flex; align-items:center; gap:22px; padding:24px 26px; }
+  .hero.brand-hero::after {
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.16) 46%,transparent 62%);
+    background-size:280% 100%; animation:sheen 7s var(--ease) infinite;
+  }
+  @keyframes sheen { 0% { background-position:180% 0; } 55%,100% { background-position:-80% 0; } }
+
+  .markwrap { position:relative; flex:0 0 auto; width:96px; height:96px; display:flex; align-items:center; justify-content:center; }
+  .markwrap img { width:92px; height:92px; object-fit:contain; position:relative; z-index:2;
+                  filter:drop-shadow(0 6px 14px rgba(0,0,0,.35)); animation:markFloat 6s ease-in-out infinite; }
+  @keyframes markFloat { 0%,100% { transform:translateY(0) scale(1); } 50% { transform:translateY(-5px) scale(1.015); } }
+  .markwrap .ring {
+    position:absolute; inset:2px; border-radius:50%; z-index:1;
+    border:1.5px solid rgba(255,255,255,.35); animation:ringPulse 3.4s var(--ease) infinite;
+  }
+  .markwrap .ring:nth-child(2) { animation-delay:1.7s; }
+  @keyframes ringPulse {
+    0% { transform:scale(.82); opacity:.5; }
+    70% { transform:scale(1.28); opacity:0; }
+    100% { transform:scale(1.28); opacity:0; }
+  }
+  .hero .eyebrow { font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; opacity:.82; }
+  @media (prefers-reduced-motion:reduce) {
+    .hero.brand-hero::after, .markwrap img, .markwrap .ring { animation:none; }
+  }
+  @media (max-width:620px) {
+    .hero.brand-hero { flex-direction:column; align-items:flex-start; gap:14px; }
+    .markwrap { width:72px; height:72px; } .markwrap img { width:70px; height:70px; }
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  html, body {
-    width: 100%;
-    min-height: 100%;
-    background: var(--app-bg);
-    color: var(--text);
-    font-family: var(--sans);
-    -webkit-font-smoothing: antialiased;
-  }
-
-  html {
-    -webkit-text-size-adjust: 100%;
-  }
-
-  body {
-    position: relative;
-    overflow-x: hidden;
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  #app {
-    position: relative;
-    z-index: 2;
-    max-width: 1180px;
-    margin: 0 auto;
-    padding: 0 28px 80px;
-  }
-
-  /* ===== Top bar ===== */
-  #topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 64px;
-    border-bottom: 1px solid var(--line);
-    margin-bottom: 54px;
-  }
-  #brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-family: var(--mono);
-    font-size: 14px;
-    letter-spacing: 0.4em;
-    text-transform: uppercase;
-    color: var(--text);
-  }
-  #brand .dot {
-    width: 9px; height: 9px;
-    border-radius: 50%;
-    background: var(--teal);
-    box-shadow: 0 0 0 3px var(--teal-soft);
-  }
-
-  #topright {
-    display: flex;
-    align-items: center;
-    gap: 30px;
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--label);
-  }
-  #topright .seg { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
-  #topright .seg .v { color: var(--text); font-size: 11px; }
-  #topright #clock { color: var(--teal-deep); }
-
-  /* ===== Hero ===== */
-  #hero { margin-bottom: 46px; opacity: 0; animation: rise .5s cubic-bezier(.22,.9,.3,1) both; }
-  #hero .eyebrow {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.42em;
-    text-transform: uppercase;
-    color: var(--red);
-    margin-bottom: 16px;
-  }
-  #hero h1 {
-    font-size: 46px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    line-height: 1.05;
-    color: var(--text);
-  }
-  #hero h1 .name {
-    color: var(--teal-deep);
-  }
-  #hero p {
-    margin-top: 16px;
-    max-width: 560px;
-    color: var(--muted);
-    font-size: 15px;
-    line-height: 1.6;
-  }
-
-  @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-
-  /* ===== Section label ===== */
-  .section-label {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.34em;
-    text-transform: uppercase;
-    color: var(--label);
-    margin-bottom: 22px;
-  }
-  .section-label::after {
-    content: "";
-    flex: 1;
-    height: 1px;
-    background: var(--line);
-  }
-
-  /* ===== Cards ===== */
-  #cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 22px;
-  }
-
-  .card {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    min-height: 260px;
-    padding: 28px 26px;
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    background: var(--card);
-    box-shadow: var(--shadow-sm);
-    text-decoration: none;
-    color: inherit;
-    overflow: hidden;
-    opacity: 0;
-    animation: rise .5s cubic-bezier(.22,.9,.3,1) both;
-    animation-delay: calc(var(--i, 0) * 60ms);
-    transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-  }
-  .card:hover {
-    transform: translateY(-5px);
-    border-color: var(--teal);
-    box-shadow: var(--shadow-lg);
-  }
-
-  .card .top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .card .icon {
-    width: 52px; height: 52px;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 13px;
-    border: 1px solid var(--line);
-    background: var(--teal-soft);
-    color: var(--teal-deep);
-  }
-  .card .icon svg { width: 26px; height: 26px; }
-
-  .badge {
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    padding: 5px 10px;
-    border-radius: 100px;
-    border: 1px solid var(--line);
-    color: var(--muted);
-    background: var(--card-2);
-  }
-  .badge.live { color: #0E8194; border-color: rgba(21,166,188,0.35); background: var(--teal-soft); }
-  .badge.online { color: var(--red); border-color: rgba(217,48,27,0.3); background: var(--red-soft); }
-  .badge.soon { color: var(--muted); }
-
-  .card h2 {
-    margin-top: 26px;
-    font-size: 23px;
-    font-weight: 650;
-    letter-spacing: -0.01em;
-    color: var(--text);
-  }
-  .card .role {
-    margin-top: 6px;
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--red);
-  }
-  .card .desc {
-    margin-top: 14px;
-    color: var(--muted);
-    font-size: 14px;
-    line-height: 1.55;
-    flex: 1;
-  }
-  .card .cta {
-    margin-top: 20px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--teal-deep);
-  }
-  .card .cta .arrow { transition: transform 0.25s ease; }
-  .card:hover .cta .arrow { transform: translateX(5px); }
-  .card.disabled { cursor: default; }
-  .card.disabled:hover { transform: none; border-color: var(--line); box-shadow: var(--shadow-sm); }
-  .card.disabled .cta { color: var(--label); }
-
-  footer {
-    margin-top: 60px;
-    text-align: center;
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
-    color: var(--label);
-  }
-
-  ::-webkit-scrollbar { width: 8px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #CBD5DB; border-radius: 8px; }
-
-  @media (max-width: 900px) {
-    #cards {
-      grid-template-columns: 1fr;
-      gap: 16px;
-    }
-  }
-
-  @media (max-width: 640px) {
-    #app {
-      padding: 0 max(16px, env(safe-area-inset-left)) max(48px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-right));
-    }
-
-    #topbar {
-      height: auto;
-      min-height: 56px;
-      padding: 12px 0;
-      margin-bottom: 32px;
-      gap: 8px;
-    }
-
-    #brand {
-      font-size: 11px;
-      letter-spacing: 0.22em;
-      gap: 8px;
-    }
-
-    #topright {
-      gap: 12px;
-      font-size: 9px;
-    }
-
-    #topright .seg .v { font-size: 10px; }
-    #topright .seg.owner { display: none; }
-    #topright .seg span:first-child { display: none; }
-
-    #hero { margin-bottom: 32px; }
-    #hero .eyebrow {
-      font-size: 10px;
-      letter-spacing: 0.28em;
-      margin-bottom: 12px;
-    }
-    #hero h1 { font-size: 32px; line-height: 1.1; }
-    #hero p { font-size: 14px; margin-top: 12px; }
-
-    .section-label {
-      font-size: 10px;
-      letter-spacing: 0.22em;
-      margin-bottom: 16px;
-    }
-
-    .card {
-      min-height: auto;
-      padding: 20px 18px;
-      border-radius: 14px;
-    }
-
-    .card:hover { transform: none; }
-    .card:active {
-      transform: scale(0.985);
-      border-color: var(--teal);
-    }
-
-    .card .icon {
-      width: 46px;
-      height: 46px;
-      border-radius: 12px;
-    }
-    .card .icon svg { width: 22px; height: 22px; }
-
-    .card h2 { margin-top: 18px; font-size: 21px; }
-    .card .desc { font-size: 13px; margin-top: 10px; }
-    .card .cta { margin-top: 16px; min-height: 44px; align-items: center; }
-
-    footer {
-      margin-top: 40px;
-      font-size: 9px;
-      letter-spacing: 0.16em;
-      line-height: 1.6;
-      padding: 0 8px;
-    }
-  }
-
-  @media (max-width: 380px) {
-    #hero h1 { font-size: 28px; }
-    #brand { letter-spacing: 0.16em; }
-  }
+  .agent { display:flex; gap:13px; align-items:flex-start; padding:14px 18px; border-bottom:1px solid var(--divider); }
+  .agent:last-child { border-bottom:none; }
+  .agent .nm { font-weight:700; font-size:14px; display:flex; align-items:center; gap:8px; }
+  .agent .rl { font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
+  .agent .hl { font-size:13px; color:var(--ink-2); margin-top:5px; }
+  .agent .dt { font-size:12.5px; color:var(--money); margin-top:4px; }
+  .wait-item { display:flex; gap:11px; align-items:center; padding:11px 18px; border-bottom:1px solid var(--divider); }
+  .wait-item:last-child { border-bottom:none; }
 </style>
 </head>
 <body>
-  <div id="app">
-    <header id="topbar">
-      <div id="brand"><span class="dot"></span>TOTALLY&nbsp;OUTDOORS&nbsp;OS</div>
-      <div id="topright">
-        <div class="seg owner">
-          <span>Operator</span>
-          <span class="v">Joe</span>
-        </div>
-        <div class="seg">
-          <span>System Time</span>
-          <span class="v" id="clock">--:--:--</span>
-        </div>
-      </div>
-    </header>
+<div class="wrap">
 
-    <section id="hero">
-      <div class="eyebrow">Command Deck</div>
-      <h1>Welcome back, <span class="name">Joe</span>.</h1>
-      <p>Your autonomous operations are standing by. Launch an agent, review live call performance, or coordinate your marketing team — all from one deck.</p>
-    </section>
-
-    <div class="section-label">Agents &amp; Teams</div>
-
-    <div id="cards">
-      <!-- JARVIS -->
-      <a class="card" href="/arlo" style="--i:0">
-        <div class="top">
-          <div class="icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3.2"/>
-              <circle cx="12" cy="12" r="8.4"/>
-              <path d="M12 1.5v2.2M12 20.3v2.2M1.5 12h2.2M20.3 12h2.2"/>
-            </svg>
-          </div>
-          <span class="badge online">Online</span>
-        </div>
-        <h2>Jarvis</h2>
-        <div class="role">Chief Operator</div>
-        <div class="desc">Your voice-driven AI operator. Memory, reasoning, and real-time conversation through the neural core.</div>
-        <div class="cta">Enter Core <span class="arrow">&rarr;</span></div>
-      </a>
-
-      <!-- SOFIA -->
-      <a class="card" href="/calls" style="--i:1">
-        <div class="top">
-          <div class="icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6 6l1.1-1.1a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2z"/>
-            </svg>
-          </div>
-          <span class="badge live">Live</span>
-        </div>
-        <h2>Sofia</h2>
-        <div class="role">Call Receptionist</div>
-        <div class="desc">Answers inbound &amp; outbound calls and books appointments. Track live call volume, connect rate, and outcomes.</div>
-        <div class="cta">Call Metrics <span class="arrow">&rarr;</span></div>
-      </a>
-
-      <!-- MARKETING -->
-      <!-- INBOX -->
-      <a class="card" href="/inbox" style="--i:3">
-        <div class="top">
-          <div class="icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 5.5h18v13H3z"/>
-              <path d="M3 6l9 6 9-6"/>
-              <path d="M3 13h5l1.5 2h5L21 13"/>
-            </svg>
-          </div>
-          <span class="badge online">3 Inboxes</span>
-        </div>
-        <h2>Inbox</h2>
-        <div class="role">Email Command</div>
-        <div class="desc">Jarvis triages all three mailboxes, flags what matters, and drafts replies in your voice. Read, prioritize, approve &amp; send, or compose.</div>
-        <div class="cta">Open Inbox <span class="arrow">&rarr;</span></div>
-      </a>
-
-      <!-- NEURAL MAP -->
-      <a class="card" href="/memory" style="--i:4">
-        <div class="top">
-          <div class="icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="5" cy="6" r="2"/>
-              <circle cx="19" cy="7" r="2"/>
-              <circle cx="12" cy="12" r="2.4"/>
-              <circle cx="6" cy="18" r="2"/>
-              <circle cx="18" cy="17" r="2"/>
-              <path d="M6.7 7.1l3.6 3.6M17.4 8.3l-3.7 2.9M10.5 13.4L7.3 16.6M13.7 13.2l3.1 2.6"/>
-            </svg>
-          </div>
-          <span class="badge live">Live</span>
-        </div>
-        <h2>Neural Map</h2>
-        <div class="role">Jarvis&rsquo;s Memory</div>
-        <div class="desc">See everything Jarvis knows about you and the business — clients, projects, values, and decisions — as a living graph that grows after every conversation.</div>
-        <div class="cta">Open Map <span class="arrow">&rarr;</span></div>
-      </a>
-
-      <!-- INTEGRATIONS -->
-      <a class="card" href="/integrations" style="--i:5">
-        <div class="top">
-          <div class="icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14.5 3.5l-3 3M9.5 8.5l6 6M20.5 9.5l-3 3M8.5 14.5l-5 5"/>
-              <rect x="12.4" y="1.6" width="5" height="5" rx="1.4" transform="rotate(45 14.9 4.1)"/>
-              <rect x="16.4" y="9.6" width="5" height="5" rx="1.4" transform="rotate(45 18.9 12.1)"/>
-              <rect x="1.6" y="14.6" width="5" height="5" rx="1.4" transform="rotate(45 4.1 17.1)"/>
-            </svg>
-          </div>
-          <span class="badge online">Hub</span>
-        </div>
-        <h2>Integrations</h2>
-        <div class="role">Jarvis&rsquo;s Hands</div>
-        <div class="desc">The library of everything Jarvis can plug into — Google Calendar, Gmail, voice, search, payments. Connect new hands and see the path forward.</div>
-        <div class="cta">Open Hub <span class="arrow">&rarr;</span></div>
-      </a>
+  <!-- Branded hero -->
+  <div class="hero brand-hero">
+    <div class="markwrap">
+      <span class="ring"></span><span class="ring"></span>
+      <img src="/assets/totally-outdoors-logo.png" alt="Totally Outdoors LLC" />
     </div>
-
-    <footer>Totally Outdoors LLC &middot; Autonomous Operations</footer>
+    <div class="grow">
+      <div class="eyebrow">Totally Outdoors Landscaping</div>
+      <h1 id="greet">Good morning, Joe.</h1>
+      <div class="sub" id="hero-sub">Landscaping, hardscaping and excavating · Holmes County, Ohio · since 2004</div>
+      <div class="row-actions">
+        <button class="btn btn-sm" data-go="jarvis">Ask Jarvis</button>
+        <button class="btn btn-sm" data-go="sweep">What I missed</button>
+        <button class="btn btn-sm" data-go="crm">Open CRM</button>
+      </div>
+    </div>
   </div>
 
-  <script>
-  (function () {
-    "use strict";
+  <div id="err"></div>
 
-    // Live clock
-    const clockEl = document.getElementById("clock");
-    function tick() {
-      const d = new Date();
-      const p = (n) => String(n).padStart(2, "0");
-      clockEl.textContent = p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
-    }
-    tick(); setInterval(tick, 1000);
+  <!-- KPIs -->
+  <div class="kpis" id="kpis" style="margin-bottom:18px">
+    <div class="kpi"><div class="n" id="k-open">–</div><div class="l">Open leads</div></div>
+    <div class="kpi"><div class="n money" id="k-forecast">–</div><div class="l">Weighted forecast</div></div>
+    <div class="kpi"><div class="n amber" id="k-waiting">–</div><div class="l">Waiting on you</div></div>
+    <div class="kpi"><div class="n green" id="k-today">–</div><div class="l">On today</div></div>
+  </div>
+
+  <div class="cards two">
+    <div>
+      <!-- The team -->
+      <div class="card">
+        <div class="head"><h2>The team</h2><span class="meta" id="team-meta"></span></div>
+        <div id="agents"><div class="empty">Loading…</div></div>
+      </div>
+
+      <!-- Waiting on you -->
+      <div class="card">
+        <div class="head"><h2>Waiting on you</h2><span id="wait-count"></span></div>
+        <div id="waiting"><div class="empty">Loading…</div></div>
+      </div>
+    </div>
+
+    <div>
+      <!-- Today -->
+      <div class="card">
+        <div class="head"><h2>Today</h2><span class="meta" id="today-date"></span></div>
+        <div id="today"><div class="empty">Loading…</div></div>
+      </div>
+
+      <!-- Recent leads -->
+      <div class="card">
+        <div class="head"><h2>Recent leads</h2><button class="btn btn-sm btn-ghost" data-go="crm">Open CRM</button></div>
+        <div id="leads"><div class="empty">Loading…</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="meta center" id="stamp" style="margin-top:6px"></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+    });
+  }
+  function money(cents) {
+    return '$' + (Number(cents || 0) / 100).toLocaleString('en-US', { maximumFractionDigits:0 });
+  }
+  function go(tab) {
+    try { window.parent.postMessage({ type:'operator-navigate', tab:tab }, '*'); } catch (_) {}
+  }
+  document.querySelectorAll('[data-go]').forEach(function (b) {
+    b.addEventListener('click', function () { go(b.dataset.go); });
+  });
+
+  function when(iso) {
+    if (!iso) return '';
+    var d = new Date(iso); if (isNaN(d)) return '';
+    var diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
+    return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+  }
+  function clock(iso) {
+    if (!iso) return '';
+    var d = new Date(iso); if (isNaN(d)) return '';
+    return d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+  }
+
+  // Greeting follows Ohio time, not the browser's guess.
+  (function () {
+    var h = Number(new Date().toLocaleString('en-US', { timeZone:'America/New_York', hour:'numeric', hour12:false }));
+    var part = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+    document.getElementById('greet').textContent = part + ', Joe.';
+    document.getElementById('today-date').textContent =
+      new Date().toLocaleDateString('en-US', { timeZone:'America/New_York', weekday:'long', month:'short', day:'numeric' });
   })();
-  </script>
+
+  function fail(msg) {
+    document.getElementById('err').innerHTML =
+      '<div class="notice down" style="margin-bottom:16px">' + esc(msg) + '</div>';
+  }
+
+  function render(d) {
+    // ── KPIs ──
+    document.getElementById('k-open').textContent = d.pipeline.openLeads;
+
+    var fc = document.getElementById('k-forecast');
+    if (d.pipeline.weightedUnconfirmed) {
+      // Rule 1: a forecast with nothing to compute from is unconfirmed, not $0.
+      fc.className = 'n unconfirmed';
+      fc.textContent = 'unconfirmed';
+      fc.title = 'No open lead carries a project value yet, so a forecast cannot be computed.';
+    } else {
+      fc.className = 'n money';
+      fc.textContent = money(d.pipeline.weightedCents);
+      fc.title = 'Weighted across ' + d.pipeline.valuedLeads + ' valued lead(s).';
+    }
+
+    var w = d.waiting;
+    var waitTotal = w.emailDrafts.length + w.unsentInvoices.length + w.lateMaterials.length;
+    document.getElementById('k-waiting').textContent = waitTotal;
+
+    var appts = d.appointments;
+    var kToday = document.getElementById('k-today');
+    if (!appts.connected) {
+      kToday.className = 'n unconfirmed'; kToday.textContent = 'not connected';
+      kToday.title = 'No calendar is connected, so today’s appointments are unknown.';
+    } else {
+      kToday.className = 'n green'; kToday.textContent = appts.today.length;
+    }
+
+    // ── Agents ──
+    document.getElementById('agents').innerHTML = d.agents.map(function (a) {
+      return '<div class="agent">' +
+        '<span class="avatar' + (a.name === 'Sofia' ? ' green' : ' indigo') + '">' + esc(a.name.slice(0,2).toUpperCase()) + '</span>' +
+        '<span class="grow">' +
+          '<div class="nm">' + esc(a.name) +
+            '<span class="dot ' + (a.live ? 'live' : 'down') + '"></span>' +
+            '<span class="pill ' + (a.live ? 'green' : 'quiet') + '">' + (a.live ? 'Live' : 'Idle') + '</span>' +
+          '</div>' +
+          '<div class="rl">' + esc(a.role) + '</div>' +
+          '<div class="hl">' + esc(a.headline) + '</div>' +
+          (a.detail ? '<div class="dt">' + esc(a.detail) + '</div>' : '') +
+        '</span></div>';
+    }).join('');
+    document.getElementById('team-meta').textContent = d.agents.filter(function (a) { return a.live; }).length + ' of ' + d.agents.length + ' live';
+
+    // ── Waiting on you ──
+    var wc = document.getElementById('wait-count');
+    wc.innerHTML = waitTotal ? '<span class="badge amber">' + waitTotal + '</span>' : '';
+    var rows = [];
+    w.emailDrafts.forEach(function (x) {
+      rows.push('<div class="wait-item"><span class="pill indigo">Email</span>' +
+        '<span class="grow truncate"><b>' + esc(x.subject || '(no subject)') + '</b> — reply drafted for ' + esc(x.from || 'unknown') + '</span>' +
+        '<button class="btn btn-sm" data-go="approve">Review</button></div>');
+    });
+    w.unsentInvoices.forEach(function (x) {
+      rows.push('<div class="wait-item"><span class="pill money">Invoice</span>' +
+        '<span class="grow truncate">' + esc(x.invoice_no || '') + ' — ' + esc(x.lead) + ' · ' + esc(x.label || '') + ' ' + money(x.amount_cents) + ' ready to send</span>' +
+        '<button class="btn btn-sm" data-go="money">Send</button></div>');
+    });
+    w.lateMaterials.forEach(function (x) {
+      rows.push('<div class="wait-item"><span class="pill amber">Materials</span>' +
+        '<span class="grow truncate">' + esc(x.po || '') + ' for ' + esc(x.lead || 'a project') + ' is still ' + esc(x.status) + ' but the job has reached that stage</span>' +
+        '<button class="btn btn-sm" data-go="materials">Open</button></div>');
+    });
+    document.getElementById('waiting').innerHTML = rows.length
+      ? rows.join('')
+      : '<div class="empty"><div class="t">Nothing waiting on you</div>' +
+        '<div class="scope">Covers email replies Jarvis drafted, milestone invoices ready to send, and purchase orders a job has already passed the stage for.</div></div>';
+
+    // ── Today ──
+    var t = document.getElementById('today');
+    if (!appts.connected) {
+      t.innerHTML = '<div class="empty"><div class="t">No calendar connected</div>' +
+        '<div class="scope">Connect a Google account in Integrations and today’s appointments will appear here.</div>' +
+        '<button class="btn btn-sm" style="margin-top:10px" data-go="sync">Open Integrations</button></div>';
+    } else if (!appts.today.length) {
+      t.innerHTML = '<div class="empty"><div class="t">Nothing on the calendar today</div>' +
+        '<div class="scope">Read from the connected Google calendar(s).</div></div>';
+    } else {
+      t.innerHTML = appts.today.map(function (e) {
+        return '<div class="row"><span class="pill green">' + esc(clock(e.start)) + '</span>' +
+          '<span class="grow"><div class="t">' + esc(e.summary || '(no title)') + '</div>' +
+          (e.location ? '<div class="s truncate">' + esc(e.location) + '</div>' : '') + '</span></div>';
+      }).join('');
+    }
+
+    // ── Recent leads ──
+    var l = document.getElementById('leads');
+    l.innerHTML = d.recentLeads.length
+      ? d.recentLeads.map(function (x) {
+          return '<div class="row"><span class="avatar">' + esc((x.name || '?').slice(0,2).toUpperCase()) + '</span>' +
+            '<span class="grow"><div class="t truncate">' + esc(x.name) + '</div>' +
+            '<div class="s truncate">' + esc(x.message || x.phone || '') + '</div></span>' +
+            '<span class="pill quiet">' + esc(x.pipeline || 'new') + '</span>' +
+            '<span class="meta">' + esc(when(x.created_at)) + '</span></div>';
+        }).join('')
+      : '<div class="empty"><div class="t">No leads yet</div><div class="scope">Every lead from Sofia, the website and manual entry lands here.</div></div>';
+
+    // Re-bind any buttons rendered above.
+    document.querySelectorAll('[data-go]').forEach(function (b) {
+      if (b.__bound) return; b.__bound = true;
+      b.addEventListener('click', function () { go(b.dataset.go); });
+    });
+
+    document.getElementById('stamp').textContent = 'Live figures · refreshed ' + clock(d.generatedAt);
+  }
+
+  function load() {
+    fetch('/api/home')
+      .then(function (r) { if (!r.ok) throw new Error('Server returned ' + r.status); return r.json(); })
+      .then(function (d) { document.getElementById('err').innerHTML = ''; render(d); })
+      .catch(function (e) {
+        // "Could not reach the server" is a different fact from "there is nothing".
+        fail('Could not load the dashboard — ' + e.message + '. The figures below may be stale or missing; nothing here is invented.');
+      });
+  }
+
+  load();
+  setInterval(function () { if (!document.hidden) load(); }, 60000);
+})();
+</script>
 </body>
 </html>

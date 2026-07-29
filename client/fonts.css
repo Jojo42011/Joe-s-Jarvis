@@ -1,0 +1,9 @@
+/* fonts.css — self-describing font stack.
+   No CDN and no webfont files are vendored (the spec forbids a build step and
+   a CDN dependency), so signal.css's --sans/--mono fall through to the
+   platform UI faces. If Figtree / Geist Mono are ever self-hosted, drop the
+   @font-face blocks here and nothing else has to change. */
+:root {
+  --sans:'Figtree',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  --mono:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;
+}

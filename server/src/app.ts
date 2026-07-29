@@ -23,6 +23,7 @@ import voiceRouter from './routes/voice';
 import memoryRouter from './routes/memory';
 
 import leadsRouter from './routes/leads';
+import homeRouter from './routes/home';
 
 import callsRouter from './routes/calls';
 
@@ -134,6 +135,8 @@ app.use('/api/memory', memoryRouter);
 
 app.use('/api', leadsRouter);
 
+app.use('/api', homeRouter);
+
 app.use('/api', callsRouter);
 
 app.use('/api', seoRouter);
@@ -162,9 +165,66 @@ app.get('/deck', (_req, res) => {
 
 });
 
-app.get('/arlo', (_req, res) => {
+// The voice screen. /arlo redirects so old bookmarks keep working.
+app.get('/jarvis', (_req, res) => {
 
   res.sendFile(path.join(clientPath, 'index.html'));
+
+});
+
+app.get('/arlo', (_req, res) => res.redirect(301, '/jarvis'));
+
+app.get('/approvals', (_req, res) => {
+
+  res.sendFile(path.join(clientPath, 'approvals.html'));
+
+});
+
+app.get('/sweep', (_req, res) => {
+
+  res.sendFile(path.join(clientPath, 'sweep.html'));
+
+});
+
+app.get('/pipeline', (_req, res) => {
+
+  res.sendFile(path.join(clientPath, 'pipeline.html'));
+
+});
+
+app.get('/leads', (_req, res) => {
+
+  res.sendFile(path.join(clientPath, 'leads.html'));
+
+});
+
+app.get('/money', (_req, res) => {
+
+  res.sendFile(path.join(clientPath, 'money.html'));
+
+});
+
+app.get('/spend', (_req, res) => {
+
+  res.sendFile(path.join(clientPath, 'spend.html'));
+
+});
+
+app.get('/team', (_req, res) => {
+
+  res.sendFile(path.join(clientPath, 'team.html'));
+
+});
+
+app.get('/hire', (_req, res) => {
+
+  res.sendFile(path.join(clientPath, 'hire.html'));
+
+});
+
+app.get('/soon', (_req, res) => {
+
+  res.sendFile(path.join(clientPath, 'soon.html'));
 
 });
 
