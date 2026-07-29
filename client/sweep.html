@@ -1,0 +1,392 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Totally Outdoors OS · What you missed</title>
+<link rel="stylesheet" href="/fonts.css" /><link rel="stylesheet" href="/signal.css" />
+<script src="/theme-sync.js"></script></head><body><div class="wrap">
+
+  <div class="page-head">
+    <div class="between">
+      <div>
+        <h1>What you missed</h1>
+        <div class="sub" id="subLine">Every call, lead and email in the window — and, first, the ones nobody acted on.</div>
+      </div>
+      <div class="flex">
+        <div class="seg" id="seg">
+          <button data-days="1">1 day</button>
+          <button data-days="7" class="on">7 days</button>
+          <button data-days="30">30 days</button>
+        </div>
+        <button class="btn btn-sm" id="briefBtn">Brief me</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="fetchErr"></div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div id="unactioned" style="margin-top:18px"></div>
+  <div id="sections"></div>
+
+  <div class="meta" id="scopeNote"></div>
+
+</div>
+<script>
+"use strict";
+
+/* ── Helpers ──────────────────────────────────────────────────────────── */
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+var MONEY_FMT = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+function money(cents) { return MONEY_FMT.format((Number(cents) || 0) / 100); }
+
+/* SQLite stores "YYYY-MM-DD HH:MM:SS" in UTC with no zone marker; parsing that
+   as local time shifts every timestamp, so normalise before constructing. */
+function parseDate(v) {
+  if (!v) return null;
+  var s = String(v);
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) s = s.replace(' ', 'T') + 'Z';
+  var d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function when(v) {
+  var d = parseDate(v);
+  if (!d) return 'unconfirmed';                       // rule 1 — never invent a time
+  var diff = Date.now() - d.getTime();
+  if (diff < 0) diff = 0;
+  var mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  var hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  if (hrs < 24 * 7) {
+    return d.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' +
+      d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+  }
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function absDate(v) {
+  var d = parseDate(v);
+  if (!d) return 'unconfirmed';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+    d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+}
+
+function duration(sec) {
+  var n = Number(sec);
+  if (sec == null || !isFinite(n) || n < 0) return 'unconfirmed';   // rule 1
+  var m = Math.floor(n / 60), s = Math.round(n % 60);
+  return m ? (m + 'm ' + s + 's') : (s + 's');
+}
+
+function initials(s) {
+  var t = String(s || '').replace(/<[^>]*>/g, ' ').trim();
+  var parts = t.split(/[\s@._-]+/).filter(Boolean);
+  if (!parts.length) return '?';
+  return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+
+function pretty(k) {
+  return String(k || '').replace(/_/g, ' ').replace(/^./, function (c) { return c.toUpperCase(); });
+}
+
+function navigate(tab) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'operator-navigate', tab: tab }, '*');
+  } else {
+    window.location.href = '/' + tab;
+  }
+}
+
+function readJson(r) {
+  return r.text().then(function (txt) {
+    var data = null;
+    try { data = txt ? JSON.parse(txt) : null; } catch (_) { data = null; }
+    if (!r.ok) {
+      var msg = (data && (data.error || data.message)) || (txt ? String(txt).slice(0, 200) : '');
+      throw new Error(msg || ('Server responded ' + r.status + ' ' + (r.statusText || '')));
+    }
+    if (data && data.error) throw new Error(data.error);
+    return data || {};
+  });
+}
+
+function getJson(url) {
+  return fetch(url, { headers: { Accept: 'application/json' } }).then(readJson);
+}
+
+/* ── State ────────────────────────────────────────────────────────────── */
+var days = 7;
+var data = null;
+var openSections = { calls: false, leads: false, other: false, emails: false };
+
+/* ── Render ───────────────────────────────────────────────────────────── */
+function kpi(n, label, cls) {
+  return '<div class="kpi"><div class="n ' + (cls || '') + '">' + esc(n) + '</div><div class="l">' + esc(label) + '</div></div>';
+}
+
+function renderKpis() {
+  var el = document.getElementById('kpis');
+  if (!data) {
+    el.innerHTML = kpi('unconfirmed', 'New leads', 'unconfirmed') +
+      kpi('unconfirmed', 'Customer calls', 'unconfirmed') +
+      kpi('unconfirmed', 'Other calls', 'unconfirmed') +
+      kpi('unconfirmed', 'Emails', 'unconfirmed');
+    return;
+  }
+  var c = data.counts || {};
+  var unact = ((data.unactioned && data.unactioned.leads) || []).length +
+              ((data.unactioned && data.unactioned.emails) || []).length;
+  el.innerHTML =
+    kpi(c.leads == null ? 'unconfirmed' : c.leads, 'New leads', c.leads == null ? 'unconfirmed' : '') +
+    kpi(c.calls == null ? 'unconfirmed' : c.calls, 'Customer calls', c.calls == null ? 'unconfirmed' : 'green') +
+    kpi(c.otherCalls == null ? 'unconfirmed' : c.otherCalls, 'Other calls', c.otherCalls == null ? 'unconfirmed' : '') +
+    (data.emailsConnected
+      ? kpi(c.emails == null ? 'unconfirmed' : c.emails, 'Emails', c.emails == null ? 'unconfirmed' : '')
+      : kpi('not connected', 'Emails', 'unconfirmed')) +
+    kpi(unact, 'Nobody acted on', unact ? 'amber' : '');
+}
+
+function leadRow(l) {
+  var msg = l.message ? String(l.message) : '';
+  return '<div class="row">' +
+    '<div class="avatar">' + esc(initials(l.name)) + '</div>' +
+    '<div class="grow">' +
+      '<div class="t">' + esc(l.name || 'Unnamed lead') + '</div>' +
+      '<div class="s">' + esc(l.phone || 'no phone on file') +
+        ' · ' + esc(l.source ? pretty(l.source) : 'source unconfirmed') +
+        ' · ' + esc(when(l.created_at)) + '</div>' +
+      (msg ? '<div style="margin-top:6px;font-size:13px;color:var(--ink-2);white-space:pre-wrap">' + esc(msg) + '</div>'
+           : '<div class="meta" style="margin-top:4px">They left no message.</div>') +
+    '</div>' +
+    (l.pipeline ? '<span class="pill quiet">' + esc(pretty(l.pipeline)) + '</span>' : '') +
+    '<button class="btn btn-sm" data-nav="crm">Open in CRM</button>' +
+  '</div>';
+}
+
+function emailRow(e) {
+  return '<div class="row">' +
+    '<div class="avatar indigo">' + esc(initials(e.from)) + '</div>' +
+    '<div class="grow">' +
+      '<div class="t truncate">' + esc(e.subject || '(no subject)') + '</div>' +
+      '<div class="s truncate">' + esc(e.from || 'unknown sender') + ' · ' + esc(when(e.received_at)) + '</div>' +
+    '</div>' +
+    (e.account ? '<span class="pill quiet">' + esc(e.account) + '</span>' : '') +
+    (e.priority ? '<span class="pill amber">' + esc(pretty(e.priority)) + '</span>' : '') +
+    '<button class="btn btn-sm" data-nav="approve">Go approve</button>' +
+  '</div>';
+}
+
+function renderUnactioned() {
+  var el = document.getElementById('unactioned');
+  if (!data) { el.innerHTML = ''; return; }
+
+  var u = data.unactioned || {};
+  var leads = u.leads || [];
+  var emails = u.emails || [];
+  var total = leads.length + emails.length;
+
+  var head = '<div class="card"><div class="head">' +
+    '<h2>Nobody acted on this</h2>' +
+    '<span class="badge' + (total ? ' amber' : ' quiet') + '">' + total + '</span>' +
+    '</div><div class="body" style="padding-bottom:0">';
+
+  var notice = total
+    ? '<div class="notice amber"><span class="dot warn"></span><div><b>' + total +
+      ' thing' + (total === 1 ? '' : 's') + ' in the last ' + esc(data.windowDays) +
+      ' day' + (data.windowDays === 1 ? '' : 's') + ' had no follow-up logged against ' +
+      'them.</b><br>A lead counts here when it is still sitting at "new" with no activity recorded since ' +
+      esc(absDate(data.since)) + '. An email counts when Jarvis flagged it as needing a reply and no reply has been sent.</div></div>'
+    : '<div class="notice ok"><span class="dot live"></span><div><b>Everything in this window was picked up.</b><br>' +
+      'Checked every lead created since ' + esc(absDate(data.since)) + ' for logged activity, and every email flagged as needing a reply' +
+      (data.emailsConnected ? '' : ' — though email could not be checked at all, see below') + '.</div></div>';
+
+  var body = '';
+  if (leads.length) {
+    body += '<div style="margin:14px -18px 0 -18px">' +
+      '<div class="meta" style="padding:0 18px 6px;text-transform:uppercase;letter-spacing:.08em;font-weight:700">Leads with no follow-up (' + leads.length + ')</div>' +
+      leads.map(leadRow).join('') + '</div>';
+  }
+  if (!data.emailsConnected) {
+    body += '<div style="margin-top:14px" class="notice"><span class="dot warn"></span><div>' +
+      '<b>Email was not checked.</b><br>No mailbox is connected, so unanswered email is unknown — not zero. ' +
+      '<button class="btn btn-sm" data-nav="integrations" style="margin-left:6px">Connect a mailbox</button></div></div>';
+  } else if (emails.length) {
+    body += '<div style="margin:14px -18px 0 -18px">' +
+      '<div class="meta" style="padding:0 18px 6px;text-transform:uppercase;letter-spacing:.08em;font-weight:700">Emails still unanswered (' + emails.length + ')</div>' +
+      emails.map(emailRow).join('') + '</div>';
+  }
+  if (!leads.length && data.emailsConnected && !emails.length) {
+    body += '<div style="height:6px"></div>';
+  }
+
+  el.innerHTML = head + notice + body + '</div></div>';
+}
+
+function section(key, title, count, contentHtml, capNote) {
+  var open = !!openSections[key];
+  return '<div class="card">' +
+    '<div class="head" data-section="' + key + '" style="cursor:pointer">' +
+      '<h2>' + esc(title) + '</h2>' +
+      '<div class="flex">' +
+        '<span class="badge quiet">' + esc(count) + '</span>' +
+        '<button class="btn btn-sm btn-ghost" data-section="' + key + '">' + (open ? 'Hide' : 'Show') + '</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="' + (open ? 'fade-in' : 'hide') + '">' + contentHtml +
+      (capNote ? '<div class="meta" style="padding:10px 18px;border-top:1px solid var(--divider)">' + esc(capNote) + '</div>' : '') +
+    '</div>' +
+  '</div>';
+}
+
+function emptyBlock(title, scope) {
+  return '<div class="empty"><div class="t">' + esc(title) + '</div><div class="scope">' + esc(scope) + '</div></div>';
+}
+
+function renderSections() {
+  var el = document.getElementById('sections');
+  if (!data) { el.innerHTML = ''; return; }
+
+  var w = data.windowDays;
+  var wLabel = 'the last ' + w + ' day' + (w === 1 ? '' : 's');
+  var sinceLabel = 'since ' + absDate(data.since);
+
+  var calls = data.calls || [];
+  var callsHtml = calls.length
+    ? calls.map(function (c) {
+        return '<div class="row">' +
+          '<div class="avatar green">' + esc(initials(c.customer_name || c.number)) + '</div>' +
+          '<div class="grow">' +
+            '<div class="t">' + esc(c.customer_name || c.number || 'Unknown caller') + '</div>' +
+            '<div class="s">' + esc(c.number || 'number unconfirmed') +
+              ' · ' + esc(c.direction ? pretty(c.direction) : 'direction unconfirmed') +
+              ' · ' + esc(duration(c.duration_sec)) +
+              ' · ' + esc(when(c.started_at)) + '</div>' +
+            (c.summary ? '<div style="margin-top:6px;font-size:13px;color:var(--ink-2)">' + esc(c.summary) + '</div>'
+                       : '<div class="meta" style="margin-top:4px">No summary was written for this call.</div>') +
+          '</div>' +
+          (c.booked ? '<span class="pill green">Booked</span>' : '') +
+        '</div>';
+      }).join('')
+    : emptyBlock('No customer calls in ' + wLabel,
+        'Scope: every call Sofia logged ' + sinceLabel + ', inbound and outbound, uncapped. Nothing was filtered out of this count.');
+
+  var leads = data.leads || [];
+  var leadsHtml = leads.length
+    ? leads.map(leadRow).join('')
+    : emptyBlock('No new leads in ' + wLabel,
+        'Scope: every lead record created ' + sinceLabel + ', from every source, uncapped.');
+
+  var other = data.otherCalls || [];
+  var otherHtml = other.length
+    ? other.map(function (o) {
+        return '<div class="row">' +
+          '<div class="avatar">' + esc(initials(o.name || o.phone)) + '</div>' +
+          '<div class="grow">' +
+            '<div class="t">' + esc(o.name || o.phone || 'Unknown caller') + '</div>' +
+            '<div class="s">' + esc(o.phone || 'no number') + ' · ' + esc(when(o.created_at)) + '</div>' +
+            (o.message ? '<div style="margin-top:6px;font-size:13px;color:var(--ink-2)">' + esc(o.message) + '</div>' : '') +
+          '</div>' +
+          '<span class="pill quiet">' + esc(o.category ? pretty(o.category) : 'uncategorised') + '</span>' +
+        '</div>';
+      }).join('')
+    : emptyBlock('No other calls in ' + wLabel,
+        'Scope: calls Jarvis classified as not a customer prospect — suppliers, spam, recruiters — logged ' + sinceLabel + '.');
+
+  var emails = data.emails || [];
+  var emailsHtml;
+  if (!data.emailsConnected) {
+    emailsHtml = '<div class="body"><div class="notice"><span class="dot warn"></span><div>' +
+      '<b>Email is not connected.</b><br>No mailbox has authorized, so email in this window is unknown — this is not a count of zero. ' +
+      '<button class="btn btn-sm" data-nav="integrations" style="margin-left:6px">Connect a mailbox</button></div></div></div>';
+  } else if (emails.length) {
+    emailsHtml = emails.map(emailRow).join('');
+  } else {
+    emailsHtml = emptyBlock('No email in ' + wLabel,
+      'Scope: the connected mailboxes, ' + sinceLabel + '. Read from the 200 most recent messages Jarvis has synced, then filtered to this window.');
+  }
+
+  el.innerHTML =
+    section('calls', 'All customer calls', calls.length, callsHtml, null) +
+    section('leads', 'All leads', leads.length, leadsHtml, null) +
+    section('other', 'Other calls', other.length, otherHtml, null) +
+    section('emails', 'All email', data.emailsConnected ? emails.length : 'n/a', emailsHtml,
+      data.emailsConnected ? 'Email is read from the 200 most recently synced messages, then narrowed to this window — older mail in the window may not appear.' : null);
+
+  document.getElementById('scopeNote').innerHTML =
+    'Window: ' + esc(absDate(data.since)) + ' to now (' + esc(w) + ' day' + (w === 1 ? '' : 's') + '). ' +
+    'Calls, leads and other calls are uncapped queries over the full tables. ' +
+    (data.emailsConnected
+      ? 'Email is capped at the 200 most recently synced messages.'
+      : 'Email is not connected, so every email figure on this page reads as unknown rather than zero.');
+}
+
+function render() { renderKpis(); renderUnactioned(); renderSections(); }
+
+/* ── Load ─────────────────────────────────────────────────────────────── */
+function showFetchError(msg) {
+  document.getElementById('fetchErr').innerHTML =
+    '<div class="notice down" style="margin-bottom:18px"><span class="dot down"></span>' +
+    '<div><b>Could not reach the server.</b><br>' + esc(msg) +
+    '<br>Nothing on this page loaded. That is a failed request — it is not the same fact as "nothing happened in the last ' +
+    esc(days) + ' day' + (days === 1 ? '' : 's') + '". ' +
+    '<button class="btn btn-sm" data-retry="1" style="margin-left:6px">Try again</button></div></div>';
+  data = null;
+  renderKpis();
+  document.getElementById('unactioned').innerHTML =
+    '<div class="card"><div class="head"><h2>Nobody acted on this</h2><span class="badge quiet">?</span></div>' +
+    emptyBlock('Unknown — the sweep did not load',
+      'Until the request succeeds this page cannot tell you whether anything was missed. Treat it as unread, not as clear.') +
+    '</div>';
+  document.getElementById('sections').innerHTML = '';
+  document.getElementById('scopeNote').textContent = '';
+}
+
+function load() {
+  document.getElementById('subLine').textContent =
+    'Every call, lead and email in the last ' + days + ' day' + (days === 1 ? '' : 's') + ' — and, first, the ones nobody acted on.';
+
+  return getJson('/api/sweep?days=' + encodeURIComponent(days)).then(function (d) {
+    document.getElementById('fetchErr').innerHTML = '';
+    data = d;
+    render();
+  }).catch(function (err) {
+    showFetchError(err && err.message ? err.message : 'Unknown network error');
+  });
+}
+
+/* ── Events ───────────────────────────────────────────────────────────── */
+document.getElementById('seg').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-days]');
+  if (!b) return;
+  days = Number(b.getAttribute('data-days')) || 7;
+  this.querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); });
+  b.classList.add('on');
+  load();
+});
+
+document.getElementById('briefBtn').addEventListener('click', function () { navigate('jarvis'); });
+
+document.addEventListener('click', function (e) {
+  var nav = e.target.closest('[data-nav]');
+  if (nav) { navigate(nav.getAttribute('data-nav')); return; }
+
+  var retry = e.target.closest('[data-retry]');
+  if (retry) { load(); return; }
+
+  var sec = e.target.closest('[data-section]');
+  if (sec) {
+    var k = sec.getAttribute('data-section');
+    openSections[k] = !openSections[k];
+    renderSections();
+  }
+});
+
+load();
+</script></body></html>

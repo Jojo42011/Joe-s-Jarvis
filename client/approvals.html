@@ -1,0 +1,357 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Totally Outdoors OS · To approve</title>
+<link rel="stylesheet" href="/fonts.css" /><link rel="stylesheet" href="/signal.css" />
+<script src="/theme-sync.js"></script></head><body><div class="wrap">
+
+  <div class="page-head">
+    <h1>To approve</h1>
+    <div class="sub">Nothing leaves the building without you. Jarvis writes the reply — the send button is yours.</div>
+  </div>
+
+  <div id="fetchErr"></div>
+  <div id="connNotice"></div>
+
+  <div class="card">
+    <div class="head">
+      <h2>Email drafts waiting on you</h2>
+      <span class="meta" id="countMeta">Loading…</span>
+    </div>
+    <div id="list">
+      <div class="empty"><div class="t">Loading…</div><div class="scope">Reading pending drafts from every connected mailbox.</div></div>
+    </div>
+  </div>
+
+  <div class="meta" id="capNote">This screen reads at most 100 pending drafts per load — if more are waiting, they appear as these clear.</div>
+
+</div>
+<script>
+"use strict";
+
+/* ── Helpers ──────────────────────────────────────────────────────────── */
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+var MONEY_FMT = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+function money(cents) { return MONEY_FMT.format((Number(cents) || 0) / 100); }
+
+/* SQLite hands back "YYYY-MM-DD HH:MM:SS" in UTC with no zone marker; parsing
+   that as local time silently shifts every timestamp, so normalise first. */
+function parseDate(v) {
+  if (!v) return null;
+  var s = String(v);
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) s = s.replace(' ', 'T') + 'Z';
+  var d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function when(v) {
+  var d = parseDate(v);
+  if (!d) return 'unconfirmed';                       // rule 1 — never invent a time
+  var diff = Date.now() - d.getTime();
+  if (diff < 0) diff = 0;
+  var mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  var hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  if (hrs < 24 * 7) {
+    return d.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' +
+      d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+  }
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function initials(s) {
+  var t = String(s || '').replace(/<[^>]*>/g, ' ').trim();
+  var parts = t.split(/[\s@._-]+/).filter(Boolean);
+  if (!parts.length) return '?';
+  return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+
+function navigate(tab) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'operator-navigate', tab: tab }, '*');
+  } else {
+    window.location.href = '/' + (tab === 'integrations' ? 'integrations' : tab);
+  }
+}
+
+/* A failed request and "there is nothing" are different facts (rule 4), so the
+   transport layer always throws a message a human can read. */
+function readJson(r) {
+  return r.text().then(function (txt) {
+    var data = null;
+    try { data = txt ? JSON.parse(txt) : null; } catch (_) { data = null; }
+    if (!r.ok) {
+      var msg = (data && (data.error || data.message)) || (txt ? String(txt).slice(0, 200) : '');
+      throw new Error(msg || ('Server responded ' + r.status + ' ' + (r.statusText || '')));
+    }
+    if (data && data.error) throw new Error(data.error);
+    return data || {};
+  });
+}
+
+function getJson(url) {
+  return fetch(url, { headers: { Accept: 'application/json' } }).then(readJson);
+}
+
+function postJson(url, body) {
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  }).then(readJson);
+}
+
+/* ── State ────────────────────────────────────────────────────────────── */
+var expanded = {};      // draft id -> true, so a re-fetch doesn't collapse the card
+var edited = {};        // draft id -> textarea value in flight
+var items = [];
+var accountState = null;   // { configured, accounts:[] } or null if that call failed
+var accountError = null;
+
+/* ── Render ───────────────────────────────────────────────────────────── */
+function connectedAccounts() {
+  if (!accountState || !Array.isArray(accountState.accounts)) return [];
+  return accountState.accounts.filter(function (a) { return a.connected; });
+}
+
+function renderConnNotice() {
+  var el = document.getElementById('connNotice');
+  if (accountError) {
+    el.innerHTML = '<div class="notice down" style="margin-bottom:18px">' +
+      '<span class="dot down"></span><div><b>Could not check which mailboxes are connected.</b><br>' +
+      esc(accountError) + ' — so an empty list below cannot be trusted to mean "nothing pending".</div></div>';
+    return;
+  }
+  if (!accountState) { el.innerHTML = ''; return; }
+  if (!accountState.configured) {
+    el.innerHTML = '<div class="notice" style="margin-bottom:18px">' +
+      '<span class="dot warn"></span><div><b>Google is not configured on this server.</b><br>' +
+      'No mailbox can be read or sent from until it is, so this queue will stay empty regardless of what is in the inbox.' +
+      ' <button class="btn btn-sm" data-go="integrations" style="margin-left:6px">Open Integrations</button></div></div>';
+    return;
+  }
+  if (!connectedAccounts().length) {
+    el.innerHTML = '<div class="notice" style="margin-bottom:18px">' +
+      '<span class="dot warn"></span><div><b>No mailbox has authorized yet.</b><br>' +
+      'Gmail is configured but no account has completed the connect flow, so Jarvis has nothing to draft from.' +
+      ' <button class="btn btn-sm" data-go="integrations" style="margin-left:6px">Connect a mailbox</button></div></div>';
+    return;
+  }
+  el.innerHTML = '';
+}
+
+function renderList() {
+  var el = document.getElementById('list');
+  var countEl = document.getElementById('countMeta');
+
+  if (!items.length) {
+    countEl.textContent = accountError ? 'unconfirmed' : '0 waiting';
+    var connected = connectedAccounts();
+    if (accountError) {
+      el.innerHTML = '<div class="empty"><div class="t">Nothing to show — and that may not mean nothing is waiting</div>' +
+        '<div class="scope">The mailbox connection check failed, so an empty draft queue cannot be read as "you are clear". ' +
+        'Reload once the server is reachable.</div></div>';
+      return;
+    }
+    if (accountState && (!accountState.configured || !connected.length)) {
+      el.innerHTML = '<div class="empty"><div class="t">Gmail is not connected</div>' +
+        '<div class="scope">This queue only ever contains email replies Jarvis drafted from a connected mailbox. ' +
+        'With no mailbox authorized, there is nothing to approve — that is a connection gap, not an empty inbox.</div>' +
+        '<div style="margin-top:12px"><button class="btn btn-sm btn-accent" data-go="integrations">Open Integrations</button></div></div>';
+      return;
+    }
+    var scopeMailboxes = connected.map(function (a) { return a.email; }).join(', ');
+    el.innerHTML = '<div class="empty"><div class="t">Nothing waiting on you</div>' +
+      '<div class="scope">Searched every pending email draft Jarvis wrote across ' +
+      (scopeMailboxes ? esc(scopeMailboxes) : 'the connected mailboxes') + '. ' +
+      'This screen covers email drafts only — content and SEO approval queues do not exist in this build, ' +
+      'so nothing of that kind is hiding here.</div></div>';
+    return;
+  }
+
+  countEl.textContent = items.length + ' waiting' + (items.length >= 100 ? ' (capped at 100)' : '');
+
+  el.innerHTML = items.map(function (it) {
+    var id = String(it.id);
+    var open = !!expanded[id];
+    var from = it.from_addr || 'unknown sender';
+    var subject = it.subject || '(no subject)';
+    var body = (edited[id] != null) ? edited[id] : (it.draft_reply || '');
+    var mailbox = it.account_email || 'unconfirmed mailbox';
+
+    return '' +
+      '<div class="item" data-item="' + esc(id) + '" style="border-bottom:1px solid var(--divider)">' +
+        '<div class="row" data-toggle="' + esc(id) + '" style="cursor:pointer;border-bottom:none">' +
+          '<div class="avatar">' + esc(initials(from)) + '</div>' +
+          '<div class="grow">' +
+            '<div class="t truncate">' + esc(subject) + '</div>' +
+            '<div class="s truncate">' + esc(from) + ' · ' + esc(when(it.received_at)) + '</div>' +
+          '</div>' +
+          '<span class="pill indigo">' + esc(it.draft_status || 'pending') + '</span>' +
+          '<span class="pill quiet">sends from ' + esc(mailbox) + '</span>' +
+          '<button class="btn btn-sm btn-ghost" data-toggle="' + esc(id) + '">' + (open ? 'Hide' : 'Review') + '</button>' +
+        '</div>' +
+
+        '<div data-detail="' + esc(id) + '" class="' + (open ? 'fade-in' : 'hide') + '" style="padding:0 18px 16px 18px">' +
+          '<div style="background:var(--panel-alt);border:1px solid var(--border);border-radius:var(--r-btn);padding:12px 14px">' +
+            '<div class="meta" style="text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:6px">Their email</div>' +
+            '<div style="font-weight:600;font-size:13.5px">' + esc(subject) + '</div>' +
+            '<div class="meta" style="margin-top:2px">From ' + esc(from) + ' · received ' + esc(when(it.received_at)) + '</div>' +
+            '<div style="margin-top:8px;font-size:13px;color:var(--ink-2);white-space:pre-wrap">' +
+              (it.snippet ? esc(it.snippet) : '<span class="meta">No preview text was stored for this message — open it in the Inbox to read the full body.</span>') +
+            '</div>' +
+            (it.summary ? '<hr class="sep"><div class="meta" style="text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:4px">Jarvis read it as</div>' +
+              '<div style="font-size:13px;color:var(--ink-2)">' + esc(it.summary) + '</div>' : '') +
+          '</div>' +
+
+          '<label class="field" style="margin-top:14px">' +
+            '<span>Reply that will be sent from ' + esc(mailbox) + '</span>' +
+            '<textarea rows="9" data-body="' + esc(id) + '" spellcheck="true">' + esc(body) + '</textarea>' +
+          '</label>' +
+
+          (it.draft_reply ? '' :
+            '<div class="notice" style="margin-bottom:10px"><span class="dot warn"></span>' +
+            '<div>Jarvis stored no draft text for this one. Write the reply yourself before sending — ' +
+            'the server will refuse an approval with an empty body.</div></div>') +
+
+          '<div class="wrap-gap">' +
+            '<button class="btn btn-accent btn-sm" data-act="approve" data-id="' + esc(id) + '">Approve &amp; send</button>' +
+            '<button class="btn btn-sm" data-act="edit" data-id="' + esc(id) + '">Save edit</button>' +
+            '<button class="btn btn-sm btn-ghost" data-act="dismiss" data-id="' + esc(id) + '">Dismiss</button>' +
+            '<span class="meta right" data-status="' + esc(id) + '"></span>' +
+          '</div>' +
+
+          '<div class="notice down hide" data-err="' + esc(id) + '" style="margin-top:10px"></div>' +
+        '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function render() { renderConnNotice(); renderList(); }
+
+/* ── Per-item actions ─────────────────────────────────────────────────── */
+function itemError(id, msg) {
+  var box = document.querySelector('[data-err="' + id + '"]');
+  if (!box) { return; }
+  box.classList.remove('hide');
+  box.innerHTML = '<span class="dot down"></span><div><b>That did not go through.</b><br>' + esc(msg) + '</div>';
+}
+
+function itemStatus(id, msg) {
+  var s = document.querySelector('[data-status="' + id + '"]');
+  if (s) s.textContent = msg || '';
+}
+
+function setBusy(id, busy) {
+  document.querySelectorAll('[data-id="' + id + '"]').forEach(function (b) { b.disabled = !!busy; });
+}
+
+function doAction(id, act) {
+  var ta = document.querySelector('[data-body="' + id + '"]');
+  var body = ta ? ta.value : '';
+  edited[id] = body;
+
+  var box = document.querySelector('[data-err="' + id + '"]');
+  if (box) { box.classList.add('hide'); box.innerHTML = ''; }
+
+  if (act !== 'dismiss' && !String(body).trim()) {
+    itemError(id, 'The reply is empty. Nothing was sent — write a body first.');
+    return;
+  }
+
+  setBusy(id, true);
+  itemStatus(id, act === 'approve' ? 'Sending…' : (act === 'edit' ? 'Saving…' : 'Dismissing…'));
+
+  var url = '/api/google/draft/' + encodeURIComponent(id) + '/' + act;
+  var payload = act === 'dismiss' ? {} : { body: body };
+
+  postJson(url, payload).then(function () {
+    delete edited[id];
+    if (act !== 'edit') delete expanded[id];
+    itemStatus(id, '');
+    return load();
+  }).catch(function (err) {
+    setBusy(id, false);
+    itemStatus(id, '');
+    itemError(id, err && err.message ? err.message : 'Unknown failure');
+  });
+}
+
+/* ── Events (delegated, so re-renders never lose their handlers) ──────── */
+document.addEventListener('click', function (e) {
+  var go = e.target.closest('[data-go]');
+  if (go) { navigate(go.getAttribute('data-go')); return; }
+
+  var actBtn = e.target.closest('[data-act]');
+  if (actBtn) {
+    e.stopPropagation();
+    doAction(actBtn.getAttribute('data-id'), actBtn.getAttribute('data-act'));
+    return;
+  }
+
+  var toggle = e.target.closest('[data-toggle]');
+  if (toggle) {
+    var id = toggle.getAttribute('data-toggle');
+    var ta = document.querySelector('[data-body="' + id + '"]');
+    if (ta) edited[id] = ta.value;
+    if (expanded[id]) delete expanded[id]; else expanded[id] = true;
+    renderList();
+    return;
+  }
+
+  var retry = e.target.closest('[data-retry]');
+  if (retry) load();
+});
+
+document.addEventListener('input', function (e) {
+  var ta = e.target.closest('[data-body]');
+  if (ta) edited[ta.getAttribute('data-body')] = ta.value;
+});
+
+/* ── Load ─────────────────────────────────────────────────────────────── */
+function showFetchError(msg) {
+  document.getElementById('fetchErr').innerHTML =
+    '<div class="notice down" style="margin-bottom:18px"><span class="dot down"></span>' +
+    '<div><b>Could not reach the server.</b><br>' + esc(msg) +
+    '<br>Nothing below is current — this is a failed request, not an empty approval queue. ' +
+    '<button class="btn btn-sm" data-retry="1" style="margin-left:6px">Try again</button></div></div>';
+  document.getElementById('countMeta').textContent = 'unconfirmed';
+  document.getElementById('list').innerHTML =
+    '<div class="empty"><div class="t">No answer from the drafts service</div>' +
+    '<div class="scope">The request for pending drafts failed, so this list is unknown — not empty. ' +
+    'Do not treat this screen as "you are clear" until it loads.</div></div>';
+}
+
+function load() {
+  var accountsP = getJson('/api/google/accounts')
+    .then(function (d) { accountState = d; accountError = null; })
+    .catch(function (err) { accountState = null; accountError = err && err.message ? err.message : 'request failed'; });
+
+  var draftsP = getJson('/api/google/drafts')
+    .then(function (d) { return Array.isArray(d) ? d : (d.items || []); });
+
+  return Promise.all([accountsP, draftsP]).then(function (res) {
+    document.getElementById('fetchErr').innerHTML = '';
+    items = res[1] || [];
+    render();
+  }).catch(function (err) {
+    items = [];
+    renderConnNotice();
+    showFetchError(err && err.message ? err.message : 'Unknown network error');
+  });
+}
+
+load();
+// Auto-refresh, but never yank a reply out from under the cursor mid-sentence.
+setInterval(function () {
+  var a = document.activeElement;
+  if (a && a.tagName === 'TEXTAREA') return;
+  load();
+}, 60000);
+</script></body></html>

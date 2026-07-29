@@ -1,0 +1,317 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Totally Outdoors OS · Pipeline</title>
+<link rel="stylesheet" href="/fonts.css" /><link rel="stylesheet" href="/signal.css" />
+<script src="/theme-sync.js"></script></head><body><div class="wrap">
+
+  <div class="page-head">
+    <h1>Pipeline</h1>
+    <div class="sub">Weighted forecast, stage by stage. Every open lead counts toward a stage; only the ones carrying a project value can move the forecast.</div>
+  </div>
+
+  <div id="fetchErr"></div>
+
+  <div class="kpis" id="kpis"></div>
+  <div class="meta" id="honesty" style="margin-top:10px"></div>
+  <div id="forecastNotice" style="margin-top:12px"></div>
+
+  <div class="card" style="margin-top:18px">
+    <div class="head">
+      <h2>Funnel</h2>
+      <span class="meta" id="funnelMeta"></span>
+    </div>
+    <div id="funnel"><div class="empty"><div class="t">Loading…</div><div class="scope">Reading every lead record, uncapped.</div></div></div>
+  </div>
+
+  <div id="closed"></div>
+
+  <div class="meta" id="scopeNote"></div>
+
+</div>
+<script>
+"use strict";
+
+/* ── Helpers ──────────────────────────────────────────────────────────── */
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+var MONEY_FMT = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+function money(cents) { return MONEY_FMT.format((Number(cents) || 0) / 100); }
+
+/* SQLite stores "YYYY-MM-DD HH:MM:SS" in UTC with no zone marker; parsing that
+   as local time shifts every timestamp, so normalise before constructing. */
+function parseDate(v) {
+  if (!v) return null;
+  var s = String(v);
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) s = s.replace(' ', 'T') + 'Z';
+  var d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function when(v) {
+  var d = parseDate(v);
+  if (!d) return 'unconfirmed';                       // rule 1 — never invent a date
+  var diff = Date.now() - d.getTime();
+  if (diff < 0) diff = 0;
+  var mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  var hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  if (hrs < 24 * 7) {
+    return d.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' +
+      d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+  }
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+var STAGE_LABEL = {
+  new: 'New', contacted: 'Contacted', quoted: 'Quoted', booked: 'Booked',
+  in_progress: 'In progress', completed: 'Completed', lost: 'Lost',
+};
+function stageLabel(k) {
+  if (STAGE_LABEL[k]) return STAGE_LABEL[k];
+  return String(k || 'unknown').replace(/_/g, ' ').replace(/^./, function (c) { return c.toUpperCase(); });
+}
+
+function pct(w) {
+  var n = Number(w);
+  if (!isFinite(n)) return 'weight unconfirmed';
+  return Math.round(n * 100) + '%';
+}
+
+function navigate(tab) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'operator-navigate', tab: tab }, '*');
+  } else {
+    window.location.href = '/' + tab;
+  }
+}
+
+function readJson(r) {
+  return r.text().then(function (txt) {
+    var data = null;
+    try { data = txt ? JSON.parse(txt) : null; } catch (_) { data = null; }
+    if (!r.ok) {
+      var msg = (data && (data.error || data.message)) || (txt ? String(txt).slice(0, 200) : '');
+      throw new Error(msg || ('Server responded ' + r.status + ' ' + (r.statusText || '')));
+    }
+    if (data && data.error) throw new Error(data.error);
+    return data || {};
+  });
+}
+
+function getJson(url) {
+  return fetch(url, { headers: { Accept: 'application/json' } }).then(readJson);
+}
+
+var CLOSED = { lost: true, completed: true };
+
+/* ── Render ───────────────────────────────────────────────────────────── */
+function kpi(n, label, cls) {
+  return '<div class="kpi"><div class="n ' + (cls || '') + '">' + esc(n) + '</div><div class="l">' + esc(label) + '</div></div>';
+}
+
+function renderKpis(d) {
+  var el = document.getElementById('kpis');
+  var openLeads = Number(d.openLeads) || 0;
+  var valued = Number(d.valuedLeads) || 0;
+
+  /* Rule 1: with no open lead carrying a value there is no forecast to state.
+     A $0 here would read as "the pipeline is worth nothing", which is a
+     different — and unproven — claim from "nothing has been priced yet". */
+  var forecast = valued === 0
+    ? kpi('unconfirmed', 'Weighted forecast', 'unconfirmed')
+    : kpi(money(d.totalWeightedCents), 'Weighted forecast', 'money');
+
+  var openValue = (valued === 0 && openLeads > 0)
+    ? kpi('unconfirmed', 'Total open value', 'unconfirmed')
+    : kpi(money(d.totalOpenCents), 'Total open value', 'money');
+
+  el.innerHTML = forecast + openValue +
+    kpi(openLeads, 'Open leads', openLeads ? 'indigo' : '') +
+    kpi(valued + ' of ' + openLeads, 'Priced', valued ? '' : 'amber');
+}
+
+function renderHonesty(d) {
+  var el = document.getElementById('honesty');
+  var openLeads = Number(d.openLeads) || 0;
+  var valued = Number(d.valuedLeads) || 0;
+
+  if (openLeads === 0) {
+    el.textContent = 'There are no open leads, so there is nothing to forecast — every lead on file is closed won or lost.';
+  } else {
+    el.textContent = 'Forecast rests on ' + valued + ' of ' + openLeads +
+      ' open lead' + (openLeads === 1 ? '' : 's') + ' that carry a value.' +
+      (valued < openLeads
+        ? ' The other ' + (openLeads - valued) + ' contribute nothing to the number above — they are counted, not priced.'
+        : ' Every open lead is priced.');
+  }
+
+  var nel = document.getElementById('forecastNotice');
+  if (openLeads > 0 && valued === 0) {
+    nel.innerHTML = '<div class="notice"><span class="dot warn"></span><div>' +
+      '<b>No forecast can be computed.</b><br>' + openLeads + ' open lead' + (openLeads === 1 ? ' carries' : 's carry') +
+      ' no project value, so weighting them produces nothing to stand behind. The forecast reads "unconfirmed" rather than ' +
+      money(0) + ', because those are not the same claim. Put a project value on a lead in the CRM and it starts counting here. ' +
+      '<button class="btn btn-sm" data-nav="crm" style="margin-left:6px">Open the CRM</button></div></div>';
+  } else {
+    nel.innerHTML = '';
+  }
+}
+
+function leadChip(l) {
+  var hasValue = Number(l.project_value_cents) > 0;
+  return '<div class="row" data-nav="crm" style="cursor:pointer;padding:9px 12px;gap:9px">' +
+    '<div class="grow">' +
+      '<div class="t truncate" style="font-size:13px">' + esc(l.name || 'Unnamed lead') + '</div>' +
+      '<div class="s truncate" style="font-size:11.5px">' +
+        esc(l.source ? String(l.source).replace(/_/g, ' ') : 'source unconfirmed') + ' · ' + esc(when(l.created_at)) +
+      '</div>' +
+    '</div>' +
+    (hasValue
+      ? '<span class="money-txt" style="font-size:12px;color:var(--money)">' + esc(money(l.project_value_cents)) + '</span>'
+      : '<span class="meta" style="font-size:11.5px">no value set</span>') +
+  '</div>';
+}
+
+function stageCard(s) {
+  var valued = Number(s.valuedCount) || 0;
+  var count = Number(s.count) || 0;
+
+  /* Rule 1 again, per stage: a stage full of unpriced leads has an unknown
+     value, not a zero one. */
+  var valueLine = (count > 0 && valued === 0)
+    ? '<span class="meta">value unconfirmed</span>'
+    : '<span class="money-txt" style="color:var(--money)">' + esc(money(s.valueCents)) + '</span>';
+  var weightedLine = (count > 0 && valued === 0)
+    ? '<span class="meta">unconfirmed</span>'
+    : '<span class="money-txt">' + esc(money(s.weightedCents)) + '</span>';
+
+  var leads = s.leads || [];
+  var body = leads.length
+    ? leads.map(leadChip).join('')
+    : '<div class="empty" style="padding:20px 12px"><div class="t" style="font-size:13px">Empty stage</div>' +
+      '<div class="scope" style="font-size:11.5px">No lead currently sits at ' + esc(stageLabel(s.stage)) + '.</div></div>';
+
+  return '<div class="card" style="min-width:250px;flex:1 1 250px;margin-bottom:0;display:flex;flex-direction:column">' +
+    '<div class="head">' +
+      '<h2>' + esc(stageLabel(s.stage)) + '</h2>' +
+      '<div class="flex">' +
+        '<span class="badge' + (count ? '' : ' quiet') + '">' + count + '</span>' +
+        '<span class="pill indigo">' + esc(pct(s.weight)) + '</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="body" style="padding-top:12px;padding-bottom:12px">' +
+      '<div class="between" style="font-size:12px"><span class="meta">Stage value</span>' + valueLine + '</div>' +
+      '<div class="between" style="font-size:12px;margin-top:5px"><span class="meta">Weighted</span>' + weightedLine + '</div>' +
+      '<div class="meta" style="margin-top:6px;font-size:11.5px">' +
+        (count ? valued + ' of ' + count + ' priced' : 'nothing here to price') +
+      '</div>' +
+    '</div>' +
+    '<div style="border-top:1px solid var(--divider);flex:1 1 auto">' + body + '</div>' +
+  '</div>';
+}
+
+function renderFunnel(d) {
+  var stages = Array.isArray(d.stages) ? d.stages : [];
+  var open = stages.filter(function (s) { return !CLOSED[s.stage]; });
+  var el = document.getElementById('funnel');
+
+  document.getElementById('funnelMeta').textContent =
+    open.length + ' open stage' + (open.length === 1 ? '' : 's') + ' · closed stages are summarised below';
+
+  if (!open.length) {
+    el.innerHTML = '<div class="empty"><div class="t">No open stages came back</div>' +
+      '<div class="scope">The server returned a pipeline with no stage outside "completed" and "lost". ' +
+      'Scope: every stage the CRM defines, read from the full leads table with no cap.</div></div>';
+    return;
+  }
+
+  el.innerHTML = '<div style="overflow-x:auto;padding:16px 18px">' +
+    '<div style="display:flex;gap:14px;align-items:stretch;min-width:min-content">' +
+      open.map(stageCard).join('') +
+    '</div></div>';
+}
+
+function renderClosed(d) {
+  var stages = Array.isArray(d.stages) ? d.stages : [];
+  var closed = stages.filter(function (s) { return CLOSED[s.stage]; });
+  var el = document.getElementById('closed');
+  if (!closed.length) { el.innerHTML = ''; return; }
+
+  el.innerHTML = '<div class="card"><div class="head"><h2>Closed — not in the funnel</h2>' +
+    '<span class="meta">Excluded from every forecast figure above</span></div>' +
+    closed.map(function (s) {
+      var count = Number(s.count) || 0;
+      var valued = Number(s.valuedCount) || 0;
+      var val = (count > 0 && valued === 0)
+        ? '<span class="meta">value unconfirmed</span>'
+        : '<span class="money-txt" style="color:var(--money)">' + esc(money(s.valueCents)) + '</span>';
+      return '<div class="row">' +
+        '<div class="grow">' +
+          '<div class="t">' + esc(stageLabel(s.stage)) + '</div>' +
+          '<div class="s">' + count + ' lead' + (count === 1 ? '' : 's') + ' · ' +
+            (count ? valued + ' priced' : 'nothing to price') + '</div>' +
+        '</div>' + val +
+      '</div>';
+    }).join('') + '</div>';
+}
+
+function render(d) {
+  renderKpis(d);
+  renderHonesty(d);
+  renderFunnel(d);
+  renderClosed(d);
+  document.getElementById('scopeNote').textContent =
+    'Scope: every lead record in the CRM, uncapped — no stage or lead is trimmed from this page. ' +
+    'Open means any stage other than completed or lost. Weights are the per-stage close probabilities the server applies; ' +
+    'weighted value is stage value multiplied by that weight.';
+}
+
+/* ── Load ─────────────────────────────────────────────────────────────── */
+function showFetchError(msg) {
+  document.getElementById('fetchErr').innerHTML =
+    '<div class="notice down" style="margin-bottom:18px"><span class="dot down"></span>' +
+    '<div><b>Could not reach the server.</b><br>' + esc(msg) +
+    '<br>No pipeline figures loaded. A failed request is not the same fact as an empty pipeline — nothing on this page is a real number right now. ' +
+    '<button class="btn btn-sm" data-retry="1" style="margin-left:6px">Try again</button></div></div>';
+
+  document.getElementById('kpis').innerHTML =
+    '<div class="kpi"><div class="n unconfirmed">unconfirmed</div><div class="l">Weighted forecast</div></div>' +
+    '<div class="kpi"><div class="n unconfirmed">unconfirmed</div><div class="l">Total open value</div></div>' +
+    '<div class="kpi"><div class="n unconfirmed">unconfirmed</div><div class="l">Open leads</div></div>' +
+    '<div class="kpi"><div class="n unconfirmed">unconfirmed</div><div class="l">Priced</div></div>';
+  document.getElementById('honesty').textContent =
+    'The forecast could not be loaded, so how much of it rests on priced leads is unknown.';
+  document.getElementById('forecastNotice').innerHTML = '';
+  document.getElementById('funnelMeta').textContent = '';
+  document.getElementById('funnel').innerHTML =
+    '<div class="empty"><div class="t">The funnel did not load</div>' +
+    '<div class="scope">This is a transport failure, not an empty pipeline. Retry before drawing any conclusion from a blank funnel.</div></div>';
+  document.getElementById('closed').innerHTML = '';
+  document.getElementById('scopeNote').textContent = '';
+}
+
+function load() {
+  return getJson('/api/pipeline').then(function (d) {
+    document.getElementById('fetchErr').innerHTML = '';
+    render(d);
+  }).catch(function (err) {
+    showFetchError(err && err.message ? err.message : 'Unknown network error');
+  });
+}
+
+/* ── Events ───────────────────────────────────────────────────────────── */
+document.addEventListener('click', function (e) {
+  var nav = e.target.closest('[data-nav]');
+  if (nav) { navigate(nav.getAttribute('data-nav')); return; }
+  var retry = e.target.closest('[data-retry]');
+  if (retry) load();
+});
+
+load();
+</script></body></html>
