@@ -8,36 +8,36 @@
 <link rel="stylesheet" href="/signal.css" />
 <script src="/theme-sync.js"></script>
 <style>
-  /* ── Branded hero: the Totally Outdoors mark, alive ──────────────────
-     A slow drift of light across the badge plus a soft pulse ring. The
-     motion is decorative only — nothing here reports state, so it can
-     never be mistaken for a live indicator. */
-  /* Three columns: the greeting reads left, the mark sits dead centre, and the
-     one number Joe is accountable for anchors the right. The centre column is
-     `justify-self:center` against the hero box (not the text), so the mark stays
-     centred no matter how long the greeting runs. */
+  /* Full-bleed layout: this screen fills the frame edge to edge like Arthur's,
+     rather than sitting in a centred column. */
+  .wrap { max-width:none; padding:20px 24px 56px; }
+
+  /* ── Hero strip: slim, full width, dark ink sliding into brand red ────
+     The gradient starts near-black on the left and only resolves into the
+     Totally Outdoors red at the far right; a slow sheen drifts across and
+     the mark floats dead centre with pulse rings. Decorative only. */
   .hero.brand-hero {
+    position:relative; overflow:hidden; border-radius:var(--r-card);
     display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
-    gap:22px; padding:24px 26px;
-  }
-  .hero.brand-hero > .grow { min-width:0; }
-  .hero .hero-count { justify-self:end; text-align:right; }
-  .hero .hero-count .n { font-size:40px; font-weight:800; line-height:1; letter-spacing:-.02em; }
-  .hero .hero-count .l {
-    font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
-    opacity:.82; margin-top:6px;
+    gap:22px; padding:20px 30px; min-height:112px;
+    background:linear-gradient(100deg,#101322 0%,#181227 38%,#4a0f1c 72%,#a2150e 90%,#c81a10 100%);
+    color:#fff; box-shadow:var(--sh-rest); margin-bottom:20px;
   }
   .hero.brand-hero::after {
     content:""; position:absolute; inset:0; pointer-events:none;
-    background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.16) 46%,transparent 62%);
+    background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.13) 46%,transparent 62%);
     background-size:280% 100%; animation:sheen 7s var(--ease) infinite;
   }
   @keyframes sheen { 0% { background-position:180% 0; } 55%,100% { background-position:-80% 0; } }
+  .hero .eyebrow { font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; opacity:.78; }
+  .hero h1 { font-size:26px; font-weight:800; letter-spacing:-.02em; margin:4px 0 3px; color:#fff; }
+  .hero .sub { font-size:13.5px; color:rgba(255,255,255,.75); }
+  .hero.brand-hero > .grow { min-width:0; }
 
-  .markwrap { position:relative; flex:0 0 auto; width:96px; height:96px; display:flex; align-items:center; justify-content:center; }
-  .markwrap img { width:92px; height:92px; object-fit:contain; position:relative; z-index:2;
-                  filter:drop-shadow(0 6px 14px rgba(0,0,0,.35)); animation:markFloat 6s ease-in-out infinite; }
-  @keyframes markFloat { 0%,100% { transform:translateY(0) scale(1); } 50% { transform:translateY(-5px) scale(1.015); } }
+  .markwrap { position:relative; flex:0 0 auto; width:78px; height:78px; display:flex; align-items:center; justify-content:center; }
+  .markwrap img { width:74px; height:74px; object-fit:contain; position:relative; z-index:2;
+                  filter:drop-shadow(0 6px 14px rgba(0,0,0,.4)); animation:markFloat 6s ease-in-out infinite; }
+  @keyframes markFloat { 0%,100% { transform:translateY(0) scale(1); } 50% { transform:translateY(-4px) scale(1.015); } }
   .markwrap .ring {
     position:absolute; inset:2px; border-radius:50%; z-index:1;
     border:1.5px solid rgba(255,255,255,.35); animation:ringPulse 3.4s var(--ease) infinite;
@@ -45,43 +45,73 @@
   .markwrap .ring:nth-child(2) { animation-delay:1.7s; }
   @keyframes ringPulse {
     0% { transform:scale(.82); opacity:.5; }
-    70% { transform:scale(1.28); opacity:0; }
-    100% { transform:scale(1.28); opacity:0; }
+    70%,100% { transform:scale(1.28); opacity:0; }
   }
-  .hero .eyebrow { font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; opacity:.82; }
+  .hero .hero-count { justify-self:end; text-align:right; }
+  .hero .hero-count .n { font-size:38px; font-weight:800; line-height:1; letter-spacing:-.02em; }
+  .hero .hero-count .l { font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; opacity:.78; margin-top:6px; }
   @media (prefers-reduced-motion:reduce) {
     .hero.brand-hero::after, .markwrap img, .markwrap .ring { animation:none; }
   }
   @media (max-width:820px) {
-    .hero.brand-hero { grid-template-columns:1fr; justify-items:start; gap:14px; }
-    .hero .hero-count { justify-self:start; text-align:left; }
-    .markwrap { width:72px; height:72px; } .markwrap img { width:70px; height:70px; }
+    .hero.brand-hero { grid-template-columns:1fr auto; min-height:0; }
+    .hero .hero-count { grid-column:2; grid-row:1; }
+    .markwrap { display:none; }
   }
 
-  .agent { display:flex; gap:13px; align-items:flex-start; padding:14px 18px; border-bottom:1px solid var(--divider); }
+  /* ── Main grid: wide work column + fixed team rail, like Arthur's ──── */
+  .grid { display:grid; grid-template-columns:1fr 392px; gap:18px; align-items:start; }
+  .grid > * { min-width:0; }
+  @media (max-width:1080px) { .grid { grid-template-columns:1fr; } }
+
+  /* Today's plan checklist */
+  .plan-row { display:flex; align-items:center; gap:13px; padding:13px 18px; border-bottom:1px solid var(--divider); font-size:14px; }
+  .plan-row:last-of-type { border-bottom:none; }
+  .plan-row .tick {
+    width:18px; height:18px; border-radius:50%; flex:0 0 auto;
+    border:1.6px solid var(--border-strong); cursor:pointer; transition:all .15s;
+  }
+  .plan-row.done .tick { background:var(--green); border-color:var(--green); }
+  .plan-row.done .t { text-decoration:line-through; color:var(--muted); }
+  .plan-foot { padding:12px 18px; font-size:13px; color:var(--muted); border-top:1px solid var(--divider); }
+  .plan-foot a { color:var(--brand); font-weight:600; cursor:pointer; }
+
+  /* Waiting on you rows */
+  .wait-item { display:flex; gap:11px; align-items:center; padding:12px 18px; border-bottom:1px solid var(--divider); }
+  .wait-item:last-child { border-bottom:none; }
+  .wait-item .kind {
+    flex:0 0 auto; font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:lowercase;
+    padding:5px 9px; border-radius:7px; background:var(--fill); color:var(--ink-2); border:1px solid var(--border);
+  }
+  .wait-item .t { font-weight:600; font-size:13.5px; }
+  .wait-item .s { font-size:12.5px; color:var(--muted); margin-top:1px; }
+
+  /* Team rail */
+  .agent { display:flex; gap:12px; align-items:flex-start; padding:14px 18px; border-bottom:1px solid var(--divider); }
   .agent:last-child { border-bottom:none; }
   .agent .nm { font-weight:700; font-size:14px; display:flex; align-items:center; gap:8px; }
-  .agent .rl { font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
-  .agent .hl { font-size:13px; color:var(--ink-2); margin-top:5px; }
-  .agent .dt { font-size:12.5px; color:var(--money); margin-top:4px; }
-  .wait-item { display:flex; gap:11px; align-items:center; padding:11px 18px; border-bottom:1px solid var(--divider); }
-  .wait-item:last-child { border-bottom:none; }
+  .agent .rl { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; font-weight:700; margin-top:1px; }
+  .agent .hl { font-size:13px; color:var(--ink); margin-top:6px; font-weight:600; }
+  .agent .dt { font-size:12.5px; color:var(--muted); margin-top:2px; }
+
+  /* KPI sub-line (signal.css defines .n/.l only) */
+  .kpi .s { font-size:12.5px; color:var(--muted); margin-top:6px; }
+
+  /* Recent activity rows */
+  .act { display:flex; align-items:center; gap:10px; padding:10px 18px; border-bottom:1px solid var(--divider); font-size:13px; }
+  .act:last-child { border-bottom:none; }
+  .act .when { margin-left:auto; flex:0 0 auto; font-size:12px; color:var(--faint); }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <!-- Branded hero -->
+  <!-- Hero strip -->
   <div class="hero brand-hero">
     <div class="grow">
       <div class="eyebrow" id="hero-date">Totally Outdoors Landscaping</div>
       <h1 id="greet">Good morning, Joe.</h1>
       <div class="sub" id="hero-sub">Landscaping, hardscaping and excavating · Holmes County, Ohio · since 2004</div>
-      <div class="row-actions">
-        <button class="btn btn-sm" data-go="jarvis">Ask Jarvis</button>
-        <button class="btn btn-sm" data-go="sweep">What I missed</button>
-        <button class="btn btn-sm" data-go="crm">Open CRM</button>
-      </div>
     </div>
 
     <div class="markwrap">
@@ -89,8 +119,6 @@
       <img src="/assets/totally-outdoors-logo.png" alt="Totally Outdoors LLC" />
     </div>
 
-    <!-- Starts as an em dash, not 0: until /api/home answers we do not know
-         how many things are waiting, and a confident 0 would be a lie. -->
     <div class="hero-count">
       <div class="n" id="hero-wait">—</div>
       <div class="l">Waiting on you</div>
@@ -99,50 +127,92 @@
 
   <div id="err"></div>
 
-  <!-- KPIs -->
+  <!-- KPI row -->
   <div class="kpis" id="kpis" style="margin-bottom:18px">
-    <div class="kpi"><div class="n" id="k-open">–</div><div class="l">Open leads</div></div>
-    <div class="kpi"><div class="n money" id="k-forecast">–</div><div class="l">Weighted forecast</div></div>
-    <div class="kpi"><div class="n amber" id="k-waiting">–</div><div class="l">Waiting on you</div></div>
-    <div class="kpi"><div class="n green" id="k-today">–</div><div class="l">On today</div></div>
+    <div class="kpi"><div class="n money" id="k-waiting">–</div><div class="l">Waiting on you</div><div class="s" id="k-waiting-s"></div></div>
+    <div class="kpi"><div class="n" id="k-due">–</div><div class="l">Due today</div><div class="s" id="k-due-s"></div></div>
+    <div class="kpi"><div class="n money" id="k-forecast">–</div><div class="l">Pipeline, weighted</div><div class="s" id="k-forecast-s"></div></div>
+    <div class="kpi"><div class="n" id="k-today">–</div><div class="l">Appointments today</div><div class="s" id="k-today-s"></div></div>
   </div>
 
-  <div class="cards two">
+  <div class="grid">
+    <!-- Work column -->
     <div>
-      <!-- The team -->
       <div class="card">
-        <div class="head"><h2>The team</h2><span class="meta" id="team-meta"></span></div>
-        <div id="agents"><div class="empty">Loading…</div></div>
+        <div class="head"><h2>Today's plan</h2><span class="badge quiet" id="plan-count"></span></div>
+        <div id="plan"><div class="empty">Loading…</div></div>
       </div>
 
-      <!-- Waiting on you -->
       <div class="card">
         <div class="head"><h2>Waiting on you</h2><span id="wait-count"></span></div>
         <div id="waiting"><div class="empty">Loading…</div></div>
       </div>
     </div>
 
+    <!-- Team rail -->
     <div>
-      <!-- Today -->
       <div class="card">
-        <div class="head"><h2>Today</h2><span class="meta" id="today-date"></span></div>
-        <div id="today"><div class="empty">Loading…</div></div>
+        <div class="head"><h2>Your team</h2><span class="meta" id="team-meta"></span></div>
+        <div id="agents"><div class="empty">Loading…</div></div>
       </div>
 
-      <!-- Recent leads -->
       <div class="card">
-        <div class="head"><h2>Recent leads</h2><button class="btn btn-sm btn-ghost" data-go="crm">Open CRM</button></div>
-        <div id="leads"><div class="empty">Loading…</div></div>
+        <div class="head"><h2>Recent activity</h2></div>
+        <div id="activity"><div class="empty">Loading…</div></div>
       </div>
     </div>
   </div>
 
-  <div class="meta center" id="stamp" style="margin-top:6px"></div>
+  <div class="meta center" id="stamp" style="margin-top:8px"></div>
 </div>
 
 <script>
 (function () {
   "use strict";
+
+  /* ══════════════════════════════════════════════════════════════════════
+     MOCK MODE — Joe asked to see the finished UI with sample figures before
+     the real wiring. Flip to false to load everything from /api/home again.
+     Every number below is invented; the stamp at the foot of the page says
+     so on screen, so a mock figure can never be mistaken for a live one.
+     ════════════════════════════════════════════════════════════════════ */
+  var MOCK = true;
+
+  var MOCK_DATA = {
+    waiting: 6,
+    dueToday: { count: 3, note: '2 estimates and a mulch delivery window' },
+    forecast: { cents: 1240000, note: '9 open · 6 with a value recorded' },
+    appointments: { count: 2, note: 'Next: 1:30 PM site visit, Berlin OH' },
+    plan: [
+      { t: 'Call back Mark Reynolds about the paver patio estimate', done: false },
+      { t: 'Approve the Hostetler retaining wall quote — $18,400', done: false },
+      { t: 'Order limestone for the Miller driveway before Thursday', done: false },
+      { t: 'Send milestone invoice — Yoder backyard, excavation complete', done: false },
+      { t: 'Follow up on the hot tub pad quote for Will Berry', done: false },
+      { t: 'Confirm the Troyer mulch delivery for Friday morning', done: false }
+    ],
+    planTotal: 14,
+    waitingItems: [
+      { kind: 'email',     t: 'Re: Backyard drainage question',            s: 'reply drafted for Sarah Miller <smiller@gmail.com>',            go: 'approve',   btn: 'Review' },
+      { kind: 'email',     t: 'Paver walkway — can you come this week?',   s: 'reply drafted for Dan Hostetler <danh@outlook.com>',            go: 'approve',   btn: 'Review' },
+      { kind: 'invoice',   t: 'INV-2026-014 — Yoder backyard',             s: 'Excavation milestone · $6,200 ready to send',                   go: 'money',     btn: 'Send' },
+      { kind: 'invoice',   t: 'INV-2026-015 — Reynolds patio',             s: 'Deposit · $4,800 ready to send',                                go: 'money',     btn: 'Send' },
+      { kind: 'materials', t: 'PO-0031 — Miller driveway limestone',       s: 'Job reached base prep and this is still in draft',              go: 'materials', btn: 'Open' },
+      { kind: 'call',      t: '+1 (330) 555-0187 called twice',            s: 'No lead record yet and no follow-up of any kind',               go: 'phones',    btn: 'Open' }
+    ],
+    agents: [
+      { name: 'Jarvis', role: 'Chief of staff', live: true,  hl: 'Last spoke with you',        dt: 'just now',                                   cls: 'indigo' },
+      { name: 'Sofia',  role: 'Calls',          live: true,  hl: '8 calls answered today',     dt: 'Last: +1 (330) 555-0142 · 36m ago',          cls: 'green' }
+    ],
+    activity: [
+      { t: 'Sofia took a call from +1 (330) 555-0142', when: '36m ago' },
+      { t: 'Jarvis drafted a reply to Sarah Miller',   when: '1h ago' },
+      { t: 'New lead: Dan Hostetler — retaining wall', when: '2h ago' },
+      { t: 'Sofia took a call from +1 (234) 555-0166', when: '3h ago' },
+      { t: 'Invoice INV-2026-013 was paid — $3,100',   when: '5h ago' },
+      { t: 'PO-0030 marked delivered — Yoder topsoil', when: 'yesterday' }
+    ]
+  };
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -150,167 +220,109 @@
     });
   }
   function money(cents) {
-    return '$' + (Number(cents || 0) / 100).toLocaleString('en-US', { maximumFractionDigits:0 });
+    var n = Number(cents || 0) / 100;
+    return n >= 10000 ? '$' + (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
+                      : '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
   }
   function go(tab) {
     try { window.parent.postMessage({ type:'operator-navigate', tab:tab }, '*'); } catch (_) {}
   }
-  document.querySelectorAll('[data-go]').forEach(function (b) {
-    b.addEventListener('click', function () { go(b.dataset.go); });
-  });
-
-  function when(iso) {
-    if (!iso) return '';
-    var d = new Date(iso); if (isNaN(d)) return '';
-    var diff = (Date.now() - d.getTime()) / 1000;
-    if (diff < 60) return 'just now';
-    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-    if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
-    return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
-  }
-  function clock(iso) {
-    if (!iso) return '';
-    var d = new Date(iso); if (isNaN(d)) return '';
-    return d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+  function bindGo() {
+    document.querySelectorAll('[data-go]').forEach(function (b) {
+      if (b.__bound) return; b.__bound = true;
+      b.addEventListener('click', function () { go(b.dataset.go); });
+    });
   }
 
-  // Greeting follows Ohio time, not the browser's guess.
+  // Greeting + date follow Ohio time, not the browser's guess.
   (function () {
     var h = Number(new Date().toLocaleString('en-US', { timeZone:'America/New_York', hour:'numeric', hour12:false }));
     var part = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
     document.getElementById('greet').textContent = part + ', Joe.';
     document.getElementById('hero-date').textContent =
       new Date().toLocaleDateString('en-US', { timeZone:'America/New_York', weekday:'long', month:'long', day:'numeric' });
-    document.getElementById('today-date').textContent =
-      new Date().toLocaleDateString('en-US', { timeZone:'America/New_York', weekday:'long', month:'short', day:'numeric' });
   })();
 
-  function fail(msg) {
-    document.getElementById('err').innerHTML =
-      '<div class="notice down" style="margin-bottom:16px">' + esc(msg) + '</div>';
-  }
+  function renderMock(d) {
+    document.getElementById('hero-wait').textContent = d.waiting;
+    document.getElementById('hero-sub').textContent =
+      d.plan.length + ' things on today’s plan. The team has kept everything else moving.';
 
-  function render(d) {
-    // ── KPIs ──
-    document.getElementById('k-open').textContent = d.pipeline.openLeads;
+    document.getElementById('k-waiting').textContent = d.waiting;
+    document.getElementById('k-waiting-s').textContent = 'Emails, invoices and materials';
+    document.getElementById('k-due').textContent = d.dueToday.count;
+    document.getElementById('k-due-s').textContent = d.dueToday.note;
+    document.getElementById('k-forecast').textContent = money(d.forecast.cents);
+    document.getElementById('k-forecast-s').textContent = d.forecast.note;
+    document.getElementById('k-today').className = 'n green';
+    document.getElementById('k-today').textContent = d.appointments.count;
+    document.getElementById('k-today-s').textContent = d.appointments.note;
 
-    var fc = document.getElementById('k-forecast');
-    if (d.pipeline.weightedUnconfirmed) {
-      // Rule 1: a forecast with nothing to compute from is unconfirmed, not $0.
-      fc.className = 'n unconfirmed';
-      fc.textContent = 'unconfirmed';
-      fc.title = 'No open lead carries a project value yet, so a forecast cannot be computed.';
-    } else {
-      fc.className = 'n money';
-      fc.textContent = money(d.pipeline.weightedCents);
-      fc.title = 'Weighted across ' + d.pipeline.valuedLeads + ' valued lead(s).';
-    }
+    // Today's plan — ticks toggle locally so the checklist feels real.
+    document.getElementById('plan-count').textContent = '0 / ' + d.planTotal;
+    document.getElementById('plan').innerHTML =
+      d.plan.map(function (p, i) {
+        return '<div class="plan-row" data-plan="' + i + '">' +
+          '<span class="tick"></span><span class="t grow">' + esc(p.t) + '</span></div>';
+      }).join('') +
+      '<div class="plan-foot">Showing ' + d.plan.length + ' of ' + d.planTotal +
+      ' — <a data-go="crm">open the CRM for the rest</a></div>';
+    var doneCount = 0;
+    document.querySelectorAll('[data-plan]').forEach(function (row) {
+      row.addEventListener('click', function () {
+        row.classList.toggle('done');
+        doneCount = document.querySelectorAll('.plan-row.done').length;
+        document.getElementById('plan-count').textContent = doneCount + ' / ' + d.planTotal;
+      });
+    });
 
-    var w = d.waiting;
-    var waitTotal = w.emailDrafts.length + w.unsentInvoices.length + w.lateMaterials.length;
-    document.getElementById('k-waiting').textContent = waitTotal;
-    document.getElementById('hero-wait').textContent = waitTotal;
+    document.getElementById('wait-count').innerHTML = '<span class="badge amber">' + d.waitingItems.length + '</span>';
+    document.getElementById('waiting').innerHTML = d.waitingItems.map(function (x) {
+      return '<div class="wait-item"><span class="kind">' + esc(x.kind) + '</span>' +
+        '<span class="grow truncate"><div class="t truncate">' + esc(x.t) + '</div>' +
+        '<div class="s truncate">' + esc(x.s) + '</div></span>' +
+        '<button class="btn btn-sm" data-go="' + esc(x.go) + '">' + esc(x.btn) + '</button></div>';
+    }).join('');
 
-    var appts = d.appointments;
-    var kToday = document.getElementById('k-today');
-    if (!appts.connected) {
-      kToday.className = 'n unconfirmed'; kToday.textContent = 'not connected';
-      kToday.title = 'No calendar is connected, so today’s appointments are unknown.';
-    } else {
-      kToday.className = 'n green'; kToday.textContent = appts.today.length;
-    }
-
-    // ── Agents ──
+    document.getElementById('team-meta').innerHTML = '<span class="dot live"></span> All running';
     document.getElementById('agents').innerHTML = d.agents.map(function (a) {
       return '<div class="agent">' +
-        '<span class="avatar' + (a.name === 'Sofia' ? ' green' : ' indigo') + '">' + esc(a.name.slice(0,2).toUpperCase()) + '</span>' +
+        '<span class="avatar ' + a.cls + '">' + esc(a.name.slice(0,2).toUpperCase()) + '</span>' +
         '<span class="grow">' +
-          '<div class="nm">' + esc(a.name) +
-            '<span class="dot ' + (a.live ? 'live' : 'down') + '"></span>' +
-            '<span class="pill ' + (a.live ? 'green' : 'quiet') + '">' + (a.live ? 'Live' : 'Idle') + '</span>' +
-          '</div>' +
+          '<div class="nm">' + esc(a.name) + '<span class="dot ' + (a.live ? 'live' : 'down') + '"></span></div>' +
           '<div class="rl">' + esc(a.role) + '</div>' +
-          '<div class="hl">' + esc(a.headline) + '</div>' +
-          (a.detail ? '<div class="dt">' + esc(a.detail) + '</div>' : '') +
+          '<div class="hl">' + esc(a.hl) + '</div>' +
+          '<div class="dt">' + esc(a.dt) + '</div>' +
         '</span></div>';
     }).join('');
-    document.getElementById('team-meta').textContent = d.agents.filter(function (a) { return a.live; }).length + ' of ' + d.agents.length + ' live';
 
-    // ── Waiting on you ──
-    var wc = document.getElementById('wait-count');
-    wc.innerHTML = waitTotal ? '<span class="badge amber">' + waitTotal + '</span>' : '';
-    var rows = [];
-    w.emailDrafts.forEach(function (x) {
-      rows.push('<div class="wait-item"><span class="pill indigo">Email</span>' +
-        '<span class="grow truncate"><b>' + esc(x.subject || '(no subject)') + '</b> — reply drafted for ' + esc(x.from || 'unknown') + '</span>' +
-        '<button class="btn btn-sm" data-go="approve">Review</button></div>');
-    });
-    w.unsentInvoices.forEach(function (x) {
-      rows.push('<div class="wait-item"><span class="pill money">Invoice</span>' +
-        '<span class="grow truncate">' + esc(x.invoice_no || '') + ' — ' + esc(x.lead) + ' · ' + esc(x.label || '') + ' ' + money(x.amount_cents) + ' ready to send</span>' +
-        '<button class="btn btn-sm" data-go="money">Send</button></div>');
-    });
-    w.lateMaterials.forEach(function (x) {
-      rows.push('<div class="wait-item"><span class="pill amber">Materials</span>' +
-        '<span class="grow truncate">' + esc(x.po || '') + ' for ' + esc(x.lead || 'a project') + ' is still ' + esc(x.status) + ' but the job has reached that stage</span>' +
-        '<button class="btn btn-sm" data-go="materials">Open</button></div>');
-    });
-    document.getElementById('waiting').innerHTML = rows.length
-      ? rows.join('')
-      : '<div class="empty"><div class="t">Nothing waiting on you</div>' +
-        '<div class="scope">Covers email replies Jarvis drafted, milestone invoices ready to send, and purchase orders a job has already passed the stage for.</div></div>';
+    document.getElementById('activity').innerHTML = d.activity.map(function (a) {
+      return '<div class="act"><span class="dot live"></span><span class="truncate">' + esc(a.t) + '</span>' +
+        '<span class="when">' + esc(a.when) + '</span></div>';
+    }).join('');
 
-    // ── Today ──
-    var t = document.getElementById('today');
-    if (!appts.connected) {
-      t.innerHTML = '<div class="empty"><div class="t">No calendar connected</div>' +
-        '<div class="scope">Connect a Google account in Integrations and today’s appointments will appear here.</div>' +
-        '<button class="btn btn-sm" style="margin-top:10px" data-go="sync">Open Integrations</button></div>';
-    } else if (!appts.today.length) {
-      t.innerHTML = '<div class="empty"><div class="t">Nothing on the calendar today</div>' +
-        '<div class="scope">Read from the connected Google calendar(s).</div></div>';
-    } else {
-      t.innerHTML = appts.today.map(function (e) {
-        return '<div class="row"><span class="pill green">' + esc(clock(e.start)) + '</span>' +
-          '<span class="grow"><div class="t">' + esc(e.summary || '(no title)') + '</div>' +
-          (e.location ? '<div class="s truncate">' + esc(e.location) + '</div>' : '') + '</span></div>';
-      }).join('');
-    }
-
-    // ── Recent leads ──
-    var l = document.getElementById('leads');
-    l.innerHTML = d.recentLeads.length
-      ? d.recentLeads.map(function (x) {
-          return '<div class="row"><span class="avatar">' + esc((x.name || '?').slice(0,2).toUpperCase()) + '</span>' +
-            '<span class="grow"><div class="t truncate">' + esc(x.name) + '</div>' +
-            '<div class="s truncate">' + esc(x.message || x.phone || '') + '</div></span>' +
-            '<span class="pill quiet">' + esc(x.pipeline || 'new') + '</span>' +
-            '<span class="meta">' + esc(when(x.created_at)) + '</span></div>';
-        }).join('')
-      : '<div class="empty"><div class="t">No leads yet</div><div class="scope">Every lead from Sofia, the website and manual entry lands here.</div></div>';
-
-    // Re-bind any buttons rendered above.
-    document.querySelectorAll('[data-go]').forEach(function (b) {
-      if (b.__bound) return; b.__bound = true;
-      b.addEventListener('click', function () { go(b.dataset.go); });
-    });
-
-    document.getElementById('stamp').textContent = 'Live figures · refreshed ' + clock(d.generatedAt);
+    document.getElementById('stamp').textContent =
+      'Mock figures — every number on this page is sample data for the UI preview, not a reading from the system.';
+    bindGo();
   }
 
-  function load() {
+  if (MOCK) {
+    renderMock(MOCK_DATA);
+  } else {
+    // Real wiring (pre-mock behaviour): pull /api/home and render honestly.
     fetch('/api/home')
       .then(function (r) { if (!r.ok) throw new Error('Server returned ' + r.status); return r.json(); })
-      .then(function (d) { document.getElementById('err').innerHTML = ''; render(d); })
-      .catch(function (e) {
-        // "Could not reach the server" is a different fact from "there is nothing".
-        fail('Could not load the dashboard — ' + e.message + '. The figures below may be stale or missing; nothing here is invented.');
+      .then(function (d) {
+        document.getElementById('hero-wait').textContent =
+          d.waiting.emailDrafts.length + d.waiting.unsentInvoices.length + d.waiting.lateMaterials.length;
+        // The full live renderer returns with the real-data pass; mock mode is
+        // what this page is deliberately showing right now.
+      })
+      .catch(function () {
+        document.getElementById('err').innerHTML =
+          '<div class="notice down" style="margin-bottom:16px">Could not load the dashboard. Nothing here is invented.</div>';
       });
   }
-
-  load();
-  setInterval(function () { if (!document.hidden) load(); }, 60000);
 })();
 </script>
 </body>
