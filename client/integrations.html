@@ -3,112 +3,121 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Jarvis // Integrations</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<title>Totally Outdoors OS · Integrations</title>
+<link rel="stylesheet" href="/fonts.css" />
+<link rel="stylesheet" href="/signal.css" />
+<script src="/theme-sync.js"></script>
 <style>
-  :root {
-    --app-bg:#F4F7F9; --card:#FFFFFF; --card-2:#F8FAFB;
-    --border:#E5EBEF; --border-strong:#D3DDE3;
-    --text:#0E1B24; --body:#33454F; --muted:#6B7C86; --faint:#9AA9B2;
-    --red:#D9301B; --red-hover:#BC2714; --red-soft:rgba(217,48,27,0.08);
-    --teal:#15A6BC; --teal-deep:#0E8194; --teal-soft:rgba(21,166,188,0.10);
-    --success:#12B76A; --danger:#E5484D; --info:#2563EB;
-    --shadow-sm:0 1px 2px rgba(14,27,36,0.06);
-    --shadow:0 1px 3px rgba(14,27,36,0.07), 0 10px 26px -16px rgba(14,27,36,0.22);
-    --shadow-lg:0 24px 60px -20px rgba(14,27,36,0.28);
-    --mono:'JetBrains Mono',monospace;
-    --sans:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    /* legacy token names kept for compatibility, mapped to brand palette */
-    --bg: var(--app-bg);
-    --bg-1: var(--card-2);
-    --panel: var(--card);
-    --crimson: var(--red);
-    --crimson-bright: var(--teal);
-    --line: var(--border);
-    --line-strong: var(--border-strong);
-    --green: var(--success);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { min-height: 100%; background: var(--app-bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
-  #app { position: relative; z-index: 2; max-width: 1120px; margin: 0 auto; padding: 0 22px 60px; }
+  /* ── Screen-specific layout only. Colour comes from signal tokens. ────── */
+  #app { max-width: 1120px; margin: 0 auto; padding: 0 22px 60px; }
 
   #topbar {
     display: flex; align-items: center; justify-content: space-between;
     height: 56px; margin-bottom: 8px; border-bottom: 1px solid var(--border);
-    position: sticky; top: 0; background: rgba(244,247,249,0.9); backdrop-filter: blur(4px); z-index: 5;
+    position: sticky; top: 0; background: var(--bg); z-index: 5;
   }
-  #topbar a { color: var(--teal-deep); text-decoration: none; font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; }
-  #topbar a:hover { color: var(--teal); }
-  #brand { font-family: var(--mono); font-size: 14px; letter-spacing: 0.3em; color: var(--text); text-transform: uppercase; }
+  #topbar a { color: var(--brand); text-decoration: none; font-size: 12px; font-weight: 600; letter-spacing: .06em; }
+  #topbar a:hover { color: var(--brand-bright); }
+  #brand { font-size: 13px; font-weight: 700; letter-spacing: .14em; color: var(--ink); text-transform: uppercase; }
 
-  #hero { padding: 40px 4px 10px; }
-  .eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.3em; color: var(--teal-deep); text-transform: uppercase; margin-bottom: 14px; }
-  #hero h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 14px; color: var(--text); }
-  #hero h1 .accent { color: var(--red); }
-  #hero p { max-width: 720px; font-size: 14.5px; line-height: 1.7; color: var(--body); }
+  #hero { padding: 34px 2px 6px; }
+  .eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: .18em; color: var(--brand); text-transform: uppercase; margin-bottom: 12px; }
+  #hero h1 { font-size: 30px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 12px; color: var(--ink); }
+  #hero h1 .accent { color: var(--brand); }
+  #hero p { max-width: 720px; font-size: 14px; line-height: 1.7; color: var(--ink-2); }
+  #hero p b { color: var(--ink); }
 
-  #counts { display: flex; gap: 10px; flex-wrap: wrap; margin: 26px 4px 0; }
-  .count-pill { display: flex; align-items: baseline; gap: 8px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); box-shadow: var(--shadow-sm); }
-  .count-pill .n { font-family: var(--mono); font-size: 20px; color: var(--text); }
-  .count-pill .l { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
-  .count-pill.on .n { color: var(--success); }
-  .count-pill.av .n { color: var(--teal-deep); }
+  /* Counts — the .kpi shape, kept under its own name because the JS writes it. */
+  #counts { display: flex; gap: 10px; flex-wrap: wrap; margin: 24px 2px 0; }
+  .count-pill {
+    display: flex; align-items: baseline; gap: 8px; padding: 12px 16px;
+    border: 1px solid var(--border); border-radius: var(--r-card);
+    background: var(--panel); box-shadow: var(--sh-rest);
+  }
+  .count-pill .n { font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--ink); }
+  .count-pill .l { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .count-pill.on .n { color: var(--green); }
+  .count-pill.av .n { color: var(--amber-ink); }
 
   #roadmap {
-    margin: 30px 4px 8px; padding: 20px 22px; border: 1px solid var(--border); border-radius: 12px;
-    background: var(--card); box-shadow: var(--shadow-sm);
+    margin: 26px 2px 8px; padding: 20px 22px;
+    border: 1px solid var(--border); border-radius: var(--r-card);
+    background: var(--panel); box-shadow: var(--sh-rest);
   }
-  #roadmap .tag { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; color: var(--teal-deep); text-transform: uppercase; }
-  #roadmap h3 { font-size: 18px; margin: 8px 0 8px; color: var(--text); }
-  #roadmap p { font-size: 13.5px; line-height: 1.65; color: var(--body); max-width: 760px; }
+  #roadmap .tag { font-size: 10.5px; font-weight: 700; letter-spacing: .14em; color: var(--indigo); text-transform: uppercase; }
+  #roadmap h3 { font-size: 17px; font-weight: 700; letter-spacing: -.01em; margin: 8px 0; color: var(--ink); }
+  #roadmap p { font-size: 13.5px; line-height: 1.65; color: var(--ink-2); max-width: 760px; }
   #roadmap .steps { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
-  #roadmap .step { font-family: var(--mono); font-size: 11px; padding: 6px 11px; border: 1px solid var(--border); border-radius: 20px; color: var(--body); background: var(--card-2); }
-  #roadmap .step b { color: var(--teal-deep); }
-  #google-accounts { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
-  #google-accounts .gacc { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); }
-  #google-accounts .gacc .who { font-size: 13px; }
-  #google-accounts .gacc .who b { color: var(--text); } #google-accounts .gacc .who span { color: var(--muted); font-family: var(--mono); font-size: 11px; }
-  #google-accounts .gacc a.connect { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--teal-deep); border: 1px solid var(--teal); padding: 6px 12px; border-radius: 8px; text-decoration: none; }
-  #google-accounts .gacc a.connect:hover { background: var(--teal-soft); }
-  #google-accounts .gacc .ok { font-family: var(--mono); font-size: 11px; color: var(--success); }
-  #google-accounts .note { font-size: 11px; color: var(--muted); }
+  #roadmap .step {
+    font-size: 11.5px; font-weight: 600; padding: 5px 11px;
+    border: 1px solid var(--border); border-radius: var(--r-pill);
+    color: var(--ink-2); background: var(--fill);
+  }
+  #roadmap .step b { color: var(--indigo); }
 
-  .section-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin: 38px 4px 16px; display: flex; align-items: center; gap: 12px; }
+  #google-accounts { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+  #google-accounts .gacc {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--r-btn); background: var(--panel-alt);
+  }
+  #google-accounts .gacc .who { font-size: 13px; }
+  #google-accounts .gacc .who b { color: var(--ink); }
+  #google-accounts .gacc .who span { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+  #google-accounts .gacc a.connect {
+    font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--brand); border: 1px solid var(--brand); padding: 6px 12px;
+    border-radius: var(--r-btn); text-decoration: none; white-space: nowrap;
+  }
+  #google-accounts .gacc a.connect:hover { background: var(--brand-bg); }
+  #google-accounts .gacc .ok { font-family: var(--mono); font-size: 11px; color: var(--green); }
+  #google-accounts .note { font-size: 12px; color: var(--muted); }
+
+  .section-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin: 34px 2px 14px; display: flex; align-items: center; gap: 12px;
+  }
   .section-label::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 
   #cats .cat { margin-bottom: 10px; }
+  #cats .loading { color: var(--muted); font-size: 13px; padding: 20px 2px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
 
   .item {
-    display: flex; gap: 14px; padding: 18px; border: 1px solid var(--border); border-radius: 14px;
-    background: var(--card); box-shadow: var(--shadow-sm); transition: border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+    display: flex; gap: 14px; padding: 18px;
+    border: 1px solid var(--border); border-radius: var(--r-card);
+    background: var(--panel); box-shadow: var(--sh-rest);
+    transition: border-color .2s var(--ease), transform .15s var(--ease), box-shadow .2s var(--ease);
   }
-  .item:hover { border-color: var(--border-strong); box-shadow: var(--shadow); transform: translateY(-2px); }
-  .item .ico { flex: 0 0 auto; width: 44px; height: 44px; border-radius: 11px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); background: var(--teal-soft); color: var(--teal-deep); }
+  .item:hover { border-color: var(--border-strong); box-shadow: var(--sh-lift); transform: translateY(-2px); }
+  .item .ico {
+    flex: 0 0 auto; width: 44px; height: 44px; border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); background: var(--indigo-bg); color: var(--indigo);
+  }
   .item .ico svg { width: 22px; height: 22px; }
   .item .body { flex: 1; min-width: 0; }
-  .item .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .item h4 { font-size: 15px; font-weight: 600; color: var(--text); }
+  /* The JS writes `row` inside each item — neutralise signal's list-row padding. */
+  .item .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0; border-bottom: none; }
+  .item h4 { font-size: 15px; font-weight: 600; color: var(--ink); }
   .item .desc { font-size: 12.5px; line-height: 1.55; color: var(--muted); margin-top: 7px; }
 
-  .badge { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; padding: 3px 8px; border-radius: 20px; border: 1px solid; white-space: nowrap; }
-  .badge.connected { color: var(--success); border-color: rgba(18,183,106,0.35); background: rgba(18,183,106,0.08); }
-  .badge.available { color: var(--red); border-color: rgba(217,48,27,0.3); background: var(--red-soft); }
-  .badge.planned { color: var(--muted); border-color: var(--border-strong); background: var(--card-2); }
+  /* Status badges — JS writes `badge <status>`, so those names stay. */
+  .badge {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: var(--r-pill); border: 1px solid transparent;
+    white-space: nowrap; min-width: 0; background: var(--fill); color: var(--ink-2);
+  }
+  .badge.connected { color: var(--green); background: var(--green-bg); }
+  .badge.available { color: var(--amber-ink); background: var(--amber-bg); }
+  .badge.planned { color: var(--muted); background: transparent; border-color: var(--border-strong); }
 
-  footer { margin-top: 46px; text-align: center; font-family: var(--mono); font-size: 9px; letter-spacing: 0.16em; color: var(--muted); text-transform: uppercase; }
-
-  /* scrollbars */
-  * { scrollbar-width: thin; scrollbar-color: #CBD5DB transparent; }
-  *::-webkit-scrollbar { width: 9px; height: 9px; }
-  *::-webkit-scrollbar-thumb { background: #CBD5DB; border-radius: 8px; }
-  *::-webkit-scrollbar-thumb:hover { background: #AEBCC4; }
-  *::-webkit-scrollbar-track { background: transparent; }
+  footer {
+    margin-top: 44px; text-align: center; font-size: 10px;
+    letter-spacing: .14em; color: var(--faint); text-transform: uppercase;
+  }
 
   @media (max-width: 560px) {
-    #hero h1 { font-size: 27px; }
+    #hero h1 { font-size: 25px; }
     .grid { grid-template-columns: 1fr; }
   }
 </style>
@@ -117,7 +126,7 @@
   <div id="app">
     <header id="topbar">
       <div id="brand">Totally&nbsp;Outdoors&nbsp;OS</div>
-      <a href="/">← BACK TO CORE</a>
+      <a href="/">← Back to core</a>
     </header>
 
     <section id="hero">
@@ -141,7 +150,7 @@
       <div id="google-accounts"></div>
     </div>
 
-    <div id="cats"><p style="color:var(--muted);font-size:13px;padding:20px 4px;">Loading integrations…</p></div>
+    <div id="cats"><p class="loading">Loading integrations…</p></div>
 
     <footer>Totally Outdoors LLC · Autonomous Operations · The hull grows one hand at a time</footer>
   </div>
@@ -223,7 +232,7 @@
     .then(function (r) { return r.json(); })
     .then(render)
     .catch(function (e) {
-      document.getElementById("cats").innerHTML = '<p style="color:var(--muted);font-size:13px;padding:20px 4px;">Could not load integrations. ' + esc(e.message || "") + '</p>';
+      document.getElementById("cats").innerHTML = '<div class="notice down" style="margin:20px 2px">Could not load integrations. ' + esc(e.message || "") + '</div>';
     });
 
   // Google accounts connect strip

@@ -1,0 +1,335 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Totally Outdoors OS · Leads</title>
+<link rel="stylesheet" href="/fonts.css" /><link rel="stylesheet" href="/signal.css" />
+<script src="/theme-sync.js"></script></head><body><div class="wrap">
+
+  <div class="page-head">
+    <h1>Leads</h1>
+    <div class="sub">Message anyone — text or email. Messenger and Instagram are not connected in this build.</div>
+  </div>
+
+  <div class="notice info" style="margin-bottom:18px">
+    <span>
+      <b>There is no unified inbox here, because there is nothing to unify yet.</b>
+      Threading Facebook Messenger and Instagram DMs alongside texts and email needs a messaging aggregator connected — this build has no aggregator credentials and no inbox endpoint behind it, so a combined thread view would be a mock-up rather than your actual messages.
+      What does work is below: every lead in the CRM, searchable, with a real text or email you can send right now.
+      <span style="display:block;margin-top:9px"><button class="btn btn-sm" id="goSync">Open Integrations</button></span>
+    </span>
+  </div>
+
+  <div id="alert"></div>
+
+  <div class="split">
+    <div class="side">
+      <div class="card" style="margin-bottom:0">
+        <div class="head">
+          <h2 id="listHead">Leads</h2>
+        </div>
+        <div class="body" style="padding-bottom:10px">
+          <input type="search" id="q" placeholder="Search name, phone, email, source, first message" autocomplete="off" />
+        </div>
+        <div id="list" style="max-height:62vh;overflow:auto"><div class="empty">Loading…</div></div>
+      </div>
+    </div>
+
+    <div>
+      <div id="composer">
+        <div class="card">
+          <div class="head"><h2>Composer</h2></div>
+          <div class="body">
+            <div class="empty">
+              <div class="t">No lead selected</div>
+              <div class="scope">Pick someone from the list to write them a text or an email.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><script>
+(function () {
+  "use strict";
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+    });
+  }
+
+  /* Highlighting rule: escape the haystack AND the needle first, then match
+     the escaped needle inside the escaped haystack and splice <mark> in at
+     escaped-string offsets. A raw offset taken from the unescaped text would
+     land in the middle of an entity like &amp; and produce broken markup. */
+  function mark(text, needle) {
+    var hay = esc(text);
+    if (!needle) return hay;
+    var n = esc(needle);
+    if (!n) return hay;
+    var lowHay = hay.toLowerCase();
+    var lowN = n.toLowerCase();
+    var out = '';
+    var from = 0;
+    var at = lowHay.indexOf(lowN, from);
+    while (at !== -1) {
+      out += hay.slice(from, at) + '<mark>' + hay.slice(at, at + n.length) + '</mark>';
+      from = at + n.length;
+      at = lowHay.indexOf(lowN, from);
+    }
+    return out + hay.slice(from);
+  }
+
+  /* The five fields the search actually reads. Stated here and in the empty
+     state so the scope of a "no results" answer is never a guess. */
+  var FIELDS = ['name', 'phone', 'email', 'source', 'message'];
+
+  var leads = [];
+  var loadFailed = false;
+  var selectedId = null;
+  var channel = 'sms';
+
+  var alertEl = document.getElementById('alert');
+  var listEl = document.getElementById('list');
+  var headEl = document.getElementById('listHead');
+  var qEl = document.getElementById('q');
+  var composerEl = document.getElementById('composer');
+
+  function notice(kind, text) {
+    alertEl.innerHTML = text
+      ? '<div class="notice ' + kind + '" style="margin-bottom:18px"><span>' + esc(text) + '</span></div>' : '';
+  }
+
+  document.getElementById('goSync').addEventListener('click', function () {
+    try {
+      window.parent.postMessage({ type: 'operator-navigate', tab: 'sync' }, '*');
+    } catch (_) {
+      notice('down', 'Could not hand off to Integrations from here — open it from the sidebar instead.');
+    }
+  });
+
+  function hasPhone(l) {
+    var p = String(l.phone || '').trim();
+    return !!p && !/not provided/i.test(p);
+  }
+  function hasEmail(l) {
+    return !!String(l.email || '').trim();
+  }
+
+  function matches(lead, needle) {
+    if (!needle) return true;
+    var n = needle.toLowerCase();
+    for (var i = 0; i < FIELDS.length; i++) {
+      var v = lead[FIELDS[i]];
+      if (v != null && String(v).toLowerCase().indexOf(n) !== -1) return true;
+    }
+    return false;
+  }
+
+  function renderList() {
+    var needle = qEl.value.trim();
+    var shown = leads.filter(function (l) { return matches(l, needle); });
+
+    if (loadFailed) {
+      headEl.textContent = 'Leads';
+    } else if (needle) {
+      headEl.textContent = shown.length + ' of ' + leads.length + ' match';
+    } else {
+      headEl.textContent = leads.length + (leads.length === 1 ? ' lead' : ' leads');
+    }
+
+    if (loadFailed) {
+      listEl.innerHTML = '<div class="empty">' +
+        '<div class="t">Could not reach the server</div>' +
+        '<div class="scope">The request to /api/leads failed, so the list below is unknown — not empty. There may be plenty of leads waiting.</div>' +
+        '</div>';
+      return;
+    }
+
+    if (!leads.length) {
+      listEl.innerHTML = '<div class="empty">' +
+        '<div class="t">No leads in the CRM</div>' +
+        '<div class="scope">The server answered and had nothing to return. This covers leads recorded in the CRM only — a message sitting unread in Messenger or Instagram would not appear here, because those are not connected.</div>' +
+        '</div>';
+      return;
+    }
+
+    if (!shown.length) {
+      listEl.innerHTML = '<div class="empty">' +
+        '<div class="t">Nothing matched "' + esc(needle) + '"</div>' +
+        '<div class="scope">Searched name, phone, email, source and their first message across ' + leads.length +
+        ' leads. It does not read back through full conversation history.</div>' +
+        '</div>';
+      return;
+    }
+
+    listEl.innerHTML = shown.map(function (l) {
+      var sub = [];
+      if (l.phone) sub.push(mark(l.phone, needle));
+      if (l.email) sub.push(mark(l.email, needle));
+      var msg = l.message ? '<div class="s truncate">' + mark(l.message, needle) + '</div>' : '';
+      var src = l.source ? '<span class="pill quiet">' + mark(l.source, needle) + '</span>' : '';
+      return '<div class="row" data-id="' + esc(l.id) + '" style="cursor:pointer' +
+        (String(l.id) === String(selectedId) ? ';background:var(--panel-alt)' : '') + '">' +
+        '<div class="grow">' +
+          '<div class="t truncate">' + mark(l.name || 'Unnamed', needle) + '</div>' +
+          (sub.length ? '<div class="s truncate">' + sub.join(' · ') + '</div>' : '') +
+          msg +
+        '</div>' +
+        src +
+        '</div>';
+    }).join('');
+
+    listEl.querySelectorAll('[data-id]').forEach(function (r) {
+      r.addEventListener('click', function () {
+        selectedId = r.getAttribute('data-id');
+        renderList();
+        renderComposer();
+      });
+    });
+  }
+
+  function findLead(id) {
+    for (var i = 0; i < leads.length; i++) {
+      if (String(leads[i].id) === String(id)) return leads[i];
+    }
+    return null;
+  }
+
+  function renderComposer() {
+    var l = findLead(selectedId);
+    if (!l) {
+      composerEl.innerHTML = '<div class="card"><div class="head"><h2>Composer</h2></div><div class="body">' +
+        '<div class="empty"><div class="t">No lead selected</div>' +
+        '<div class="scope">Pick someone from the list to write them a text or an email.</div></div>' +
+        '</div></div>';
+      return;
+    }
+
+    var canSms = hasPhone(l);
+    var canEmail = hasEmail(l);
+    if (channel === 'sms' && !canSms && canEmail) channel = 'email';
+    if (channel === 'email' && !canEmail && canSms) channel = 'sms';
+
+    var body;
+    if (channel === 'sms' && !canSms) {
+      body = '<div class="notice"><span>' + esc(l.name || 'This lead') +
+        ' has no usable phone number on file, so a text cannot be sent. Add a phone number to the lead in the CRM first.</span></div>';
+    } else if (channel === 'email' && !canEmail) {
+      body = '<div class="notice"><span>' + esc(l.name || 'This lead') +
+        ' has no email address on file, so an email cannot be sent. Add one to the lead in the CRM first.</span></div>';
+    } else if (channel === 'sms') {
+      body = '<label class="field"><span>Text message</span>' +
+        '<textarea id="cMsg" rows="4" placeholder="Type the text…"></textarea></label>' +
+        '<button class="btn btn-accent" id="cSend">Send text</button>';
+    } else {
+      body = '<label class="field"><span>Subject</span><input type="text" id="cSubj" placeholder="Subject line" /></label>' +
+        '<label class="field"><span>Message</span><textarea id="cBody" rows="6" placeholder="Type the email…"></textarea></label>' +
+        '<button class="btn btn-accent" id="cSend">Send email</button>';
+    }
+
+    var to = channel === 'sms'
+      ? (canSms ? l.phone : 'no phone on file')
+      : (canEmail ? l.email : 'no email on file');
+
+    composerEl.innerHTML = '<div class="card fade-in">' +
+      '<div class="head">' +
+        '<h2>' + esc(l.name || 'Unnamed') + '</h2>' +
+        '<span class="seg">' +
+          '<button data-ch="sms" class="' + (channel === 'sms' ? 'on' : '') + '"' + (canSms ? '' : ' title="No phone number on file"') + '>Text</button>' +
+          '<button data-ch="email" class="' + (channel === 'email' ? 'on' : '') + '"' + (canEmail ? '' : ' title="No email address on file"') + '>Email</button>' +
+        '</span>' +
+      '</div>' +
+      '<div class="body">' +
+        '<div class="meta" style="margin-bottom:12px">To <span class="mono">' + esc(to) + '</span>' +
+          (l.pipeline ? ' · <span class="pill quiet">' + esc(l.pipeline) + '</span>' : '') + '</div>' +
+        body +
+        '<div id="cResult"></div>' +
+        '<hr class="sep" />' +
+        '<div class="meta">This sends one message now. It is not a thread — this screen cannot show you what they have sent back. Replies land in the lead\'s activity in the CRM.</div>' +
+      '</div></div>';
+
+    composerEl.querySelectorAll('[data-ch]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        channel = b.getAttribute('data-ch');
+        renderComposer();
+      });
+    });
+
+    var sendBtn = document.getElementById('cSend');
+    if (sendBtn) sendBtn.addEventListener('click', function () { send(l, sendBtn); });
+  }
+
+  function result(kind, text) {
+    var el = document.getElementById('cResult');
+    if (el) el.innerHTML = '<div class="notice ' + kind + '" style="margin-top:12px"><span>' + esc(text) + '</span></div>';
+  }
+
+  function send(lead, btn) {
+    var url, payload, label = btn.textContent;
+
+    if (channel === 'sms') {
+      var msg = document.getElementById('cMsg').value.trim();
+      if (!msg) { result('down', 'Write something to send first.'); return; }
+      url = '/api/leads/' + encodeURIComponent(lead.id) + '/sms';
+      payload = { message: msg };
+    } else {
+      var subj = document.getElementById('cSubj').value.trim();
+      var bodyText = document.getElementById('cBody').value.trim();
+      if (!subj || !bodyText) { result('down', 'An email needs both a subject and a body.'); return; }
+      url = '/api/leads/' + encodeURIComponent(lead.id) + '/email';
+      payload = { subject: subj, body: bodyText };
+    }
+
+    btn.disabled = true; btn.textContent = 'Sending…';
+    document.getElementById('cResult').innerHTML = '';
+
+    fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+    })
+      .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'The server replied with something unreadable.' }; }); })
+      .then(function (d) {
+        btn.disabled = false; btn.textContent = label;
+        if (!d || !d.ok) {
+          result('down', 'Not sent: ' + ((d && d.error) || 'the server did not say why.'));
+          return;
+        }
+        result('ok', channel === 'sms' ? 'Text sent.' : 'Email sent.');
+        if (channel === 'sms') { document.getElementById('cMsg').value = ''; }
+        else { document.getElementById('cSubj').value = ''; document.getElementById('cBody').value = ''; }
+        load();
+      })
+      .catch(function () {
+        btn.disabled = false; btn.textContent = label;
+        result('down', 'Could not reach the server — nothing was sent. This is different from the message being rejected; it never left this browser.');
+      });
+  }
+
+  qEl.addEventListener('input', renderList);
+
+  function load() {
+    fetch('/api/leads')
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (d) {
+        if (!d || !Array.isArray(d.leads)) throw new Error('bad shape');
+        loadFailed = false;
+        leads = d.leads;
+        notice('', '');
+        renderList();
+        renderComposer();
+      })
+      .catch(function () {
+        loadFailed = true;
+        leads = [];
+        notice('down', 'Could not reach the server, so no leads could be loaded. This is not the same as having no leads — the list is unknown right now.');
+        renderList();
+        renderComposer();
+      });
+  }
+
+  load();
+})();
+</script></body></html>

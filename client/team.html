@@ -1,0 +1,258 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Totally Outdoors OS · Team</title>
+<link rel="stylesheet" href="/fonts.css" /><link rel="stylesheet" href="/signal.css" />
+<script src="/theme-sync.js"></script></head><body><div class="wrap">
+
+  <div class="page-head">
+    <h1>Access</h1>
+    <div class="sub">Who can sign in, and what they can see once they do.</div>
+  </div>
+
+  <div id="authState"></div>
+  <div id="alert"></div>
+
+  <div class="card" id="meCard">
+    <div class="head"><h2>Signed in as</h2></div>
+    <div class="body" id="meBody"><div class="meta">Checking…</div></div>
+  </div>
+
+  <div class="split">
+    <div class="side">
+      <div class="card">
+        <div class="head"><h2>Add a person</h2></div>
+        <div class="body">
+          <label class="field"><span>Username</span><input type="text" id="fUser" placeholder="lowercase, 2–40 chars" autocomplete="off" /></label>
+          <label class="field"><span>Name</span><input type="text" id="fName" placeholder="Full name" autocomplete="off" /></label>
+          <label class="field"><span>Role</span>
+            <select id="fRole">
+              <option value="sales">sales</option>
+              <option value="pm">pm</option>
+              <option value="owner">owner</option>
+            </select>
+          </label>
+          <label class="field"><span>Password</span><input type="password" id="fPass" placeholder="at least 8 characters" autocomplete="new-password" /></label>
+          <button class="btn btn-accent" id="fAdd" style="width:100%">Create sign-in</button>
+          <div class="meta" style="margin-top:9px">Letters, numbers, dot, dash and underscore only in a username. Creating an account does not email anyone — hand them the password yourself.</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="head">
+          <h2>People with a sign-in</h2>
+          <span class="meta" id="count"></span>
+        </div>
+        <div id="table"><div class="empty">Loading…</div></div>
+      </div>
+
+      <div class="card">
+        <div class="head"><h2>What each role can reach</h2></div>
+        <div class="body">
+          <div class="row" style="padding-left:0;padding-right:0">
+            <span class="pill brand">owner</span>
+            <div class="grow"><div class="s">Everything. Money, spend, integrations, the estimator, Jarvis, memory, and the ability to add or remove other people. This is Joe's role.</div></div>
+          </div>
+          <div class="row" style="padding-left:0;padding-right:0">
+            <span class="pill indigo">sales</span>
+            <div class="grow"><div class="s">The front of the funnel in the CRM — leads, calls, quotes, booking. Blocked from payments and milestones, from subcontractor records, and from the build-side operations. They cannot see what has been collected.</div></div>
+          </div>
+          <div class="row" style="padding-left:0;padding-right:0;border-bottom:none">
+            <span class="pill green">pm</span>
+            <div class="grow"><div class="s">The build side — stages, materials, scheduling, subs. Blocked from the estimator and cannot delete a lead. They run jobs that already exist rather than pricing new ones.</div></div>
+          </div>
+          <hr class="sep" />
+          <div class="meta">Roles are enforced on the server, not just hidden in the interface — a sales sign-in that types a payments URL straight into the address bar still gets refused.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><script>
+(function () {
+  "use strict";
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+    });
+  }
+  function initials(name, username) {
+    var src = String(name || username || '?').trim();
+    var parts = src.split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  var ROLE_PILL = { owner: 'brand', sales: 'indigo', pm: 'green' };
+  var ROLE_AVATAR = { owner: '', sales: ' indigo', pm: ' green' };
+
+  var alertEl = document.getElementById('alert');
+  var authEl = document.getElementById('authState');
+  var tableEl = document.getElementById('table');
+  var countEl = document.getElementById('count');
+  var meBody = document.getElementById('meBody');
+
+  function notice(kind, text) {
+    alertEl.innerHTML = text
+      ? '<div class="notice ' + kind + '" style="margin-bottom:18px"><span>' + esc(text) + '</span></div>' : '';
+  }
+  function authNotice(kind, html) {
+    authEl.innerHTML = '<div class="notice ' + kind + '" style="margin-bottom:18px"><span>' + html + '</span></div>';
+  }
+  function fail(msg) { notice('down', msg); alert(msg); }
+
+  function renderMe(user, openMode) {
+    meBody.innerHTML = '<div class="flex">' +
+      '<div class="avatar lg' + (ROLE_AVATAR[user.role] || '') + '">' + esc(initials(user.name, user.username)) + '</div>' +
+      '<div class="grow">' +
+        '<div class="t" style="font-weight:600">' + esc(user.name || user.username) + '</div>' +
+        '<div class="meta"><span class="mono">' + esc(user.username) + '</span></div>' +
+      '</div>' +
+      '<span class="pill ' + (ROLE_PILL[user.role] || 'quiet') + '">' + esc(user.role) + '</span>' +
+      '</div>' +
+      (openMode
+        ? '<div class="meta" style="margin-top:10px">This identity is a stand-in. With sign-in switched off the server hands every visitor this same owner account — it is not a record of who is actually at the keyboard.</div>'
+        : '');
+  }
+
+  function renderUsers(users) {
+    countEl.textContent = users.length + (users.length === 1 ? ' person' : ' people');
+    if (!users.length) {
+      tableEl.innerHTML = '<div class="empty">' +
+        '<div class="t">No sign-ins exist</div>' +
+        '<div class="scope">This lists accounts stored by this application only. It does not know about Google, phone or Stripe logins — those are managed with each of those services directly.</div>' +
+        '</div>';
+      return;
+    }
+    var rows = users.map(function (u) {
+      return '<tr>' +
+        '<td style="width:1%"><div class="avatar' + (ROLE_AVATAR[u.role] || '') + '">' + esc(initials(u.name, u.username)) + '</div></td>' +
+        '<td class="truncate" style="max-width:220px;font-weight:600">' + esc(u.name || '—') + '</td>' +
+        '<td class="mono meta">' + esc(u.username) + '</td>' +
+        '<td><span class="pill ' + (ROLE_PILL[u.role] || 'quiet') + '">' + esc(u.role) + '</span></td>' +
+        '<td class="meta">' + esc(u.created_at || '') + '</td>' +
+        '</tr>';
+    }).join('');
+    tableEl.innerHTML = '<table><thead><tr>' +
+      '<th></th><th>Name</th><th>Username</th><th>Role</th><th>Added</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+
+  function usersUnavailable(title, scope) {
+    countEl.textContent = '';
+    tableEl.innerHTML = '<div class="empty"><div class="t">' + esc(title) + '</div>' +
+      '<div class="scope">' + esc(scope) + '</div></div>';
+  }
+
+  document.getElementById('fAdd').addEventListener('click', function () {
+    var btn = this;
+    var username = document.getElementById('fUser').value.trim().toLowerCase();
+    var pass = document.getElementById('fPass').value;
+    if (!username) { alert('A username is required.'); return; }
+    if (!pass || pass.length < 8) { alert('The password must be at least 8 characters.'); return; }
+
+    btn.disabled = true; btn.textContent = 'Creating…';
+    fetch('/api/auth/users', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: username,
+        name: document.getElementById('fName').value.trim(),
+        role: document.getElementById('fRole').value,
+        password: pass,
+      }),
+    })
+      .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'The server replied with something unreadable.' }; }); })
+      .then(function (d) {
+        btn.disabled = false; btn.textContent = 'Create sign-in';
+        if (!d || !d.ok) { fail('Could not create that sign-in: ' + ((d && d.error) || 'the server did not say why.')); return; }
+        document.getElementById('fUser').value = '';
+        document.getElementById('fName').value = '';
+        document.getElementById('fPass').value = '';
+        notice('ok', 'Sign-in created for ' + username + '. Give them the password directly — nothing was emailed.');
+        loadUsers();
+      })
+      .catch(function () {
+        btn.disabled = false; btn.textContent = 'Create sign-in';
+        fail('Could not reach the server — no sign-in was created.');
+      });
+  });
+
+  function loadUsers() {
+    fetch('/api/auth/users')
+      .then(function (r) {
+        return r.json()
+          .catch(function () { return {}; })
+          .then(function (d) { return { status: r.status, d: d }; });
+      })
+      .then(function (res) {
+        if (res.status === 401) {
+          usersUnavailable('Not signed in',
+            'The list of accounts is only readable by a signed-in owner. Sign in first — this is not a claim that no accounts exist.');
+          return;
+        }
+        if (res.status === 403) {
+          usersUnavailable('Owner only',
+            'Your role cannot read the list of accounts. There may be several; this screen is not permitted to show them.');
+          return;
+        }
+        if (!res.d || !Array.isArray(res.d.users)) {
+          usersUnavailable('Could not read the account list',
+            'The server answered /api/auth/users with something this screen did not understand. Treat the number of people with access as unknown.');
+          return;
+        }
+        renderUsers(res.d.users);
+      })
+      .catch(function () {
+        usersUnavailable('Could not reach the server',
+          'The request to /api/auth/users failed, so who can sign in is unknown right now. That is different from nobody having access.');
+        notice('down', 'Could not reach the server to read the account list.');
+      });
+  }
+
+  function loadMe() {
+    fetch('/api/auth/me')
+      .then(function (r) {
+        return r.json()
+          .catch(function () { return {}; })
+          .then(function (d) { return { status: r.status, d: d }; });
+      })
+      .then(function (res) {
+        if (res.status === 401 || !res.d || !res.d.ok || !res.d.user) {
+          /* Sign-in is switched ON and this browser is not signed in. */
+          meBody.innerHTML = '<div class="meta">Nobody is signed in on this browser.</div>';
+          authNotice('info',
+            'Sign-in is <b>on</b>, and this browser is not signed in. Anything below that needs an owner will be refused until you sign in at <a href="/login" style="color:inherit;text-decoration:underline">/login</a>.');
+          loadUsers();
+          return;
+        }
+
+        var user = res.d.user;
+        /* Open mode: with AUTH_ENABLED unset the server answers every caller
+           with the same synthetic owner (id 0). That is worth stating out loud. */
+        var openMode = Number(user.id) === 0;
+        renderMe(user, openMode);
+
+        if (openMode) {
+          authNotice('info',
+            'Sign-in is currently <b>off</b> — <span class="mono">AUTH_ENABLED</span> is not set on the server. ' +
+            'There is no login wall: <b>anyone who can reach this app has full owner access</b> — the money screens, the spend list, integrations, Jarvis, and the ability to add or delete accounts. ' +
+            'The accounts listed below exist in the database but are not being checked. This is a real security fact about how this build is running, not a display setting.');
+        } else {
+          authEl.innerHTML = '';
+        }
+        loadUsers();
+      })
+      .catch(function () {
+        meBody.innerHTML = '<div class="meta">Could not reach the server.</div>';
+        authNotice('down',
+          'Could not reach the server to find out whether sign-in is on. Whether this app is currently protected is <b>unknown</b> — do not read that as either safe or open.');
+        loadUsers();
+      });
+  }
+
+  loadMe();
+})();
+</script></body></html>

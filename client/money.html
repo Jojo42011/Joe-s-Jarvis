@@ -1,0 +1,169 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Totally Outdoors OS · Money</title>
+<link rel="stylesheet" href="/fonts.css" /><link rel="stylesheet" href="/signal.css" />
+<script src="/theme-sync.js"></script></head><body><div class="wrap">
+
+  <div class="page-head">
+    <h1>Getting paid</h1>
+    <div class="sub">What is owed and what has landed. Milestone invoices across every project, drafted the moment a build stage makes them due — nothing sends without your say-so.</div>
+  </div>
+
+  <div id="alert"></div>
+
+  <div class="kpis" style="margin-bottom:18px">
+    <div class="kpi"><div class="n unconfirmed" id="kOutstanding">unconfirmed</div><div class="l">Outstanding</div></div>
+    <div class="kpi"><div class="n unconfirmed" id="kOpen">unconfirmed</div><div class="l">Open invoices</div></div>
+    <div class="kpi"><div class="n unconfirmed" id="kSent">unconfirmed</div><div class="l">Invoiced, awaiting payment</div></div>
+  </div>
+
+  <div class="card">
+    <div class="head">
+      <h2>Outstanding invoices</h2>
+      <span class="meta" id="stamp"></span>
+    </div>
+    <div id="table"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="notice info">
+    <span>Invoices are generated automatically when a project's build stage moves — update stages in the CRM, or just tell Jarvis a phase is done. Payment links only appear once Stripe is connected in Integrations; until then an invoice can still be emailed, it just has no one-click pay button.</span>
+  </div>
+
+</div><script>
+(function () {
+  "use strict";
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+    });
+  }
+  function money(cents) {
+    var n = Number(cents);
+    if (!isFinite(n)) return 'unconfirmed';
+    return '$' + (n / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  var alertEl = document.getElementById('alert');
+  var tableEl = document.getElementById('table');
+  var stampEl = document.getElementById('stamp');
+
+  function notice(kind, text) {
+    alertEl.innerHTML = text ? '<div class="notice ' + kind + '"><span>' + esc(text) + '</span></div>' : '';
+  }
+
+  /* Every KPI is either a proven number or the word "unconfirmed" — never a
+     placeholder zero standing in for "we could not ask the server". */
+  function setKpi(id, value, cls) {
+    var el = document.getElementById(id);
+    if (value == null) { el.className = 'n unconfirmed'; el.textContent = 'unconfirmed'; return; }
+    el.className = 'n' + (cls ? ' ' + cls : '');
+    el.textContent = value;
+  }
+  function blankKpis() {
+    setKpi('kOutstanding', null); setKpi('kOpen', null); setKpi('kSent', null);
+  }
+
+  function render(invoices) {
+    var total = invoices.reduce(function (s, i) { return s + (Number(i.amount_cents) || 0); }, 0);
+    var sent = invoices.filter(function (i) { return !!i.invoice_sent_at; }).length;
+    setKpi('kOutstanding', money(total), 'money');
+    setKpi('kOpen', String(invoices.length));
+    setKpi('kSent', String(sent));
+    stampEl.textContent = 'as of ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+    if (!invoices.length) {
+      tableEl.innerHTML = '<div class="empty">' +
+        '<div class="t">Nothing outstanding — everyone\'s paid up.</div>' +
+        '<div class="scope">This covers every milestone invoice still marked pending across all projects. Invoices already paid, and milestones whose build stage has not been reached yet, are not counted here.</div>' +
+        '</div>';
+      return;
+    }
+
+    var rows = invoices.map(function (i) {
+      var pill = i.invoice_sent_at
+        ? '<span class="pill green">Invoiced</span>'
+        : '<span class="pill brand">Drafted</span>';
+      var pay = i.payment_url
+        ? '<a href="' + esc(i.payment_url) + '" target="_blank" rel="noopener" style="color:var(--brand);font-size:12.5px;font-weight:600">Pay link</a>'
+        : '<span class="meta" title="No payment link — Stripe is not connected for this invoice.">&mdash;</span>';
+      var label = i.invoice_sent_at ? 'Resend' : 'Send invoice';
+      var btn = '<button class="btn btn-sm' + (i.invoice_sent_at ? '' : ' btn-accent') + '"' +
+        ' data-pid="' + esc(i.payment_id) + '" data-lid="' + esc(i.lead_id) + '"' +
+        ' data-label="' + esc(label) + '">' + esc(label) + '</button>';
+      return '<tr>' +
+        '<td class="mono" style="color:var(--brand);font-weight:600">' + esc(i.invoice_no || '—') + '</td>' +
+        '<td class="truncate" style="max-width:220px">' + esc(i.lead_name || 'Unnamed project') + '</td>' +
+        '<td class="truncate" style="max-width:220px">' + esc(i.label || '') + '</td>' +
+        '<td class="money-txt">' + money(i.amount_cents) + '</td>' +
+        '<td>' + pill + '</td>' +
+        '<td>' + pay + '</td>' +
+        '<td style="text-align:right">' + btn + '</td>' +
+        '</tr>';
+    }).join('');
+
+    tableEl.innerHTML = '<table><thead><tr>' +
+      '<th>Invoice</th><th>Project</th><th>Milestone</th><th>Amount</th>' +
+      '<th>Status</th><th>Pay link</th><th></th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>';
+
+    tableEl.querySelectorAll('[data-pid]').forEach(function (b) {
+      b.addEventListener('click', function () { send(b); });
+    });
+  }
+
+  function send(btn) {
+    var pid = btn.getAttribute('data-pid');
+    var lid = btn.getAttribute('data-lid');
+    var label = btn.getAttribute('data-label');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    notice('', '');
+
+    fetch('/api/leads/' + encodeURIComponent(lid) + '/payments/' + encodeURIComponent(pid) + '/send-invoice', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+    })
+      .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'The server replied with something that was not an invoice result.' }; }); })
+      .then(function (d) {
+        if (!d || !d.ok) {
+          var msg = (d && d.error) || 'The invoice did not send, and the server did not say why.';
+          notice('down', 'Invoice not sent: ' + msg);
+          alert('Invoice not sent: ' + msg);
+          btn.disabled = false; btn.textContent = label;
+          return;
+        }
+        notice('ok', 'Invoice ' + (d.invoice_no || '') + ' sent to ' + (d.to || 'the client') + '.');
+        load();
+      })
+      .catch(function () {
+        notice('down', 'Could not reach the server to send that invoice — it was not sent. Check your connection and try again.');
+        alert('Could not reach the server — the invoice was not sent.');
+        btn.disabled = false; btn.textContent = label;
+      });
+  }
+
+  function load() {
+    fetch('/api/invoices/outstanding')
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (d) {
+        if (!d || !Array.isArray(d.invoices)) throw new Error('bad shape');
+        render(d.invoices);
+      })
+      .catch(function () {
+        blankKpis();
+        stampEl.textContent = '';
+        notice('down', 'Could not reach the server, so nothing below is current. This is not the same as having no invoices — the amount owed is unknown right now, not zero.');
+        tableEl.innerHTML = '<div class="empty">' +
+          '<div class="t">Could not load invoices</div>' +
+          '<div class="scope">The request to /api/invoices/outstanding failed. There may well be money owed; this screen simply could not find out.</div>' +
+          '</div>';
+      });
+  }
+
+  load();
+  setInterval(load, 60000);
+})();
+</script></body></html>

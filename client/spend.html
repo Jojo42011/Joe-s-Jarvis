@@ -1,0 +1,278 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Totally Outdoors OS · Spend</title>
+<link rel="stylesheet" href="/fonts.css" /><link rel="stylesheet" href="/signal.css" />
+<script src="/theme-sync.js"></script></head><body><div class="wrap">
+
+  <div class="page-head">
+    <h1>Wasted spend</h1>
+    <div class="sub">What the business pays for every month, and what it actually returns.</div>
+  </div>
+
+  <div class="notice info" style="margin-bottom:18px">
+    <span>This list is deliberately manual. Nothing in this system can see Joe's bank account, card statements or ad accounts, so it cannot discover a subscription on its own — if it isn't typed in here, it isn't counted. The value is in the two numbers at the top and in the cost-per-lead column: once a line item is entered with the lead source it claims to drive, the system can tell you what each lead from it really costs.</span>
+  </div>
+
+  <div id="alert"></div>
+
+  <div class="kpis" style="margin-bottom:18px">
+    <div class="kpi"><div class="n unconfirmed" id="kAnnual">unconfirmed</div><div class="l">Annual total</div></div>
+    <div class="kpi"><div class="n unconfirmed" id="kMonthly">unconfirmed</div><div class="l">Monthly total</div></div>
+  </div>
+
+  <div class="split">
+    <div class="side">
+      <div class="card">
+        <div class="head"><h2>Add an item</h2></div>
+        <div class="body">
+          <label class="field"><span>Name</span><input type="text" id="fName" placeholder="e.g. Angi Leads" /></label>
+          <label class="field"><span>Kind</span>
+            <select id="fKind">
+              <option value="subscription">subscription</option>
+              <option value="ad">ad</option>
+              <option value="tool">tool</option>
+              <option value="service">service</option>
+              <option value="other">other</option>
+            </select>
+          </label>
+          <label class="field"><span>Cost (dollars)</span><input type="number" id="fCost" min="0" step="0.01" placeholder="49.00" /></label>
+          <label class="field"><span>Cycle</span>
+            <select id="fCycle">
+              <option value="monthly">monthly</option>
+              <option value="yearly">yearly</option>
+              <option value="one_time">one time</option>
+            </select>
+          </label>
+          <label class="field"><span>Purpose</span><input type="text" id="fPurpose" placeholder="What is it supposed to do?" /></label>
+          <label class="field"><span>Lead source it drives</span><input type="text" id="fSource" placeholder="e.g. ads — leave blank if none" /></label>
+          <label class="field"><span>Cancel URL</span><input type="text" id="fCancel" placeholder="https://… where you'd go to cancel" /></label>
+          <button class="btn btn-accent" id="fAdd" style="width:100%">Add item</button>
+          <div class="meta" style="margin-top:9px">Cost is entered in dollars and stored in cents. Leave the lead source blank unless this spend genuinely claims to produce leads — a blank source means cost per lead stays honestly unknown rather than looking free.</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="head">
+          <h2>Everything the business pays for</h2>
+          <span class="meta" id="count"></span>
+        </div>
+        <div id="table"><div class="empty">Loading…</div></div>
+      </div>
+    </div>
+  </div>
+
+</div><script>
+(function () {
+  "use strict";
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+    });
+  }
+  function money(cents) {
+    var n = Number(cents);
+    if (!isFinite(n)) return 'unconfirmed';
+    return '$' + (n / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function money0(cents) {
+    var n = Number(cents);
+    if (!isFinite(n)) return 'unconfirmed';
+    return '$' + Math.round(n / 100).toLocaleString('en-US');
+  }
+
+  var alertEl = document.getElementById('alert');
+  var tableEl = document.getElementById('table');
+  var countEl = document.getElementById('count');
+
+  function notice(kind, text) {
+    alertEl.innerHTML = text
+      ? '<div class="notice ' + kind + '" style="margin-bottom:18px"><span>' + esc(text) + '</span></div>' : '';
+  }
+  function setKpi(id, value, cls) {
+    var el = document.getElementById(id);
+    if (value == null) { el.className = 'n unconfirmed'; el.textContent = 'unconfirmed'; return; }
+    el.className = 'n' + (cls ? ' ' + cls : '');
+    el.textContent = value;
+  }
+
+  var CYCLE_LABEL = { monthly: '/mo', yearly: '/yr', one_time: ' once' };
+
+  function render(d) {
+    var items = d.items;
+
+    setKpi('kAnnual', isFinite(Number(d.annualTotalCents)) ? money0(d.annualTotalCents) : null, 'money');
+    setKpi('kMonthly', isFinite(Number(d.monthlyTotalCents)) ? money0(d.monthlyTotalCents) : null, 'money');
+    countEl.textContent = items.length + (items.length === 1 ? ' item' : ' items');
+
+    if (!items.length) {
+      tableEl.innerHTML = '<div class="empty">' +
+        '<div class="t">Nothing entered yet</div>' +
+        '<div class="scope">This list is empty because no one has typed anything into it — not because the business pays for nothing. Add the subscriptions, ad spend and tools you know about using the form on the left.</div>' +
+        '</div>';
+      return;
+    }
+
+    var rows = items.map(function (it) {
+      var active = Number(it.active) === 1 || it.active === true;
+
+      /* Cost per lead: a real number only when leads have actually been
+         attributed. A source that claims leads but has none must read
+         "unconfirmed" — rendering $0 would make dead spend look free. */
+      var cpl;
+      if (it.costPerLeadUnconfirmed) {
+        cpl = '<span class="meta" title="This item names a lead source, so it claims to generate leads — but no leads have been attributed to it. Cost per lead is unknown, not zero.">unconfirmed</span>';
+      } else if (isFinite(Number(it.costPerLeadCents)) && it.costPerLeadCents != null) {
+        cpl = '<span class="money-txt">' + money(it.costPerLeadCents) + '</span>';
+      } else {
+        cpl = '<span class="meta" title="No lead source is set on this item, so it does not claim to produce leads. Nothing to divide.">n/a</span>';
+      }
+
+      var leads = (it.leads == null)
+        ? '<span class="meta" title="No lead source set — leads are not tracked for this item.">—</span>'
+        : '<span class="mono">' + esc(it.leads) + '</span>';
+
+      var annual = (it.cycle === 'one_time')
+        ? '<span class="meta" title="One-time cost — it does not repeat, so it adds nothing to the annual run rate.">one time</span>'
+        : '<span class="money-txt">' + money(it.annualCents) + '</span>';
+
+      var cancel = it.cancel_url
+        ? '<a href="' + esc(it.cancel_url) + '" target="_blank" rel="noopener" class="meta" style="color:var(--brand);font-weight:600">Cancel</a>'
+        : '';
+
+      return '<tr' + (active ? '' : ' style="opacity:.55"') + '>' +
+        '<td style="max-width:240px">' +
+          '<div class="t truncate" style="font-weight:600">' + esc(it.name) + '</div>' +
+          (it.purpose ? '<div class="meta truncate">' + esc(it.purpose) + '</div>' : '') +
+          (it.lead_source ? '<div class="meta">source: <span class="mono">' + esc(it.lead_source) + '</span></div>' : '') +
+        '</td>' +
+        '<td><span class="pill quiet">' + esc(it.kind || 'other') + '</span></td>' +
+        '<td class="money-txt" style="white-space:nowrap">' + money(it.cost_cents) +
+          '<span class="meta">' + esc(CYCLE_LABEL[it.cycle] || '') + '</span></td>' +
+        '<td style="white-space:nowrap">' + annual + '</td>' +
+        '<td>' + leads + '</td>' +
+        '<td style="white-space:nowrap">' + cpl + '</td>' +
+        '<td style="text-align:right;white-space:nowrap">' +
+          '<span class="wrap-gap" style="justify-content:flex-end">' +
+          '<button class="btn btn-sm btn-ghost" data-toggle="' + esc(it.id) + '" data-active="' + (active ? '1' : '0') + '">' +
+            (active ? 'Active' : 'Inactive') + '</button>' +
+          cancel +
+          '<button class="btn btn-sm btn-ghost" data-del="' + esc(it.id) + '" data-name="' + esc(it.name) + '">Delete</button>' +
+          '</span>' +
+        '</td>' +
+        '</tr>';
+    }).join('');
+
+    tableEl.innerHTML = '<table><thead><tr>' +
+      '<th>Item</th><th>Kind</th><th>Cost</th><th>Annualised</th>' +
+      '<th>Leads</th><th>Cost / lead</th><th></th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>';
+
+    tableEl.querySelectorAll('[data-toggle]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        patch(b, b.getAttribute('data-toggle'), { active: b.getAttribute('data-active') !== '1' });
+      });
+    });
+    tableEl.querySelectorAll('[data-del]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (!confirm('Delete "' + b.getAttribute('data-name') + '" from the spend list? This only removes the record here — it does not cancel anything with the vendor.')) return;
+        b.disabled = true; b.textContent = 'Deleting…';
+        fetch('/api/spend/' + encodeURIComponent(b.getAttribute('data-del')), { method: 'DELETE' })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (!d || !d.ok) { fail('Could not delete that item: ' + ((d && d.error) || 'the server did not say why.')); b.disabled = false; b.textContent = 'Delete'; return; }
+            notice('ok', 'Removed from the spend list. Remember to actually cancel it with the vendor.');
+            load();
+          })
+          .catch(function () {
+            fail('Could not reach the server — nothing was deleted.');
+            b.disabled = false; b.textContent = 'Delete';
+          });
+      });
+    });
+  }
+
+  function patch(btn, id, body) {
+    var prev = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Saving…';
+    fetch('/api/spend/' + encodeURIComponent(id), {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok) { fail('Could not update that item: ' + ((d && d.error) || 'the server did not say why.')); btn.disabled = false; btn.textContent = prev; return; }
+        load();
+      })
+      .catch(function () {
+        fail('Could not reach the server — that change was not saved.');
+        btn.disabled = false; btn.textContent = prev;
+      });
+  }
+
+  function fail(msg) { notice('down', msg); alert(msg); }
+
+  document.getElementById('fAdd').addEventListener('click', function () {
+    var btn = this;
+    var name = document.getElementById('fName').value.trim();
+    if (!name) { alert('Give the item a name first.'); return; }
+
+    var dollars = parseFloat(document.getElementById('fCost').value);
+    if (document.getElementById('fCost').value.trim() !== '' && !isFinite(dollars)) {
+      alert('Cost must be a number in dollars, or left blank.');
+      return;
+    }
+    var cents = isFinite(dollars) ? Math.round(dollars * 100) : 0;
+
+    btn.disabled = true; btn.textContent = 'Adding…';
+    fetch('/api/spend', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: name,
+        kind: document.getElementById('fKind').value,
+        cost_cents: cents,
+        cycle: document.getElementById('fCycle').value,
+        purpose: document.getElementById('fPurpose').value.trim(),
+        lead_source: document.getElementById('fSource').value.trim(),
+        cancel_url: document.getElementById('fCancel').value.trim(),
+      }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        btn.disabled = false; btn.textContent = 'Add item';
+        if (!d || !d.ok) { fail('Could not add that item: ' + ((d && d.error) || 'the server did not say why.')); return; }
+        ['fName', 'fCost', 'fPurpose', 'fSource', 'fCancel'].forEach(function (id) { document.getElementById(id).value = ''; });
+        notice('ok', 'Added.');
+        load();
+      })
+      .catch(function () {
+        btn.disabled = false; btn.textContent = 'Add item';
+        fail('Could not reach the server — nothing was added.');
+      });
+  });
+
+  function load() {
+    fetch('/api/spend')
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (d) {
+        if (!d || !Array.isArray(d.items)) throw new Error('bad shape');
+        render(d);
+      })
+      .catch(function () {
+        setKpi('kAnnual', null); setKpi('kMonthly', null);
+        countEl.textContent = '';
+        notice('down', 'Could not reach the server, so the totals above are unknown — not zero. The business is still paying for whatever is on this list; this screen just could not read it.');
+        tableEl.innerHTML = '<div class="empty">' +
+          '<div class="t">Could not load the spend list</div>' +
+          '<div class="scope">The request to /api/spend failed. This is different from an empty list: there may be plenty on it.</div>' +
+          '</div>';
+      });
+  }
+
+  load();
+})();
+</script></body></html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Totally Outdoors OS · Hire</title>
+<link rel="stylesheet" href="/fonts.css" /><link rel="stylesheet" href="/signal.css" />
+<script src="/theme-sync.js"></script></head><body><div class="wrap">
+
+  <div class="page-head">
+    <h1>Hire a new agent</h1>
+    <div class="sub">Describe the gap in your own words. Something that keeps eating your day, something that keeps getting dropped — say it the way you'd say it to a person.</div>
+  </div>
+
+  <div class="notice info" style="margin-bottom:18px">
+    <span><b>A proposal is a spec, not an agent. Nothing here self-assembles.</b> Writing an ask produces a written description of what would need to be built. Approving it records that Joe wants it built — a human still has to build it. No approval on this page changes how the system behaves.</span>
+  </div>
+
+  <div id="alert"></div>
+
+  <div class="card">
+    <div class="head"><h2>What's the gap?</h2></div>
+    <div class="body">
+      <label class="field">
+        <span>In your own words</span>
+        <textarea id="ask" rows="5" placeholder="e.g. Nobody follows up on quotes after the second week and I lose jobs I already priced."></textarea>
+      </label>
+      <div class="flex">
+        <button class="btn btn-accent" id="draft">Draft a spec</button>
+        <span class="meta grow">The wording is turned into a written spec. That takes a few seconds.</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="specCard"></div>
+
+  <div class="card">
+    <div class="head">
+      <h2>Past proposals</h2>
+      <span class="meta" id="count"></span>
+    </div>
+    <div id="list"><div class="empty">Loading…</div></div>
+  </div>
+
+</div><script>
+(function () {
+  "use strict";
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+    });
+  }
+  /* Specs come back as plain text with meaningful line breaks. Escape first,
+     then turn the newlines in the already-safe string into <br>. */
+  function escLines(s) { return esc(s).replace(/\r?\n/g, '<br>'); }
+
+  var STATUS_PILL = { proposed: 'amber', approved: 'green', declined: 'quiet', built: 'indigo' };
+
+  var alertEl = document.getElementById('alert');
+  var listEl = document.getElementById('list');
+  var countEl = document.getElementById('count');
+  var specEl = document.getElementById('specCard');
+
+  function notice(kind, text) {
+    alertEl.innerHTML = text
+      ? '<div class="notice ' + kind + '" style="margin-bottom:18px"><span>' + esc(text) + '</span></div>' : '';
+  }
+  function fail(msg) { notice('down', msg); alert(msg); }
+
+  function showSpec(ask, spec, specFailed) {
+    var body;
+    if (specFailed || !spec) {
+      body = '<div class="notice amber"><span>Your ask was filed, but the spec could not be drafted right now. ' +
+        'The ask itself is safe in the list below and can be drafted again later — nothing was lost.</span></div>';
+    } else {
+      body = '<div style="font-size:13.5px;line-height:1.65">' + escLines(spec) + '</div>';
+    }
+    specEl.innerHTML = '<div class="card fade-in">' +
+      '<div class="head"><h2>Draft spec</h2><span class="pill amber">proposed</span></div>' +
+      '<div class="body">' +
+        '<div class="meta" style="margin-bottom:10px">You asked: ' + esc(ask) + '</div>' +
+        body +
+        '<hr class="sep" />' +
+        '<div class="meta">This is a description of work, not working software. It sits in the list below until someone builds it.</div>' +
+      '</div></div>';
+  }
+
+  document.getElementById('draft').addEventListener('click', function () {
+    var btn = this;
+    var ta = document.getElementById('ask');
+    var ask = ta.value.trim();
+    if (!ask) { alert('Describe the gap in your own words first.'); return; }
+
+    btn.disabled = true; btn.textContent = 'Drafting…';
+    notice('', '');
+    fetch('/api/hire', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ask: ask }),
+    })
+      .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'The server replied with something unreadable.' }; }); })
+      .then(function (d) {
+        btn.disabled = false; btn.textContent = 'Draft a spec';
+        if (!d || !d.ok) { fail('Could not file that ask: ' + ((d && d.error) || 'the server did not say why.')); return; }
+        ta.value = '';
+        showSpec(ask, d.spec, !!d.specFailed);
+        load();
+      })
+      .catch(function () {
+        btn.disabled = false; btn.textContent = 'Draft a spec';
+        fail('Could not reach the server — your ask was not filed. Nothing was recorded, so try again once you are back online.');
+      });
+  });
+
+  function decide(btn, id, status) {
+    var prev = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Saving…';
+    fetch('/api/hire/' + encodeURIComponent(id), {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: status }),
+    })
+      .then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
+      .then(function (d) {
+        if (!d || !d.ok) { fail('Could not record that decision: ' + ((d && d.error) || 'the server did not say why.')); btn.disabled = false; btn.textContent = prev; return; }
+        notice('ok', status === 'approved'
+          ? 'Recorded that you want this built. It is now on the list for a human to build — nothing has been created yet.'
+          : 'Recorded as declined.');
+        load();
+      })
+      .catch(function () {
+        fail('Could not reach the server — that decision was not recorded.');
+        btn.disabled = false; btn.textContent = prev;
+      });
+  }
+
+  function render(proposals) {
+    countEl.textContent = proposals.length + (proposals.length === 1 ? ' proposal' : ' proposals');
+    if (!proposals.length) {
+      listEl.innerHTML = '<div class="empty">' +
+        '<div class="t">No proposals yet</div>' +
+        '<div class="scope">This lists asks written on this page only. It is not a catalogue of what the system can do today — it is a record of gaps someone has named.</div>' +
+        '</div>';
+      return;
+    }
+
+    listEl.innerHTML = proposals.map(function (p) {
+      var status = String(p.status || 'proposed');
+      var pill = '<span class="pill ' + (STATUS_PILL[status] || 'quiet') + '">' + esc(status) + '</span>';
+      var actions = (status === 'proposed')
+        ? '<button class="btn btn-sm btn-accent" data-ok="' + esc(p.id) + '">Approve</button>' +
+          '<button class="btn btn-sm btn-ghost" data-no="' + esc(p.id) + '">Decline</button>'
+        : '<span class="meta">' + (p.decided_at ? 'decided ' + esc(p.decided_at) : 'decided') + '</span>';
+      var spec = p.spec
+        ? '<div style="font-size:13px;line-height:1.6;color:var(--ink-2);margin-top:8px">' + escLines(p.spec) + '</div>'
+        : '<div class="meta" style="margin-top:8px">No spec was drafted for this ask — the ask itself is still recorded.</div>';
+
+      return '<div class="row" style="align-items:flex-start">' +
+        '<div class="grow">' +
+          '<div class="t">' + esc(p.ask) + '</div>' +
+          '<div class="meta" style="margin-top:2px">' + esc(p.created_at || '') + '</div>' +
+          spec +
+        '</div>' +
+        '<div style="text-align:right;flex:0 0 auto">' +
+          '<div>' + pill + '</div>' +
+          '<div class="wrap-gap" style="margin-top:8px;justify-content:flex-end">' + actions + '</div>' +
+        '</div>' +
+        '</div>';
+    }).join('');
+
+    listEl.querySelectorAll('[data-ok]').forEach(function (b) {
+      b.addEventListener('click', function () { decide(b, b.getAttribute('data-ok'), 'approved'); });
+    });
+    listEl.querySelectorAll('[data-no]').forEach(function (b) {
+      b.addEventListener('click', function () { decide(b, b.getAttribute('data-no'), 'declined'); });
+    });
+  }
+
+  function load() {
+    fetch('/api/hire')
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (d) {
+        if (!d || !Array.isArray(d.proposals)) throw new Error('bad shape');
+        render(d.proposals);
+      })
+      .catch(function () {
+        countEl.textContent = '';
+        notice('down', 'Could not reach the server, so past proposals could not be loaded. There may be several waiting on a decision.');
+        listEl.innerHTML = '<div class="empty">' +
+          '<div class="t">Could not load proposals</div>' +
+          '<div class="scope">The request to /api/hire failed. This is not the same as having none — the list is simply unknown right now.</div>' +
+          '</div>';
+      });
+  }
+
+  load();
+})();
+</script></body></html>
