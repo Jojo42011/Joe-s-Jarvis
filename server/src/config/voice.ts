@@ -17,6 +17,15 @@ export const ELEVENLABS_MODEL_ID = process.env.ARLO_TTS_MODEL?.trim() || 'eleven
 export const ELEVENLABS_STT_MODEL = process.env.ELEVENLABS_STT_MODEL?.trim() || 'scribe_v2_realtime';
 export const TTS_SAMPLE_RATE = 24000;
 
+// ── Deepgram: the STT fallback ──────────────────────────────────────────────
+// Scribe is primary. Deepgram takes over only when ElevenLabs cannot transcribe
+// at all — no key, a hard auth/quota rejection, or an upstream that will not
+// open. It is never used to "improve" a working session, because switching
+// transcribers mid-conversation costs a turn.
+export const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY?.trim() || '';
+export const DEEPGRAM_STT_MODEL = process.env.DEEPGRAM_STT_MODEL?.trim() || 'nova-2';
+export const STT_SAMPLE_RATE = 16000;
+
 // 0.6: ElevenLabs recommends locking stability higher (0.5–0.7) for automated
 // pipelines that need predictable output — reliability over expressiveness.
 export const TTS_STABILITY = parseFloat(process.env.ARLO_TTS_STABILITY || '0.6');

@@ -19,6 +19,10 @@ function connectionStatus() {
     brain_anthropic: has('ANTHROPIC_API_KEY'),        // required — Jarvis's brain, eyes, classification
     web_search_brave: has('BRAVE_API_KEY') || has('BRAVE_SEARCH_API_KEY'),
     voice_elevenlabs: has('ELEVENLABS_API_KEY'),      // voice STT + TTS
+    // Which transcriber a session starts on, and whether a fallback exists.
+    // Deepgram covers ElevenLabs being keyless, rate-limited or out of quota.
+    stt_primary: has('ELEVENLABS_API_KEY') ? 'elevenlabs-scribe' : (has('DEEPGRAM_API_KEY') ? 'deepgram' : 'none'),
+    stt_fallback: has('DEEPGRAM_API_KEY') ? 'deepgram' : 'none',
     phone_vapi: has('VAPI_API_KEY'),                  // Sofia (phone)
     images_gemini: has('GEMINI_API_KEY'),             // Lauren/Paulie image gen
     google_oauth_configured: googleConfigured(),      // client id/secret present (either GOOGLE_* or GMAIL_* names)
