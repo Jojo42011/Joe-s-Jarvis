@@ -11,6 +11,16 @@ import { getDb } from '../db/schema';
 export const PIPELINE = ['new', 'contacted', 'quoted', 'booked', 'in_progress', 'completed', 'lost'] as const;
 export const SOURCES = ['sofia', 'ads', 'ralph', 'website', 'referral', 'manual'] as const;
 
+/**
+ * Probability a deal at each pipeline stage closes, used for the weighted
+ * forecast. Shared so the number Jarvis says out loud and the number the
+ * dashboard renders come from one place and cannot drift apart.
+ */
+export const STAGE_WEIGHT: Record<string, number> = {
+  new: 0.05, contacted: 0.15, quoted: 0.35, booked: 0.75,
+  in_progress: 0.9, completed: 1, lost: 0,
+};
+
 // ── Totally Outdoors (landscaping) project pipeline + 50/50 milestones ──
 // Adapted from the pool-construction blueprint. Stage/trade/milestone lists
 // below are the proposed landscaping defaults — Joe should confirm.

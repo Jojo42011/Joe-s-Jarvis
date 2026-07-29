@@ -1,0 +1,77 @@
+<!doctype html><meta charset=utf-8><title>voice harness</title>
+<div id="orb-label"></div><div id="voice-note"></div><pre id="out"></pre>
+<script>
+window.LOG = [];
+function log(s){ window.LOG.push(s); var o=document.getElementById('out'); if(o) o.textContent=window.LOG.join('\n'); }
+window.onerror=function(m,src,l,c){ log('JS_ERROR: '+m+' @'+l+':'+c); };
+window.onunhandledrejection=function(ev){ log('REJECTION: '+(ev.reason&&ev.reason.message||ev.reason)); };
+window.__state = [];
+let ctxTime = 0;
+function FakeCtx(){
+  this.currentTime = 0; this.state='running'; this.sampleRate=24000;
+  this.resume=()=>Promise.resolve();
+  this.createBuffer=(c,l,r)=>({duration:l/r, copyToChannel(){}});
+  this.createBufferSource=()=>{ const s={buffer:null,connect(){},
+      start(){ log('AUDIO_START'); s._t=setTimeout(()=>{ if(s.onended) s.onended(); }, 250); },
+      stop(){ log('AUDIO_STOP'); clearTimeout(s._t); if(s.onended) s.onended(); }, onended:null}; return s; };
+  this.destination={};
+  this.createBiquadFilter=()=>({type:'',frequency:{value:0},Q:{value:0},connect(){},disconnect(){}});
+  this.createScriptProcessor=()=>({connect(){},disconnect(){},onaudioprocess:null});
+  this.createMediaStreamSource=()=>({connect(){}});
+}
+window.AudioContext = FakeCtx; window.webkitAudioContext = FakeCtx;
+navigator.mediaDevices = { getUserMedia: async()=>({ getTracks:()=>[{stop(){}}] }) };
+window.fetch = async function(url, opts){
+  opts = opts||{}; const u = String(url);
+  if (opts.signal) opts.signal.addEventListener('abort', ()=>log('BRAIN_ABORTED'));
+  if (u.includes('/api/voice/opener')) { log('FETCH_OPENER');
+    return { ok:true, headers:{get:h=>h==='X-Opener-Text'?'Good evening, Joe.':null}, arrayBuffer:async()=>new ArrayBuffer(4800) }; }
+  if (u.includes('/api/brain/activate')) { log('FETCH_ACTIVATE'+(u.includes('opener=1')?'?opener=1':'?NO_FLAG'));
+    return { ok:true, json:async()=>({speech:'Two things need you.'}) }; }
+  if (u.includes('/api/voice/speak')) { log('FETCH_TTS'); return { ok:true, arrayBuffer:async()=>new ArrayBuffer(2400) }; }
+  if (u.includes('/api/brain/stream')) {
+    log('FETCH_BRAIN_STREAM');
+    const enc = new TextEncoder(); let sent=0;
+    return { ok:true, body:{ getReader:()=>({ read: async()=>{
+      if (opts.signal && opts.signal.aborted) return {done:true};
+      if (sent++ === 0) { await new Promise(r=>setTimeout(r,30));
+        return {done:false, value: enc.encode('data: {"type":"sentence","text":"Here is a long answer."}\n\n')}; }
+      await new Promise(r=>setTimeout(r,4000)); return {done:true};
+    }})}};
+  }
+  return { ok:true, json:async()=>({}), arrayBuffer:async()=>new ArrayBuffer(0) };
+};
+window.__ws = null;
+window.WebSocket = function(){ window.__ws = this; this.readyState=1; this.binaryType='';
+  this.send=function(){}; this.close=function(){};
+  setTimeout(()=>{ if(this.onopen) this.onopen(); },0); return this; };
+window.WebSocket.OPEN = 1;
+</script>
+<script src="/js/voice.js"></script>
+<script>
+window.ArloVoice.init({
+  setState: s => { window.__state.push(s); log('STATE:'+s); },
+  clearTimers: ()=>{},
+  getCurrentState: () => window.__state[window.__state.length-1] || 'STANDBY',
+  orbLabelEl: document.getElementById('orb-label'),
+  voiceNoteEl: document.getElementById('voice-note'),
+});
+window.stt = m => window.__ws.onmessage({ data: JSON.stringify(m) });
+</script>
+<script>
+(async () => {
+  const sleep = ms => new Promise(r=>setTimeout(r,ms));
+  window.ArloVoice.onOrbClick();
+  await sleep(60); window.stt({type:'ready'});
+  await sleep(1500);
+  log('=== TEST 4: barge DURING a brain response must abort it');
+  window.stt({type:'TurnInfo', event:'EndOfTurn', transcript:'what is the pipeline worth', turn_index:5});
+  await sleep(900);
+  log('>> Joe: "no wait forget that"');
+  window.stt({type:'TurnInfo', event:'Update', transcript:'no wait forget that', turn_index:6});
+  await sleep(500);
+  log('ABORTED=' + window.LOG.includes('BRAIN_ABORTED'));
+  log('BACK_TO_LISTENING=' + (window.__state[window.__state.length-1]==='LISTENING'));
+  log('=== COMPLETE ===');
+})();
+</script>

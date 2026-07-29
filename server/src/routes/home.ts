@@ -10,7 +10,7 @@
 import { Router, Request, Response } from 'express';
 import { getDb } from '../db/schema';
 import { getLastExecution } from '../db/queries';
-import { PIPELINE, BUILD_STAGES } from '../services/leadShared';
+import { PIPELINE, BUILD_STAGES, STAGE_WEIGHT } from '../services/leadShared';
 import { emailCountsByAccount, listEmailItems, listUpcomingEvents, anyGoogleAccountConnected } from '../db/google';
 import { listOutstandingInvoices } from '../services/invoicing';
 import { listOrders } from '../services/materials';
@@ -20,11 +20,6 @@ const router = Router();
 
 const TZ = 'America/New_York';
 
-/** Weighted forecast per pipeline stage — the probability a deal at this stage closes. */
-const STAGE_WEIGHT: Record<string, number> = {
-  new: 0.05, contacted: 0.15, quoted: 0.35, booked: 0.75,
-  in_progress: 0.9, completed: 1, lost: 0,
-};
 
 function todayISO(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: TZ }); // YYYY-MM-DD

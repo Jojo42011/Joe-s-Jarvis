@@ -45,6 +45,48 @@
   let sessionStartTime = null;
   let brainBusy = false;
 
+  // ── Barge-in ────────────────────────────────────────────────────────────
+  // Joe talking over Jarvis should stop him dead, the way it would with a
+  // person. The risk is the opposite failure: Jarvis's own voice leaking into
+  // the mic and interrupting himself in a loop. Guards against that:
+  //   • getUserMedia runs with echoCancellation, so playback is largely
+  //     subtracted from the captured signal already;
+  //   • a barge must clear a word/'length bar, so a stray syllable of bleed or a
+  //     cough cannot trigger it;
+  //   • a short grace period after audio starts, covering the moment when the
+  //     canceller is still adapting and bleed is most likely.
+  let brainAbort = null;          // AbortController for the in-flight response
+  let ttsStartedAt = 0;           // when the current response began speaking
+  let bargedThisResponse = false; // one barge per response — no thrashing
+  const BARGE_GRACE_MS = 700;     // ignore the first moments of playback
+  const BARGE_MIN_WORDS = 2;      // "uh" or a click must not stop him
+  const BARGE_MIN_CHARS = 7;
+
+  function isBargeWorthy(text) {
+    const t = (text || "").trim();
+    if (!t) return false;
+    return wordCount(t) >= BARGE_MIN_WORDS || t.length >= BARGE_MIN_CHARS;
+  }
+
+  // Cut Jarvis off: silence playback, drop queued audio, abandon the response.
+  function bargeIn(reason) {
+    if (bargedThisResponse) return false;
+    bargedThisResponse = true;
+    console.log("[Jarvis] barge-in —", reason);
+
+    stopTtsPlayback();
+    if (brainAbort) {
+      try { brainAbort.abort(); } catch (_) {}
+      brainAbort = null;
+    }
+    brainBusy = false;
+    // Straight back to listening so the interrupting sentence lands as a turn.
+    micCaptureActive = true;
+    micSending = true;
+    api.setState("LISTENING");
+    return true;
+  }
+
   function wsOrigin() {
     const p = window.location.protocol === "https:" ? "wss:" : "ws:";
     return p + "//" + window.location.host;
@@ -164,7 +206,16 @@
     }
   }
 
+  // Stop treating mic audio as a turn — but KEEP streaming it to STT so Joe can
+  // cut in. Barge-in is impossible if the microphone goes deaf the moment Jarvis
+  // opens his mouth, which is what `micSending = false` used to do here.
   function pauseMicCapture() {
+    micCaptureActive = false;
+    micSending = true;
+  }
+
+  // Genuinely stop sending audio (session teardown, not a turn boundary).
+  function muteMic() {
     micCaptureActive = false;
     micSending = false;
   }
@@ -250,6 +301,14 @@
       const event = msg.event || "";
 
       if (event === "StartOfTurn" || event === "Update") {
+        // Joe speaking while Jarvis is talking (or while the brain is still
+        // composing) means stop and listen. Checked on the partial, not the
+        // committed turn, so he is cut off mid-word rather than a sentence later.
+        if ((ttsIsPlaying || brainBusy) && isBargeWorthy(transcript)) {
+          const settled = !ttsIsPlaying || (Date.now() - ttsStartedAt) > BARGE_GRACE_MS;
+          if (settled) bargeIn('"' + transcript.slice(0, 40) + '"');
+        }
+
         if (turnIndex !== currentTurnIndex) {
           currentTurnIndex = turnIndex;
           latestTurnTranscript = transcript;
@@ -316,6 +375,8 @@
     ttsIsPlaying = false;
     lastTtsText = "";
     nextStartTime = 0;
+    ttsStartedAt = 0;
+    bargedThisResponse = false;  // a new response earns a fresh barge
     stopAllSources();
   }
 
@@ -378,6 +439,7 @@
         pauseMicCapture();
         api.setState("RESPONDING");
       }
+      if (!ttsIsPlaying) ttsStartedAt = Date.now();  // starts the barge grace window
       ttsIsPlaying = true;
       scheduleBuffer(buf);
     }
@@ -461,12 +523,15 @@
     resetTts(); // fresh ordered pipeline for this response
 
     let fullText = "";
+    const abort = new AbortController();
+    brainAbort = abort;
 
     try {
       const res = await fetch("/api/brain/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userText, sessionId: "arlo-session" })
+        body: JSON.stringify({ message: userText, sessionId: "arlo-session" }),
+        signal: abort.signal
       });
 
       if (!res.ok || !res.body) throw new Error("Brain stream failed");
@@ -478,6 +543,9 @@
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        // Joe cut in — stop consuming this response's sentences immediately so
+        // no further audio is queued behind the interruption.
+        if (abort.signal.aborted) break;
         sseBuf += decoder.decode(value, { stream: true });
 
         const parts = sseBuf.split("\n\n");
@@ -523,34 +591,89 @@
       // Background — do NOT block the next turn / mic resume on extraction.
       flushTranscriptToMemory();
     } catch (err) {
-      console.error("[Jarvis] Brain pipeline error:", err);
-      api.voiceNoteEl.textContent = "BRAIN UNAVAILABLE";
-      api.voiceNoteEl.style.display = "block";
-    } finally {
-      brainBusy = false;
-      if (!ttsIsPlaying && voiceActive) {
-        resumeMicCapture();
-        api.setState("LISTENING");
+      // An abort is Joe interrupting on purpose, not a failure — saying
+      // "BRAIN UNAVAILABLE" over a deliberate interruption would be a lie.
+      if (err && err.name === "AbortError") {
+        console.log("[Jarvis] response aborted by barge-in");
+        if (fullText) sessionTranscript.push({ role: "assistant", content: fullText + " …(interrupted)", ts: Date.now() });
+      } else {
+        console.error("[Jarvis] Brain pipeline error:", err);
+        api.voiceNoteEl.textContent = "BRAIN UNAVAILABLE";
+        api.voiceNoteEl.style.display = "block";
       }
+    } finally {
+      if (brainAbort === abort) brainAbort = null;
+      // A barge already flipped these and started a new turn; don't stomp it.
+      if (!abort.signal.aborted) {
+        brainBusy = false;
+        if (!ttsIsPlaying && voiceActive) {
+          resumeMicCapture();
+          api.setState("LISTENING");
+        }
+      }
+    }
+  }
+
+  // The opener, pre-rendered server-side and served from memory. Playing this
+  // first is what removes the five-or-six seconds of silence after a tap: the
+  // brain call and the synthesis call for the real briefing now happen while
+  // Joe is already hearing something. Returns true if audio actually played.
+  async function playCachedOpener() {
+    try {
+      const res = await fetch("/api/voice/opener");
+      if (!res.ok) return false;              // fall back to the normal path
+      const buf = await res.arrayBuffer();
+      if (!buf || buf.byteLength < 2) return false;
+      const text = res.headers.get("X-Opener-Text");
+      if (text) api.orbLabelEl.textContent = text;
+      api.setState("RESPONDING");
+      // Seq 0 of this response's ordered pipeline; the briefing appends after it.
+      ttsResults[ttsEnqueued++] = buf;
+      pumpTts();
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
   async function playActivationGreeting() {
     if (activationPlayed) return;
+    activationPlayed = true;
+
+    // Fresh pipeline, then opener first and briefing second — in that submission
+    // order, so the ordered player keeps them in sequence.
+    resetTts();
+    const openerPlayed = await playCachedOpener();
+
     try {
-      const res = await fetch("/api/brain/activate");
+      const res = await fetch("/api/brain/activate" + (openerPlayed ? "?opener=1" : ""));
       const data = await res.json();
-      if (data.speech) {
-        activationPlayed = true;
-        api.orbLabelEl.textContent = data.speech.slice(0, 80);
-        // Use the ordered TTS pipeline and SEAL it so it drains + hands control
-        // back to listening once the greeting finishes (otherwise it sticks on
-        // RESPONDING and never starts listening).
-        resetTts();
-        enqueueTts(data.speech).catch(function (e) { console.error("[Jarvis] greeting TTS error:", e); });
-        markTtsComplete();
+      const speech = (data.speech || "").trim();
+
+      if (!speech) {
+        // Nothing further to say. Seal the pipeline so it drains and hands back
+        // to listening rather than hanging in RESPONDING.
+        if (openerPlayed) markTtsComplete();
+        else { api.setState("LISTENING"); }
+        return;
       }
-    } catch (_) {}
+
+      api.orbLabelEl.textContent = speech.slice(0, 80);
+      if (openerPlayed) {
+        enqueueTts(speech).catch(function (e) { console.error("[Jarvis] briefing TTS error:", e); });
+        markTtsComplete();
+        return;
+      }
+      // Opener unavailable — speak the whole greeting through the normal path.
+      // SEAL the pipeline so it drains and hands control back to listening
+      // instead of sticking on RESPONDING.
+      enqueueTts(speech).catch(function (e) { console.error("[Jarvis] greeting TTS error:", e); });
+      markTtsComplete();
+    } catch (err) {
+      console.error("[Jarvis] activation error:", err);
+      // If the opener is mid-flight, let it finish and return to listening.
+      if (ttsEnqueued > 0) markTtsComplete();
+    }
   }
 
   async function startListening() {
@@ -641,7 +764,7 @@
       clearTimeout(pendingCommitTimer);
       pendingCommitTimer = null;
     }
-    pauseMicCapture();
+    muteMic();   // session is ending — stop sending audio entirely
     stopTtsPlayback();
     if (sttWs) {
       try { sttWs.close(); } catch (_) {}

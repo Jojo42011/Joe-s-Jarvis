@@ -37,53 +37,71 @@ export function getTimeAwareGreeting(): string {
   return 'Good evening, sir.';
 }
 
-export async function handleActivation(): Promise<string> {
+/**
+ * @param openerAlreadySpoken the client played the cached opener already, so the
+ *   briefing must not greet a second time. Without this Joe hears "Good
+ *   afternoon, Joe." twice in a row.
+ */
+export async function handleActivation(openerAlreadySpoken = false): Promise<string> {
   const today = getOhioDateString();
   const lastBriefed = getSystemState(LAST_BRIEFED_KEY);
 
   if (today !== lastBriefed) {
-    const brief = await generateMorningBrief();
+    const brief = await generateMorningBrief(openerAlreadySpoken);
     setSystemState(LAST_BRIEFED_KEY, today);
     return brief;
   }
 
-  return getTimeAwareGreeting();
+  // Already briefed today and the opener has been spoken — there is nothing
+  // further to say, and inventing filler would just delay listening.
+  return openerAlreadySpoken ? '' : getTimeAwareGreeting();
 }
 
-async function generateMorningBrief(): Promise<string> {
+async function generateMorningBrief(openerAlreadySpoken = false): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return getTimeAwareGreeting();
+  if (!apiKey) return openerAlreadySpoken ? '' : getTimeAwareGreeting();
 
   const packet = await getMemoryPacket('morning briefing priorities');
   const client = new Anthropic({ apiKey });
 
-  // Surface Lauren's approval queue explicitly — pages can sit generated but
-  // unapproved indefinitely (publish is gated on human sign-off), and that
-  // backlog is otherwise invisible unless someone opens /atlas.
-  let seoQueueNote = '';
+  // Real state, so the brief leads with what actually needs Joe rather than a
+  // generic hello. Each line is a fact from the database or it is not said.
+  let stateNote = '';
   try {
     const db = getDb();
-    const pending = db.prepare(
-      "SELECT COUNT(*) AS c FROM seo_content WHERE committed = 0 AND status IN ('pending_review','ready')",
-    ).get() as { c: number };
-    if (pending?.c > 0) {
-      seoQueueNote = `\n\nLauren has ${pending.c} page(s) generated and waiting on Joe's approval in the Atlas queue.`;
-    }
+    const openLeads = (db.prepare(
+      "SELECT COUNT(*) AS c FROM leads WHERE pipeline NOT IN ('completed','lost') OR pipeline IS NULL",
+    ).get() as { c: number }).c;
+    const unread = (db.prepare(
+      'SELECT COUNT(*) AS c FROM email_items WHERE needs_reply = 1',
+    ).get() as { c: number }).c;
+    const drafts = (db.prepare(
+      "SELECT COUNT(*) AS c FROM email_items WHERE draft_reply IS NOT NULL AND draft_status = 'pending'",
+    ).get() as { c: number }).c;
+    const parts: string[] = [];
+    if (drafts > 0) parts.push(`${drafts} drafted email repl${drafts === 1 ? 'y' : 'ies'} waiting on approval`);
+    if (unread > 0) parts.push(`${unread} email(s) flagged as needing a reply`);
+    if (openLeads > 0) parts.push(`${openLeads} open lead(s) in the pipeline`);
+    if (parts.length) stateNote = `\n\n## RIGHT NOW\n${parts.join('\n')}`;
   } catch {
-    // non-critical — brief still works without this note
+    // non-critical — the brief still works without live counts
   }
+
+  const openerRule = openerAlreadySpoken
+    ? 'Joe has ALREADY heard "Good morning/afternoon/evening, Joe." — do NOT greet him again. Start straight into the substance.'
+    : 'Open with a time-aware greeting.';
 
   try {
     const response = await client.messages.create({
       model: ANTHROPIC_FAST_MODEL,
       max_tokens: 256,
-      system: `${ARLO_SYSTEM_PROMPT}\n\n## MEMORY\n${packet.text}${seoQueueNote}\n\nGenerate a morning brief for Joe. Max 4 sentences. Most urgent first. Open with a time-aware greeting. Mention the SEO approval queue if noted above. If nothing new, say all clear and ask what he needs.`,
-      messages: [{ role: 'user', content: 'Morning brief.' }],
+      system: `${ARLO_SYSTEM_PROMPT}\n\n## MEMORY\n${packet.text}${stateNote}\n\nGenerate a brief for Joe. Max 3 sentences. Most urgent first. ${openerRule} Only state figures given above — never invent a number. If there is nothing pressing, say so in one short sentence and ask what he needs.`,
+      messages: [{ role: 'user', content: 'Brief me.' }],
     });
     const block = response.content.find((b) => b.type === 'text');
-    return block && block.type === 'text' ? block.text : getTimeAwareGreeting();
+    return block && block.type === 'text' ? block.text : (openerAlreadySpoken ? '' : getTimeAwareGreeting());
   } catch {
-    return getTimeAwareGreeting();
+    return openerAlreadySpoken ? '' : getTimeAwareGreeting();
   }
 }
 

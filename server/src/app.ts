@@ -43,6 +43,7 @@ import authRouter from './routes/auth';
 
 import { apiAuthGuard, pageAuthGuard, seedDefaultOwner, userFromRequest } from './services/auth';
 import { bootstrapLegacyGmailAccount } from './services/google/bootstrap';
+import { warmGreetingCache } from './services/greetingCache';
 
 import { registerClient, startHeartbeat } from './ws/hub';
 
@@ -361,6 +362,10 @@ server.on('upgrade', (req, socket, head) => {
 });
 
 
+
+// Render the time-of-day opener now so the first tap on the orb plays audio
+// from memory instead of waiting on a synthesis round trip.
+warmGreetingCache();
 
 startHeartbeat();
 

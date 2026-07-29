@@ -1,12 +1,17 @@
 import { getDb } from '../db/schema';
 import { ralphStats, createRalphContent, RALPH_CHANNELS } from '../db/ralph';
 import { generateBatch } from '../services/ralphContent';
-import { emailCountsByAccount, listGoogleAccounts, listUpcomingEvents, searchEmailItems } from '../db/google';
+import {
+  emailCountsByAccount, listGoogleAccounts, listUpcomingEvents, searchEmailItems,
+  listEmailItems, getEmailItem, anyGoogleAccountConnected,
+} from '../db/google';
+import { searchFacts, searchFactsSemantic } from '../db/memory';
+import { embedText, embeddingProvider } from '../services/embeddings';
 import { gscSummary, syncSearchConsole } from '../services/google/searchConsole';
 import { createEvent } from '../services/google/calendar';
 import { GOOGLE_ACCOUNTS } from '../config/google';
 import { PIPELINE, logActivity } from '../routes/leads';
-import { BUILD_STAGES } from '../services/leadShared';
+import { BUILD_STAGES, STAGE_WEIGHT } from '../services/leadShared';
 import { triggerStageInvoices, sendMilestoneInvoice, listOutstandingInvoices } from '../services/invoicing';
 import {
   addSupplier, listSuppliers, findSupplier, createOrder, listOrders,
@@ -270,6 +275,105 @@ export const FUNCTION_TOOLS = [
       required: ['material'], additionalProperties: false,
     },
   },
+
+  // ── Full-system reads ────────────────────────────────────────────────────
+  // Everything Joe can see on a screen, Jarvis can now answer out loud. Each of
+  // these reads the same tables the corresponding screen renders, so a spoken
+  // answer and the UI can never disagree.
+  {
+    type: 'function' as const,
+    name: 'whats_on_today',
+    description: "Everything that needs Joe today, in one call: what is waiting on him (drafted email replies, invoices ready to send, purchase orders a job has already passed the stage for), today's appointments, open lead count and weighted pipeline value. Use for 'what's on today', 'what do I need to do', 'brief me', 'where do things stand', 'how are we doing'.",
+    parameters: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    type: 'function' as const,
+    name: 'what_did_i_miss',
+    description: "What came in over the last N days and — first — what nobody acted on: leads still sitting at 'new' with no activity, and emails flagged as needing a reply that never got one. Use for 'what did I miss', 'anything slip', 'did anyone fall through the cracks', 'catch me up'.",
+    parameters: {
+      type: 'object',
+      properties: { days: { type: 'number', description: 'Window in days. Default 7.' } },
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    name: 'list_calls',
+    description: "Sofia's call log — who rang, when, how long, whether it booked, and her summary of what they wanted. Optionally filter to a phone number or name. Use for 'who called', 'what did that caller want', 'how many calls today', 'did anyone call about the patio'.",
+    parameters: {
+      type: 'object',
+      properties: {
+        search: { type: 'string', description: 'Optional name or phone fragment to filter by.' },
+        days: { type: 'number', description: 'Only calls in the last N days.' },
+        limit: { type: 'number', description: 'Max calls to return. Default 15.' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    name: 'read_email',
+    description: "Open one specific email in full — the whole body, who sent it, when, whether Jarvis drafted a reply and what that draft says. Use after search_email when Joe asks 'what does it actually say', 'read me that email', 'what did she want'. Pass the email_id from search_email, or a search phrase to take the best match.",
+    parameters: {
+      type: 'object',
+      properties: {
+        email_id: { type: 'number', description: 'id from search_email.' },
+        query: { type: 'string', description: 'Search phrase, if no id — the best match is read.' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    name: 'inbox_overview',
+    description: "The state of the mailbox as a whole: how many emails need a reply, how many replies Jarvis has drafted and is waiting on approval for, unread count, and the most recent messages. Use for 'how's my inbox', 'anything need answering', 'what's come in'.",
+    parameters: {
+      type: 'object',
+      properties: { limit: { type: 'number', description: 'Recent emails to include. Default 10.' } },
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    name: 'pipeline_forecast',
+    description: "The sales pipeline stage by stage: how many leads sit at each stage, their total value, and the probability-weighted forecast. Use for 'what's the pipeline worth', 'how much is in play', 'how many quotes are out', forecasting questions. Leads with no project value recorded are reported as such, never counted as zero.",
+    parameters: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    type: 'function' as const,
+    name: 'money_summary',
+    description: "The money picture: what has actually been collected, what is still owed and by whom, and which invoices are prepared but not yet sent. Use for 'how much have we brought in', 'what are we owed', 'did the Reynolds payment land', cash questions.",
+    parameters: {
+      type: 'object',
+      properties: { days: { type: 'number', description: 'Restrict collected figures to the last N days.' } },
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    name: 'list_spend',
+    description: "What the business pays for — recurring subscriptions and costs, what each returns, and the monthly total. Use for 'what are we spending', 'what's this costing', 'anything we should cancel'.",
+    parameters: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    type: 'function' as const,
+    name: 'search_memory',
+    description: "Search everything Jarvis has ever been told or has learned — decisions, preferences, facts about customers and jobs. Use when Joe refers to something from the past: 'what did we decide about', 'what do you know about', 'remind me what I said about'. This searches by meaning, so his words need not match what was stored.",
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'What to recall.' },
+        limit: { type: 'number', description: 'Max facts. Default 8.' },
+      },
+      required: ['query'], additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    name: 'system_health',
+    description: "Which parts of Joe's system are actually working right now — brain, voice, phone (Sofia/Vapi), mailbox and calendar, web search, memory recall — and for anything down, the specific reason. Use for 'is everything working', 'why isn't Sofia picking up', 'are you connected to my email', 'what's broken'.",
+    parameters: { type: 'object', properties: {}, additionalProperties: false },
+  },
 ];
 
 export interface ToolOutcome { result: unknown; navigate?: string }
@@ -441,6 +545,42 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
         if (!Number.isFinite(oid)) return { result: { ok: false, error: 'order_id required' } };
         return { result: await sendPurchaseOrder(oid) };
       }
+      case 'whats_on_today':
+        return { result: whatsOnToday() };
+
+      case 'what_did_i_miss':
+        return { result: whatDidIMiss(Math.max(1, Math.min(Number(args.days) || 7, 90))) };
+
+      case 'list_calls':
+        return {
+          result: listCalls(
+            args.search ? String(args.search) : undefined,
+            args.days ? Number(args.days) : undefined,
+            Math.max(1, Math.min(Number(args.limit) || 15, 50)),
+          ),
+        };
+
+      case 'read_email':
+        return { result: readEmail(args.email_id ? Number(args.email_id) : undefined, args.query ? String(args.query) : undefined) };
+
+      case 'inbox_overview':
+        return { result: inboxOverview(Math.max(1, Math.min(Number(args.limit) || 10, 30))) };
+
+      case 'pipeline_forecast':
+        return { result: pipelineForecast() };
+
+      case 'money_summary':
+        return { result: moneySummary(args.days ? Number(args.days) : undefined) };
+
+      case 'list_spend':
+        return { result: listSpendItems() };
+
+      case 'search_memory':
+        return { result: await searchMemoryTool(String(args.query || ''), Math.max(1, Math.min(Number(args.limit) || 8, 20))) };
+
+      case 'system_health':
+        return { result: systemHealth() };
+
       case 'material_price_history': {
         const material = String(args.material || '').trim();
         if (!material) return { result: { ok: false, error: 'material required' } };
@@ -477,4 +617,313 @@ function agentStatus(agent: string): unknown {
   if (agent === 'content') return { pipeline: ralphStats() };
   if (agent === 'inbox') return { mailboxes: emailCountsByAccount() };
   return { note: 'unknown agent' };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Full-system reads.
+
+   These back the tools that let Jarvis answer about anything in Joe's system
+   out loud. Two rules run through all of them:
+
+   1. Every figure is read from the same tables the corresponding screen
+      renders, so a spoken answer and the UI cannot disagree.
+   2. Unknown is never reported as zero. When a mailbox is not connected or no
+      lead carries a value, the payload says so in words and the model is left
+      no room to round it down to "nothing".
+   ═════════════════════════════════════════════════════════════════════════ */
+
+function centsToUsd(cents: number): string {
+  return `$${(cents / 100).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+}
+
+function ohioToday(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+}
+
+function openLeadRows(): { id: number; name: string; pipeline: string | null; project_value_cents: number | null; build_stage: string | null }[] {
+  return getDb().prepare(
+    `SELECT id, name, pipeline, project_value_cents, build_stage FROM leads
+     WHERE COALESCE(pipeline,'new') NOT IN ('completed','lost')`,
+  ).all() as never;
+}
+
+function whatsOnToday(): unknown {
+  const db = getDb();
+  const mailboxConnected = anyGoogleAccountConnected();
+
+  const drafts = mailboxConnected
+    ? listEmailItems({ pendingDraftsOnly: true, limit: 50 })
+    : [];
+
+  const invoices = listOutstandingInvoices();
+  const unsent = invoices.filter((i) => !i.invoice_sent_at);
+
+  const leads = openLeadRows();
+  const openOrders = listOrders({ openOnly: true });
+  const lateOrders = openOrders.filter((o) => {
+    if (!o.needed_by_stage || o.status === 'ordered') return false;
+    const at = leads.find((l) => l.id === o.lead_id)?.build_stage;
+    if (!at) return false;
+    const need = BUILD_STAGES.findIndex((s) => s.key === o.needed_by_stage);
+    const cur = BUILD_STAGES.findIndex((s) => s.key === at);
+    return need >= 0 && cur >= 0 && need <= cur;
+  });
+
+  const today = ohioToday();
+  const todaysEvents = mailboxConnected
+    ? listUpcomingEvents(undefined, 60).filter((e) => String(e.start_time || '').slice(0, 10) === today)
+    : [];
+
+  const valued = leads.filter((l) => (l.project_value_cents || 0) > 0);
+  const weighted = leads.reduce(
+    (sum, l) => sum + (l.project_value_cents || 0) * (STAGE_WEIGHT[l.pipeline || 'new'] ?? 0.05), 0,
+  );
+
+  return {
+    waitingOnJoe: {
+      total: drafts.length + unsent.length + lateOrders.length,
+      draftedEmailReplies: drafts.map((d) => ({ id: d.id, subject: d.subject, from: d.from_addr })),
+      invoicesReadyToSend: unsent.map((i) => ({ invoice: i.invoice_no, project: i.lead_name, amount: centsToUsd(i.amount_cents), milestone: i.label })),
+      lateMaterials: lateOrders.map((o) => ({ po: o.po_number, project: o.lead_name, status: o.status, neededBeforeStage: o.needed_by_stage })),
+    },
+    appointmentsToday: mailboxConnected
+      ? todaysEvents.map((e) => ({ at: e.start_time, what: e.summary, where: e.location || null }))
+      : 'unknown — no calendar is connected, so today\'s appointments cannot be read. This is not the same as having none.',
+    pipeline: {
+      openLeads: leads.length,
+      weightedForecast: valued.length
+        ? centsToUsd(Math.round(weighted))
+        : 'unconfirmed — no open lead has a project value recorded, so a forecast cannot be computed. Do not say $0.',
+      leadsWithAValue: valued.length,
+    },
+  };
+}
+
+function whatDidIMiss(days: number): unknown {
+  const db = getDb();
+  const since = new Date(Date.now() - days * 86400_000).toISOString();
+  const mailboxConnected = anyGoogleAccountConnected();
+
+  const newLeads = db.prepare(
+    'SELECT id, name, phone, source, message, pipeline, created_at FROM leads WHERE created_at >= ? ORDER BY created_at DESC',
+  ).all(since) as { id: number; name: string; phone: string; source: string; message: string; pipeline: string; created_at: string }[];
+
+  // Nobody acted on it: still at 'new' and nothing logged against it since.
+  const untouched = newLeads.filter((l) => (l.pipeline || 'new') === 'new');
+
+  let calls: unknown[] = [];
+  try {
+    calls = db.prepare(
+      'SELECT customer_name, number, direction, duration_sec, booked, summary, started_at FROM vapi_calls WHERE COALESCE(started_at, created_at) >= ? ORDER BY COALESCE(started_at, created_at) DESC LIMIT 40',
+    ).all(since) as unknown[];
+  } catch { /* table shape older than this build — fall through with none */ }
+
+  const unanswered = mailboxConnected
+    ? (db.prepare(
+        'SELECT id, subject, from_addr, received_at FROM email_items WHERE needs_reply = 1 AND received_at >= ? ORDER BY received_at DESC LIMIT 40',
+      ).all(since) as unknown[])
+    : [];
+
+  return {
+    windowDays: days,
+    since,
+    nobodyActedOn: {
+      leadsStillUntouched: untouched.map((l) => ({ name: l.name, phone: l.phone, source: l.source, wanted: l.message, came_in: l.created_at })),
+      emailsNeedingAReply: mailboxConnected
+        ? unanswered
+        : 'unknown — no mailbox is connected, so unanswered email cannot be checked. Not zero.',
+    },
+    newLeads: newLeads.length,
+    calls,
+    callsNote: (calls as unknown[]).length === 0
+      ? 'No calls are recorded in this window. If Sofia\'s phone sync is failing, this reads as zero when it may not be — check system_health before telling Joe nobody called.'
+      : undefined,
+  };
+}
+
+function listCalls(search: string | undefined, days: number | undefined, limit: number): unknown {
+  const db = getDb();
+  const where: string[] = [];
+  const params: unknown[] = [];
+  if (search) {
+    where.push('(customer_name LIKE ? OR number LIKE ? OR summary LIKE ?)');
+    const like = `%${search}%`;
+    params.push(like, like, like);
+  }
+  if (days) {
+    where.push('COALESCE(started_at, created_at) >= ?');
+    params.push(new Date(Date.now() - days * 86400_000).toISOString());
+  }
+  const sql = `SELECT customer_name, number, direction, duration_sec, connected, booked, summary, started_at
+               FROM vapi_calls ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+               ORDER BY COALESCE(started_at, created_at) DESC LIMIT ?`;
+  try {
+    const calls = db.prepare(sql).all(...params, limit) as unknown[];
+    const total = (db.prepare('SELECT COUNT(*) c FROM vapi_calls').get() as { c: number }).c;
+    return {
+      calls,
+      totalCallsOnRecord: total,
+      note: total === 0
+        ? 'There are no calls on record at all. Check system_health — if the phone connection is failing, "no calls" means "not syncing", not "nobody rang".'
+        : undefined,
+    };
+  } catch (err) {
+    return { error: 'Call log unavailable', detail: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+function readEmail(id: number | undefined, query: string | undefined): unknown {
+  if (!anyGoogleAccountConnected()) {
+    return { error: 'No mailbox is connected, so no email can be read. Tell Joe to connect Gmail in Integrations.' };
+  }
+  let row = id ? getEmailItem(id) : undefined;
+  if (!row && query) {
+    const hits = searchEmailItems(query, 1);
+    if (hits.length) row = getEmailItem(hits[0].id);
+  }
+  if (!row) return { error: 'No matching email found.' };
+  return {
+    email: {
+      id: row.id,
+      from: row.from_addr,
+      to: row.to_addr,
+      subject: row.subject,
+      received: row.received_at,
+      unread: !!row.is_unread,
+      priority: row.priority,
+      category: row.category,
+      needsReply: !!row.needs_reply,
+      summary: row.summary,
+      body: row.snippet,
+      bodyNote: 'This is the synced snippet — the beginning of the message, not always the whole thing. Say so if Joe needs the full text.',
+      draftedReply: row.draft_reply || null,
+      draftStatus: row.draft_status || null,
+    },
+  };
+}
+
+function inboxOverview(limit: number): unknown {
+  if (!anyGoogleAccountConnected()) {
+    return { error: 'No mailbox is connected. Inbox figures are unknown, not zero.' };
+  }
+  const db = getDb();
+  const one = (sql: string) => (db.prepare(sql).get() as { c: number }).c;
+  return {
+    needingReply: one('SELECT COUNT(*) c FROM email_items WHERE needs_reply = 1'),
+    repliesDraftedAwaitingApproval: one("SELECT COUNT(*) c FROM email_items WHERE draft_reply IS NOT NULL AND draft_status = 'pending'"),
+    unread: one('SELECT COUNT(*) c FROM email_items WHERE is_unread = 1'),
+    totalSynced: one('SELECT COUNT(*) c FROM email_items'),
+    byMailbox: emailCountsByAccount(),
+    recent: db.prepare(
+      'SELECT id, from_addr, subject, received_at, needs_reply, priority FROM email_items ORDER BY received_at DESC LIMIT ?',
+    ).all(limit),
+  };
+}
+
+function pipelineForecast(): unknown {
+  const leads = openLeadRows();
+  const byStage = PIPELINE.filter((s) => s !== 'completed' && s !== 'lost').map((stage) => {
+    const inStage = leads.filter((l) => (l.pipeline || 'new') === stage);
+    const valued = inStage.filter((l) => (l.project_value_cents || 0) > 0);
+    const total = inStage.reduce((s, l) => s + (l.project_value_cents || 0), 0);
+    return {
+      stage,
+      leads: inStage.length,
+      leadsWithAValue: valued.length,
+      value: valued.length ? centsToUsd(total) : 'no values recorded at this stage',
+      weight: STAGE_WEIGHT[stage],
+      weightedValue: valued.length ? centsToUsd(Math.round(total * (STAGE_WEIGHT[stage] ?? 0.05))) : null,
+    };
+  });
+  const valuedAll = leads.filter((l) => (l.project_value_cents || 0) > 0);
+  const weighted = leads.reduce(
+    (s, l) => s + (l.project_value_cents || 0) * (STAGE_WEIGHT[l.pipeline || 'new'] ?? 0.05), 0,
+  );
+  return {
+    byStage,
+    openLeads: leads.length,
+    leadsWithAValue: valuedAll.length,
+    leadsWithNoValueRecorded: leads.length - valuedAll.length,
+    weightedForecast: valuedAll.length
+      ? centsToUsd(Math.round(weighted))
+      : 'unconfirmed — nothing open carries a project value, so there is no forecast to give. Do not say zero.',
+  };
+}
+
+function moneySummary(days: number | undefined): unknown {
+  const db = getDb();
+  const outstanding = listOutstandingInvoices();
+  const owed = outstanding.reduce((s, i) => s + i.amount_cents, 0);
+
+  let collectedSql = "SELECT COALESCE(SUM(amount_cents),0) c FROM lead_payments WHERE status = 'paid'";
+  const params: unknown[] = [];
+  if (days) {
+    collectedSql += ' AND paid_at >= ?';
+    params.push(new Date(Date.now() - days * 86400_000).toISOString());
+  }
+  const collected = (db.prepare(collectedSql).get(...params) as { c: number }).c;
+
+  return {
+    collected: centsToUsd(collected),
+    collectedWindow: days ? `last ${days} day(s)` : 'all time',
+    owed: centsToUsd(owed),
+    outstandingInvoices: outstanding.map((i) => ({
+      invoice: i.invoice_no, project: i.lead_name, milestone: i.label,
+      amount: centsToUsd(i.amount_cents),
+      emailSent: !!i.invoice_sent_at,
+      payLink: i.payment_url || null,
+    })),
+    preparedButNotSent: outstanding.filter((i) => !i.invoice_sent_at).length,
+  };
+}
+
+function listSpendItems(): unknown {
+  const db = getDb();
+  try {
+    const rows = db.prepare(
+      'SELECT id, name, category, monthly_cents, returns, status, notes FROM spend_items ORDER BY monthly_cents DESC',
+    ).all() as { monthly_cents: number; status: string }[];
+    const active = rows.filter((r) => r.status !== 'cancelled');
+    return {
+      items: rows,
+      monthlyTotal: centsToUsd(active.reduce((s, r) => s + (r.monthly_cents || 0), 0)),
+      note: rows.length === 0 ? 'Nothing has been logged on the spend screen yet.' : undefined,
+    };
+  } catch {
+    return { items: [], note: 'The spend list has not been set up yet.' };
+  }
+}
+
+async function searchMemoryTool(query: string, limit: number): Promise<unknown> {
+  if (!query.trim()) return { error: 'query required' };
+  try {
+    const vec = await embedText(query);
+    const facts = vec ? searchFactsSemantic(query, vec, limit) : searchFacts(query, limit);
+    return {
+      facts: facts.map((f) => ({ fact: f.content, category: f.category, relevance: Number(f.score.toFixed(3)) })),
+      matchedBy: vec ? 'meaning' : 'keywords only (semantic recall unavailable)',
+      note: facts.length === 0 ? 'Nothing recorded on that. Say so rather than guessing.' : undefined,
+    };
+  } catch (err) {
+    return { error: 'Memory search failed', detail: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+function systemHealth(): unknown {
+  const set = (k: string) => !!(process.env[k] && process.env[k]!.trim());
+  const mailbox = anyGoogleAccountConnected();
+  let callsSynced = 0;
+  try { callsSynced = (getDb().prepare('SELECT COUNT(*) c FROM vapi_calls').get() as { c: number }).c; } catch { /* ignore */ }
+
+  return {
+    brain: set('ANTHROPIC_API_KEY') ? 'working' : 'DOWN — ANTHROPIC_API_KEY is not set, so I cannot think',
+    voice: set('ELEVENLABS_API_KEY') ? 'working' : (set('DEEPGRAM_API_KEY') ? 'ElevenLabs missing — running on the Deepgram fallback' : 'DOWN — no speech provider configured'),
+    phone: set('VAPI_API_KEY')
+      ? (callsSynced > 0 ? 'working' : 'key present but no calls have ever synced — likely the wrong Vapi key type (public vs private). Do NOT tell Joe nobody called; tell him the phone sync is failing.')
+      : 'DOWN — VAPI_API_KEY is not set, so Sofia logs nothing',
+    mailboxAndCalendar: mailbox ? 'connected' : 'NOT CONNECTED — no Gmail account has authorised, so email and calendar are unknown',
+    webSearch: set('BRAVE_API_KEY') ? 'working' : 'unavailable',
+    memoryRecall: embeddingProvider() ? `working (${embeddingProvider()})` : 'keyword only — no embedding provider configured',
+    payments: set('STRIPE_SECRET_KEY') ? 'working' : 'no Stripe key — invoices can be emailed but carry no pay link',
+  };
 }

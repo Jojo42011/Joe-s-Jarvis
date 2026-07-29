@@ -53,9 +53,11 @@ router.get('/status', (_req: Request, res: Response) => {
   });
 });
 
-router.get('/activate', async (_req: Request, res: Response) => {
+router.get('/activate', async (req: Request, res: Response) => {
   try {
-    const greeting = await handleActivation();
+    // ?opener=1 means the client already played the cached opener, so the brief
+    // skips the hello and goes straight to what matters.
+    const greeting = await handleActivation(req.query.opener === '1');
     res.json({ speech: greeting, text: greeting });
   } catch (err) {
     res.status(500).json({ error: 'Activation failed' });
