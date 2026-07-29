@@ -12,7 +12,21 @@
      A slow drift of light across the badge plus a soft pulse ring. The
      motion is decorative only — nothing here reports state, so it can
      never be mistaken for a live indicator. */
-  .hero.brand-hero { display:flex; align-items:center; gap:22px; padding:24px 26px; }
+  /* Three columns: the greeting reads left, the mark sits dead centre, and the
+     one number Joe is accountable for anchors the right. The centre column is
+     `justify-self:center` against the hero box (not the text), so the mark stays
+     centred no matter how long the greeting runs. */
+  .hero.brand-hero {
+    display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
+    gap:22px; padding:24px 26px;
+  }
+  .hero.brand-hero > .grow { min-width:0; }
+  .hero .hero-count { justify-self:end; text-align:right; }
+  .hero .hero-count .n { font-size:40px; font-weight:800; line-height:1; letter-spacing:-.02em; }
+  .hero .hero-count .l {
+    font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+    opacity:.82; margin-top:6px;
+  }
   .hero.brand-hero::after {
     content:""; position:absolute; inset:0; pointer-events:none;
     background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.16) 46%,transparent 62%);
@@ -38,8 +52,9 @@
   @media (prefers-reduced-motion:reduce) {
     .hero.brand-hero::after, .markwrap img, .markwrap .ring { animation:none; }
   }
-  @media (max-width:620px) {
-    .hero.brand-hero { flex-direction:column; align-items:flex-start; gap:14px; }
+  @media (max-width:820px) {
+    .hero.brand-hero { grid-template-columns:1fr; justify-items:start; gap:14px; }
+    .hero .hero-count { justify-self:start; text-align:left; }
     .markwrap { width:72px; height:72px; } .markwrap img { width:70px; height:70px; }
   }
 
@@ -58,12 +73,8 @@
 
   <!-- Branded hero -->
   <div class="hero brand-hero">
-    <div class="markwrap">
-      <span class="ring"></span><span class="ring"></span>
-      <img src="/assets/totally-outdoors-logo.png" alt="Totally Outdoors LLC" />
-    </div>
     <div class="grow">
-      <div class="eyebrow">Totally Outdoors Landscaping</div>
+      <div class="eyebrow" id="hero-date">Totally Outdoors Landscaping</div>
       <h1 id="greet">Good morning, Joe.</h1>
       <div class="sub" id="hero-sub">Landscaping, hardscaping and excavating · Holmes County, Ohio · since 2004</div>
       <div class="row-actions">
@@ -71,6 +82,18 @@
         <button class="btn btn-sm" data-go="sweep">What I missed</button>
         <button class="btn btn-sm" data-go="crm">Open CRM</button>
       </div>
+    </div>
+
+    <div class="markwrap">
+      <span class="ring"></span><span class="ring"></span>
+      <img src="/assets/totally-outdoors-logo.png" alt="Totally Outdoors LLC" />
+    </div>
+
+    <!-- Starts as an em dash, not 0: until /api/home answers we do not know
+         how many things are waiting, and a confident 0 would be a lie. -->
+    <div class="hero-count">
+      <div class="n" id="hero-wait">—</div>
+      <div class="l">Waiting on you</div>
     </div>
   </div>
 
@@ -157,6 +180,8 @@
     var h = Number(new Date().toLocaleString('en-US', { timeZone:'America/New_York', hour:'numeric', hour12:false }));
     var part = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
     document.getElementById('greet').textContent = part + ', Joe.';
+    document.getElementById('hero-date').textContent =
+      new Date().toLocaleDateString('en-US', { timeZone:'America/New_York', weekday:'long', month:'long', day:'numeric' });
     document.getElementById('today-date').textContent =
       new Date().toLocaleDateString('en-US', { timeZone:'America/New_York', weekday:'long', month:'short', day:'numeric' });
   })();
@@ -185,6 +210,7 @@
     var w = d.waiting;
     var waitTotal = w.emailDrafts.length + w.unsentInvoices.length + w.lateMaterials.length;
     document.getElementById('k-waiting').textContent = waitTotal;
+    document.getElementById('hero-wait').textContent = waitTotal;
 
     var appts = d.appointments;
     var kToday = document.getElementById('k-today');

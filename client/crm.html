@@ -23,8 +23,9 @@
   /* ── Header ── */
   header { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:22px; padding-bottom:16px; border-bottom:1px solid var(--divider); }
   .head-left { display:flex; align-items:center; gap:12px; }
-  .orb { position:relative; width:30px; height:30px; border-radius:50%; background:var(--mark); flex:0 0 auto; box-shadow:var(--sh-rest); }
-  .orb::after { content:""; position:absolute; left:7px; top:6px; width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,.85); }
+  /* The real Totally Outdoors mark, not an abstract dot. Sized to the old orb's
+     footprint so the header rhythm is unchanged. */
+  .orb { width:34px; height:34px; flex:0 0 auto; object-fit:contain; display:block; }
   h1 { font-size:20px; font-weight:700; letter-spacing:-.02em; }
   .head-sub { font-size:12px; font-weight:500; color:var(--muted); margin-top:2px; }
   .header-right { display:flex; gap:12px; align-items:center; }
@@ -274,7 +275,7 @@
   <div class="container">
     <header>
       <div class="head-left">
-        <span class="orb"></span>
+        <img class="orb" src="/assets/totally-outdoors-logo.png" alt="Totally Outdoors LLC" />
         <div>
           <h1>Lead CRM</h1>
           <div class="head-sub">Totally Outdoors LLC · Pipeline</div>

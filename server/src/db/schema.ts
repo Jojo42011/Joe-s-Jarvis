@@ -562,6 +562,7 @@ export function initDb(): Database.Database {
   migrateLeadPayments(db);
   migrateFacts(db);
   migrateRalph(db);
+  migrateExecutionLog(db);
 
   return db;
 }
@@ -581,6 +582,18 @@ function migrateRalph(database: Database.Database): void {
   if (!names.has('format')) add("ALTER TABLE ralph_content ADD COLUMN format TEXT DEFAULT 'single'");
   // Layer 4: an alternate caption (a second angle) Joe can swap to at approval.
   if (!names.has('alt_body')) add('ALTER TABLE ralph_content ADD COLUMN alt_body TEXT');
+}
+
+function migrateExecutionLog(database: Database.Database): void {
+  // The production volume carries an execution_log created by an earlier build
+  // that had no `detail` column. CREATE TABLE IF NOT EXISTS never reshapes an
+  // existing table, so /api/home's "what Jarvis last did" query 500'd on it.
+  const cols = database.prepare('PRAGMA table_info(execution_log)').all() as { name: string }[];
+  const names = new Set(cols.map((c) => c.name));
+  const add = (sql: string) => {
+    try { database.exec(sql); } catch { /* column may exist */ }
+  };
+  if (!names.has('detail')) add('ALTER TABLE execution_log ADD COLUMN detail TEXT');
 }
 
 function migrateFacts(database: Database.Database): void {

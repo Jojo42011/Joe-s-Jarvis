@@ -62,7 +62,9 @@
   }
   #top .t { font-size:15px; font-weight:700; letter-spacing:-.01em; }
   #top .sub { font-size:12.5px; color:var(--muted); }
-  #hamb { display:none; }
+  /* Always present — the nav must be reachable from the top bar at every width,
+     including full screen with the sidebar collapsed. */
+  #hamb { display:inline-flex; align-items:center; gap:7px; margin-right:12px; }
   #frames { flex:1 1 auto; position:relative; min-height:0; background:var(--bg); }
   .frame { position:absolute; inset:0; width:100%; height:100%; border:0; display:none; background:var(--bg); }
   .frame.on { display:block; }
@@ -97,7 +99,7 @@
     #shell.drawer #side { transform:none; }
     #main { min-height:100vh; }
     #top { position:sticky; top:0; z-index:40; }
-    #hamb { display:inline-flex; }
+    #hamb span { display:none; }  /* icon only once space is tight */
     #frames { position:static; min-height:60vh; }
     .frame { position:static; height:auto; min-height:70vh; }
   }
@@ -122,7 +124,7 @@
 
   <main id="main">
     <header id="top">
-      <button class="btn btn-sm btn-ghost" id="hamb" title="Menu">☰</button>
+      <button class="btn btn-sm btn-ghost" id="hamb" title="Show / hide the menu">☰ <span>Menu</span></button>
       <div class="grow">
         <div class="t" id="top-title">Home</div>
         <div class="sub" id="top-sub">Everything in one place</div>
@@ -281,9 +283,17 @@
   }
   document.getElementById('collapse-btn').addEventListener('click', toggleCollapse);
   function closeDrawer() { shell.classList.remove('drawer'); document.getElementById('scrim').classList.remove('on'); }
+  // One Menu button, two jobs. Below 900px the sidebar is an overlay drawer, so
+  // Menu slides it in. Above that the sidebar is part of the layout, so Menu
+  // expands/collapses it — which is what makes the nav reachable again when the
+  // sidebar has been collapsed down to icons on a full-screen window.
   document.getElementById('hamb').addEventListener('click', function () {
-    shell.classList.toggle('drawer');
-    document.getElementById('scrim').classList.toggle('on', shell.classList.contains('drawer'));
+    if (isMobile()) {
+      shell.classList.toggle('drawer');
+      document.getElementById('scrim').classList.toggle('on', shell.classList.contains('drawer'));
+    } else {
+      toggleCollapse();
+    }
   });
 
   /* ── Theme: shell owns it, broadcasts into every frame ─────────────── */
