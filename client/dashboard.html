@@ -129,8 +129,8 @@
 
   <!-- KPI row -->
   <div class="kpis" id="kpis" style="margin-bottom:18px">
-    <div class="kpi"><div class="n money" id="k-waiting">–</div><div class="l">Waiting on you</div><div class="s" id="k-waiting-s"></div></div>
-    <div class="kpi"><div class="n" id="k-due">–</div><div class="l">Due today</div><div class="s" id="k-due-s"></div></div>
+    <div class="kpi"><div class="n amber" id="k-waiting">–</div><div class="l">Waiting on you</div><div class="s" id="k-waiting-s"></div></div>
+    <div class="kpi"><div class="n" id="k-open">–</div><div class="l">Open leads</div><div class="s" id="k-open-s"></div></div>
     <div class="kpi"><div class="n money" id="k-forecast">–</div><div class="l">Pipeline, weighted</div><div class="s" id="k-forecast-s"></div></div>
     <div class="kpi"><div class="n" id="k-today">–</div><div class="l">Appointments today</div><div class="s" id="k-today-s"></div></div>
   </div>
@@ -157,7 +157,7 @@
       </div>
 
       <div class="card">
-        <div class="head"><h2>Recent activity</h2></div>
+        <div class="head"><h2>Recent leads</h2><button class="btn btn-sm btn-ghost" data-go="crm">Open CRM</button></div>
         <div id="activity"><div class="empty">Loading…</div></div>
       </div>
     </div>
@@ -170,50 +170,6 @@
 (function () {
   "use strict";
 
-  /* ══════════════════════════════════════════════════════════════════════
-     MOCK MODE — Joe asked to see the finished UI with sample figures before
-     the real wiring. Flip to false to load everything from /api/home again.
-     Every number below is invented; the stamp at the foot of the page says
-     so on screen, so a mock figure can never be mistaken for a live one.
-     ════════════════════════════════════════════════════════════════════ */
-  var MOCK = true;
-
-  var MOCK_DATA = {
-    waiting: 6,
-    dueToday: { count: 3, note: '2 estimates and a mulch delivery window' },
-    forecast: { cents: 1240000, note: '9 open · 6 with a value recorded' },
-    appointments: { count: 2, note: 'Next: 1:30 PM site visit, Berlin OH' },
-    plan: [
-      { t: 'Call back Mark Reynolds about the paver patio estimate', done: false },
-      { t: 'Approve the Hostetler retaining wall quote — $18,400', done: false },
-      { t: 'Order limestone for the Miller driveway before Thursday', done: false },
-      { t: 'Send milestone invoice — Yoder backyard, excavation complete', done: false },
-      { t: 'Follow up on the hot tub pad quote for Will Berry', done: false },
-      { t: 'Confirm the Troyer mulch delivery for Friday morning', done: false }
-    ],
-    planTotal: 14,
-    waitingItems: [
-      { kind: 'email',     t: 'Re: Backyard drainage question',            s: 'reply drafted for Sarah Miller <smiller@gmail.com>',            go: 'approve',   btn: 'Review' },
-      { kind: 'email',     t: 'Paver walkway — can you come this week?',   s: 'reply drafted for Dan Hostetler <danh@outlook.com>',            go: 'approve',   btn: 'Review' },
-      { kind: 'invoice',   t: 'INV-2026-014 — Yoder backyard',             s: 'Excavation milestone · $6,200 ready to send',                   go: 'money',     btn: 'Send' },
-      { kind: 'invoice',   t: 'INV-2026-015 — Reynolds patio',             s: 'Deposit · $4,800 ready to send',                                go: 'money',     btn: 'Send' },
-      { kind: 'materials', t: 'PO-0031 — Miller driveway limestone',       s: 'Job reached base prep and this is still in draft',              go: 'materials', btn: 'Open' },
-      { kind: 'call',      t: '+1 (330) 555-0187 called twice',            s: 'No lead record yet and no follow-up of any kind',               go: 'phones',    btn: 'Open' }
-    ],
-    agents: [
-      { name: 'Jarvis', role: 'Chief of staff', live: true,  hl: 'Last spoke with you',        dt: 'just now',                                   cls: 'indigo' },
-      { name: 'Sofia',  role: 'Calls',          live: true,  hl: '8 calls answered today',     dt: 'Last: +1 (330) 555-0142 · 36m ago',          cls: 'green' }
-    ],
-    activity: [
-      { t: 'Sofia took a call from +1 (330) 555-0142', when: '36m ago' },
-      { t: 'Jarvis drafted a reply to Sarah Miller',   when: '1h ago' },
-      { t: 'New lead: Dan Hostetler — retaining wall', when: '2h ago' },
-      { t: 'Sofia took a call from +1 (234) 555-0166', when: '3h ago' },
-      { t: 'Invoice INV-2026-013 was paid — $3,100',   when: '5h ago' },
-      { t: 'PO-0030 marked delivered — Yoder topsoil', when: 'yesterday' }
-    ]
-  };
-
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
@@ -223,6 +179,21 @@
     var n = Number(cents || 0) / 100;
     return n >= 10000 ? '$' + (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
                       : '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  }
+  function clock(iso) {
+    if (!iso) return '';
+    var d = new Date(iso); if (isNaN(d)) return '';
+    return d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+  }
+  function when(iso) {
+    if (!iso) return '';
+    var d = new Date(iso); if (isNaN(d)) return '';
+    var diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
+    return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
   }
   function go(tab) {
     try { window.parent.postMessage({ type:'operator-navigate', tab:tab }, '*'); } catch (_) {}
@@ -243,86 +214,168 @@
       new Date().toLocaleDateString('en-US', { timeZone:'America/New_York', weekday:'long', month:'long', day:'numeric' });
   })();
 
-  function renderMock(d) {
-    document.getElementById('hero-wait').textContent = d.waiting;
-    document.getElementById('hero-sub').textContent =
-      d.plan.length + ' things on today’s plan. The team has kept everything else moving.';
+  function fail(msg) {
+    document.getElementById('err').innerHTML =
+      '<div class="notice down" style="margin-bottom:16px">' + esc(msg) + '</div>';
+  }
 
-    document.getElementById('k-waiting').textContent = d.waiting;
+  // Ticks are a local scratchpad for the day, not persisted state.
+  var ticked = {};
+
+  function render(d) {
+    var w = d.waiting;
+    var waitTotal = w.emailDrafts.length + w.unsentInvoices.length + w.lateMaterials.length;
+    var appts = d.appointments;
+
+    // ── Hero ──
+    document.getElementById('hero-wait').textContent = waitTotal;
+    document.getElementById('hero-sub').textContent = waitTotal
+      ? waitTotal + ' thing' + (waitTotal === 1 ? '' : 's') + ' need' + (waitTotal === 1 ? 's' : '') + ' you. The team has kept everything else moving.'
+      : 'Nothing is waiting on you right now.';
+
+    // ── KPIs ──
+    document.getElementById('k-waiting').textContent = waitTotal;
     document.getElementById('k-waiting-s').textContent = 'Emails, invoices and materials';
-    document.getElementById('k-due').textContent = d.dueToday.count;
-    document.getElementById('k-due-s').textContent = d.dueToday.note;
-    document.getElementById('k-forecast').textContent = money(d.forecast.cents);
-    document.getElementById('k-forecast-s').textContent = d.forecast.note;
-    document.getElementById('k-today').className = 'n green';
-    document.getElementById('k-today').textContent = d.appointments.count;
-    document.getElementById('k-today-s').textContent = d.appointments.note;
 
-    // Today's plan — ticks toggle locally so the checklist feels real.
-    document.getElementById('plan-count').textContent = '0 / ' + d.planTotal;
-    document.getElementById('plan').innerHTML =
-      d.plan.map(function (p, i) {
-        return '<div class="plan-row" data-plan="' + i + '">' +
+    document.getElementById('k-open').textContent = d.pipeline.openLeads;
+    document.getElementById('k-open-s').textContent = 'Across the whole pipeline';
+
+    var fc = document.getElementById('k-forecast');
+    if (d.pipeline.weightedUnconfirmed) {
+      // Rule 1: a forecast with nothing to compute from is unconfirmed, not $0.
+      fc.className = 'n unconfirmed'; fc.textContent = 'unconfirmed';
+      document.getElementById('k-forecast-s').textContent = d.pipeline.openLeads + ' open · none with a value recorded';
+    } else {
+      fc.className = 'n money'; fc.textContent = money(d.pipeline.weightedCents);
+      document.getElementById('k-forecast-s').textContent =
+        d.pipeline.openLeads + ' open · ' + d.pipeline.valuedLeads + ' with a value recorded';
+    }
+
+    var kT = document.getElementById('k-today');
+    if (!appts.connected) {
+      kT.className = 'n unconfirmed'; kT.textContent = 'not connected';
+      document.getElementById('k-today-s').textContent = 'No calendar is connected — today is unknown, not empty';
+    } else {
+      kT.className = 'n green'; kT.textContent = appts.today.length;
+      var first = appts.today[0];
+      document.getElementById('k-today-s').textContent = first
+        ? 'Next: ' + clock(first.start) + (first.summary ? ' — ' + first.summary : '')
+        : 'Nothing on the calendar';
+    }
+
+    // ── Today's plan: every real item that needs an action today ──
+    var plan = [];
+    w.emailDrafts.forEach(function (x) {
+      plan.push({ t: 'Review the drafted reply to ' + (x.from || 'unknown') + ' — \u201c' + (x.subject || 'no subject') + '\u201d' });
+    });
+    w.unsentInvoices.forEach(function (x) {
+      plan.push({ t: 'Send ' + (x.invoice_no || 'the invoice') + ' to ' + x.lead + ' — ' + (x.label || 'milestone') + ' ' + money(x.amount_cents) });
+    });
+    w.lateMaterials.forEach(function (x) {
+      plan.push({ t: 'Chase ' + (x.po || 'the PO') + ' for ' + (x.lead || 'a project') + ' — still ' + x.status + ' and the job is at that stage' });
+    });
+    if (appts.connected) {
+      appts.today.forEach(function (e) {
+        plan.push({ t: clock(e.start) + ' — ' + (e.summary || '(no title)') + (e.location ? ', ' + e.location : '') });
+      });
+    }
+
+    var planEl = document.getElementById('plan');
+    if (!plan.length) {
+      document.getElementById('plan-count').textContent = '0 / 0';
+      planEl.innerHTML = '<div class="empty"><div class="t">Nothing needs you right now</div>' +
+        '<div class="scope">Built from drafted email replies, invoices ready to send, late purchase orders' +
+        (appts.connected ? ' and today\u2019s calendar.' : '. The calendar is not connected, so appointments cannot appear here.') +
+        '</div></div>';
+    } else {
+      planEl.innerHTML = plan.map(function (p, i) {
+        return '<div class="plan-row' + (ticked[p.t] ? ' done' : '') + '" data-plan="' + i + '">' +
           '<span class="tick"></span><span class="t grow">' + esc(p.t) + '</span></div>';
       }).join('') +
-      '<div class="plan-foot">Showing ' + d.plan.length + ' of ' + d.planTotal +
-      ' — <a data-go="crm">open the CRM for the rest</a></div>';
-    var doneCount = 0;
-    document.querySelectorAll('[data-plan]').forEach(function (row) {
-      row.addEventListener('click', function () {
-        row.classList.toggle('done');
-        doneCount = document.querySelectorAll('.plan-row.done').length;
-        document.getElementById('plan-count').textContent = doneCount + ' / ' + d.planTotal;
+      '<div class="plan-foot">Ticks are your own scratchpad for the day \u2014 <a data-go="crm">open the CRM</a> for the full record.</div>';
+      var update = function () {
+        document.getElementById('plan-count').textContent =
+          document.querySelectorAll('.plan-row.done').length + ' / ' + plan.length;
+      };
+      update();
+      planEl.querySelectorAll('[data-plan]').forEach(function (row) {
+        row.addEventListener('click', function () {
+          row.classList.toggle('done');
+          ticked[plan[Number(row.dataset.plan)].t] = row.classList.contains('done');
+          update();
+        });
       });
+    }
+
+    // ── Waiting on you ──
+    document.getElementById('wait-count').innerHTML =
+      waitTotal ? '<span class="badge amber">' + waitTotal + '</span>' : '';
+    var rows = [];
+    w.emailDrafts.forEach(function (x) {
+      rows.push('<div class="wait-item"><span class="kind">email</span>' +
+        '<span class="grow truncate"><div class="t truncate">' + esc(x.subject || '(no subject)') + '</div>' +
+        '<div class="s truncate">reply drafted for ' + esc(x.from || 'unknown') + '</div></span>' +
+        '<button class="btn btn-sm" data-go="approve">Review</button></div>');
     });
+    w.unsentInvoices.forEach(function (x) {
+      rows.push('<div class="wait-item"><span class="kind">invoice</span>' +
+        '<span class="grow truncate"><div class="t truncate">' + esc(x.invoice_no || 'Invoice') + ' \u2014 ' + esc(x.lead) + '</div>' +
+        '<div class="s truncate">' + esc(x.label || 'milestone') + ' \u00b7 ' + money(x.amount_cents) + ' ready to send</div></span>' +
+        '<button class="btn btn-sm" data-go="money">Send</button></div>');
+    });
+    w.lateMaterials.forEach(function (x) {
+      rows.push('<div class="wait-item"><span class="kind">materials</span>' +
+        '<span class="grow truncate"><div class="t truncate">' + esc(x.po || 'PO') + ' \u2014 ' + esc(x.lead || 'a project') + '</div>' +
+        '<div class="s truncate">still ' + esc(x.status) + ' but the job has reached that stage</div></span>' +
+        '<button class="btn btn-sm" data-go="materials">Open</button></div>');
+    });
+    document.getElementById('waiting').innerHTML = rows.length ? rows.join('')
+      : '<div class="empty"><div class="t">Nothing waiting on you</div>' +
+        '<div class="scope">Covers email replies Jarvis drafted, milestone invoices ready to send, and purchase orders a job has already passed the stage for.</div></div>';
 
-    document.getElementById('wait-count').innerHTML = '<span class="badge amber">' + d.waitingItems.length + '</span>';
-    document.getElementById('waiting').innerHTML = d.waitingItems.map(function (x) {
-      return '<div class="wait-item"><span class="kind">' + esc(x.kind) + '</span>' +
-        '<span class="grow truncate"><div class="t truncate">' + esc(x.t) + '</div>' +
-        '<div class="s truncate">' + esc(x.s) + '</div></span>' +
-        '<button class="btn btn-sm" data-go="' + esc(x.go) + '">' + esc(x.btn) + '</button></div>';
-    }).join('');
-
-    document.getElementById('team-meta').innerHTML = '<span class="dot live"></span> All running';
+    // ── Your team ──
+    var live = d.agents.filter(function (a) { return a.live; }).length;
+    document.getElementById('team-meta').innerHTML = live === d.agents.length
+      ? '<span class="dot live"></span> All running'
+      : live + ' of ' + d.agents.length + ' live';
     document.getElementById('agents').innerHTML = d.agents.map(function (a) {
       return '<div class="agent">' +
-        '<span class="avatar ' + a.cls + '">' + esc(a.name.slice(0,2).toUpperCase()) + '</span>' +
+        '<span class="avatar' + (a.name === 'Sofia' ? ' green' : ' indigo') + '">' + esc(a.name.slice(0,2).toUpperCase()) + '</span>' +
         '<span class="grow">' +
           '<div class="nm">' + esc(a.name) + '<span class="dot ' + (a.live ? 'live' : 'down') + '"></span></div>' +
           '<div class="rl">' + esc(a.role) + '</div>' +
-          '<div class="hl">' + esc(a.hl) + '</div>' +
-          '<div class="dt">' + esc(a.dt) + '</div>' +
+          '<div class="hl">' + esc(a.headline) + '</div>' +
+          (a.detail ? '<div class="dt">' + esc(a.detail) + '</div>' : '') +
         '</span></div>';
     }).join('');
 
-    document.getElementById('activity').innerHTML = d.activity.map(function (a) {
-      return '<div class="act"><span class="dot live"></span><span class="truncate">' + esc(a.t) + '</span>' +
-        '<span class="when">' + esc(a.when) + '</span></div>';
-    }).join('');
+    // ── Recent leads ──
+    document.getElementById('activity').innerHTML = d.recentLeads.length
+      ? d.recentLeads.map(function (x) {
+          return '<div class="act"><span class="avatar">' + esc((x.name || '?').slice(0,2).toUpperCase()) + '</span>' +
+            '<span class="grow truncate"><div class="t truncate" style="font-weight:600;font-size:13px">' + esc(x.name) + '</div>' +
+            '<div class="s truncate" style="font-size:12px;color:var(--muted)">' + esc(x.message || x.phone || '') + '</div></span>' +
+            '<span class="when">' + esc(when(x.created_at)) + '</span></div>';
+        }).join('')
+      : '<div class="empty"><div class="t">No leads yet</div><div class="scope">Every lead from Sofia, the website and manual entry lands here.</div></div>';
 
-    document.getElementById('stamp').textContent =
-      'Mock figures — every number on this page is sample data for the UI preview, not a reading from the system.';
+    document.getElementById('stamp').textContent = 'Live figures \u00b7 refreshed ' + clock(d.generatedAt);
     bindGo();
   }
 
-  if (MOCK) {
-    renderMock(MOCK_DATA);
-  } else {
-    // Real wiring (pre-mock behaviour): pull /api/home and render honestly.
+  function load() {
     fetch('/api/home')
       .then(function (r) { if (!r.ok) throw new Error('Server returned ' + r.status); return r.json(); })
-      .then(function (d) {
-        document.getElementById('hero-wait').textContent =
-          d.waiting.emailDrafts.length + d.waiting.unsentInvoices.length + d.waiting.lateMaterials.length;
-        // The full live renderer returns with the real-data pass; mock mode is
-        // what this page is deliberately showing right now.
-      })
-      .catch(function () {
-        document.getElementById('err').innerHTML =
-          '<div class="notice down" style="margin-bottom:16px">Could not load the dashboard. Nothing here is invented.</div>';
+      .then(function (d) { document.getElementById('err').innerHTML = ''; render(d); })
+      .catch(function (e) {
+        // A failed request is a different fact from "there is nothing".
+        fail('Could not load the dashboard \u2014 ' + e.message + '. The figures below may be stale or missing; nothing here is invented.');
       });
   }
+
+  load();
+  setInterval(function () { if (!document.hidden) load(); }, 60000);
+  bindGo();
 })();
 </script>
 </body>

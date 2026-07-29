@@ -190,7 +190,9 @@
   var GROUPS = [
     { title:null,           keys:['home','approve','sweep','jarvis','chat'] },
     { title:'Workstreams',  keys:['phones'] },
-    { title:'Customers',    keys:['crm','pipeline','leads','inbox','money','materials','spend'] },
+    // Pipeline lives inside the CRM screen now; money/materials/spend stay
+    // routable (palette, voice, deep links, dashboard buttons) but off the nav.
+    { title:'Customers',    keys:['crm','leads','inbox'] },
     { title:'Your team',    keys:['sync','memory','team','hire'] }
   ];
 

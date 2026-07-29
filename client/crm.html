@@ -269,6 +269,22 @@
     transition:opacity .25s, transform .3s var(--ease-pop); }
   #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
   #toast b { color:var(--brand); }
+
+  /* ── Leads / Pipeline view tabs ─────────────────────────────────────── */
+  .view-tabs { display:flex; gap:8px; margin-right:6px; }
+  .view-tab {
+    padding:7px 15px; border-radius:999px; cursor:pointer;
+    border:1px solid var(--border); background:var(--fill);
+    color:var(--ink-2); font-weight:600; font-size:13px; line-height:1;
+    transition:all .15s;
+  }
+  .view-tab:hover { border-color:var(--border-strong); color:var(--ink); }
+  .view-tab.on { background:var(--brand); border-color:var(--brand); color:#fff; }
+  /* Pipeline swaps in under the same header; the CRM body hides. */
+  #pipeView { display:none; }
+  body.pipe .stats, body.pipe #alertsCard, body.pipe .crm-split { display:none; }
+  body.pipe #pipeView { display:block; }
+  #pipeView iframe { width:100%; border:0; min-height:calc(100vh - 150px); background:transparent; }
 </style>
 </head>
 <body>
@@ -282,9 +298,17 @@
         </div>
       </div>
       <div class="header-right">
+        <div class="view-tabs">
+          <button class="view-tab on" data-view="crm">Leads</button>
+          <button class="view-tab" data-view="pipe">Pipeline</button>
+        </div>
         <div id="liveTag"><span class="dot"></span><span id="liveText">Connecting…</span></div>
       </div>
     </header>
+
+    <!-- Pipeline view: the whole /pipeline screen embedded under the CRM's
+         header. Loaded lazily the first time the tab is opened. -->
+    <div id="pipeView"><iframe id="pipeFrame" data-src="/pipeline" title="Pipeline"></iframe></div>
 
     <div class="stats kpis">
       <div class="stat-card kpi" style="--i:0">
@@ -1611,6 +1635,29 @@
   loadOtherCalls();
   setInterval(function(){ if (visible && !document.hidden) loadOtherCalls(); }, 60000);
   startPolling();
+})();
+
+/* ── Leads / Pipeline tab switch ──────────────────────────────────────── */
+(function () {
+  "use strict";
+  var frame = document.getElementById('pipeFrame');
+  document.querySelectorAll('.view-tab').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('.view-tab').forEach(function (x) { x.classList.toggle('on', x === b); });
+      var pipe = b.getAttribute('data-view') === 'pipe';
+      document.body.classList.toggle('pipe', pipe);
+      // Lazy-load the pipeline screen the first time the tab opens.
+      if (pipe && !frame.src) frame.src = frame.getAttribute('data-src');
+    });
+  });
+  // The shell broadcasts theme changes to this frame; pass them through to the
+  // nested pipeline frame so it flips live too (it self-reads localStorage on load).
+  window.addEventListener('message', function (e) {
+    var d = e.data || {};
+    if (d.type === 'theme' && frame.contentWindow) {
+      try { frame.contentWindow.postMessage(d, '*'); } catch (_) {}
+    }
+  });
 })();
 </script>
 </body>
