@@ -881,16 +881,35 @@ function listSpendItems(): unknown {
   const db = getDb();
   try {
     const rows = db.prepare(
-      'SELECT id, name, category, monthly_cents, returns, status, notes FROM spend_items ORDER BY monthly_cents DESC',
-    ).all() as { monthly_cents: number; status: string }[];
-    const active = rows.filter((r) => r.status !== 'cancelled');
+      'SELECT id, name, kind, cost_cents, cycle, purpose, lead_source, active FROM spend_items ORDER BY active DESC, cost_cents DESC',
+    ).all() as { name: string; kind: string; cost_cents: number; cycle: string; purpose: string; lead_source: string | null; active: number }[];
+
+    // A yearly line is not a monthly line — normalise before totalling, or the
+    // monthly figure quietly overstates by 12x on anything billed annually.
+    const monthly = (r: { cost_cents: number; cycle: string }) =>
+      r.cycle === 'yearly' ? Math.round((r.cost_cents || 0) / 12)
+      : r.cycle === 'one_time' ? 0
+      : (r.cost_cents || 0);
+
+    const live = rows.filter((r) => r.active);
     return {
-      items: rows,
-      monthlyTotal: centsToUsd(active.reduce((s, r) => s + (r.monthly_cents || 0), 0)),
+      items: rows.map((r) => ({
+        name: r.name, kind: r.kind, cost: centsToUsd(r.cost_cents), billed: r.cycle,
+        perMonth: centsToUsd(monthly(r)), purpose: r.purpose,
+        claimsToGenerate: r.lead_source || null,
+        active: !!r.active,
+      })),
+      monthlyTotal: centsToUsd(live.reduce((s, r) => s + monthly(r), 0)),
       note: rows.length === 0 ? 'Nothing has been logged on the spend screen yet.' : undefined,
     };
-  } catch {
-    return { items: [], note: 'The spend list has not been set up yet.' };
+  } catch (err) {
+    // Say what actually went wrong. Reporting a failed read as "nothing here"
+    // would tell Joe he has no costs when the truth is we could not look.
+    return {
+      error: 'Could not read the spend list',
+      detail: err instanceof Error ? err.message : String(err),
+      warning: 'This is a failed read, NOT an empty list. Do not tell Joe he has no spending.',
+    };
   }
 }
 
