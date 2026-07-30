@@ -379,7 +379,30 @@ export const FUNCTION_TOOLS = [
 export interface ToolOutcome { result: unknown; navigate?: string }
 
 export async function executeTool(name: string, args: Record<string, unknown>): Promise<ToolOutcome> {
+  // One line per call. Without this, a wrong answer is indistinguishable from a
+  // tool that never ran — you cannot tell whether Jarvis read the record or
+  // improvised from context.
+  const started = Date.now();
+  const argSummary = JSON.stringify(args).slice(0, 120);
+  console.log(`[Tool] → ${name} ${argSummary}`);
+  const done = (outcome: ToolOutcome): ToolOutcome => {
+    const r = outcome.result as Record<string, unknown> | null;
+    const bad = r && typeof r === 'object' && ('error' in r) ? ` ERROR: ${String(r.error).slice(0, 80)}` : '';
+    console.log(`[Tool] ← ${name} ${Date.now() - started}ms${bad}`);
+    return outcome;
+  };
+
   try {
+    return done(await runTool(name, args));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[Tool] ✗ ${name} threw after ${Date.now() - started}ms:`, msg);
+    return { result: { error: msg } };
+  }
+}
+
+async function runTool(name: string, args: Record<string, unknown>): Promise<ToolOutcome> {
+  {
     switch (name) {
       case 'open_dashboard': {
         const tab = String(args.tab || 'arlo').toLowerCase();
@@ -589,8 +612,6 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
       default:
         return { result: { error: `unknown tool ${name}` } };
     }
-  } catch (err) {
-    return { result: { error: err instanceof Error ? err.message : 'tool failed' } };
   }
 }
 
