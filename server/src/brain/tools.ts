@@ -36,7 +36,7 @@ export const FUNCTION_TOOLS = [
   {
     type: 'function' as const,
     name: 'open_dashboard',
-    description: "Pull up a tab on Joe's screen (and keep talking over it). Use it whenever he says pull up / show me / let me see / bring up / open / take me to — otherwise you'll describe a page instead of displaying it. tab: home=everything at a glance, approve=email replies waiting on him, sweep=what he missed, jarvis=voice, chat=text, phones=Sofia's call log, crm=leads and the control panel, pipeline=weighted forecast, leads=message someone, inbox=email, money=outstanding invoices, materials=purchase orders and suppliers, spend=what the business pays for, sync=integrations, memory=neural map, team=who can sign in, hire=propose a new agent.",
+    description: "Pull up a tab on Joe's screen (and keep talking over it). Use it whenever he says pull up / show me / let me see / bring up / open / take me to — otherwise you'll describe a page instead of displaying it. tab: home=everything at a glance, approve=email replies waiting on him, sweep=what he missed, jarvis=voice, chat=text, phones=the call log, crm=leads and the control panel, pipeline=weighted forecast, leads=message someone, inbox=email, money=outstanding invoices, materials=purchase orders and suppliers, spend=what the business pays for, sync=integrations, memory=neural map, team=who can sign in, hire=propose a new agent.",
     parameters: {
       type: 'object',
       properties: { tab: { type: 'string', enum: UI_TABS } },
@@ -299,7 +299,7 @@ export const FUNCTION_TOOLS = [
   {
     type: 'function' as const,
     name: 'list_calls',
-    description: "Sofia's call log — who rang, when, how long, whether it booked, and her summary of what they wanted. Optionally filter to a phone number or name. Use for 'who called', 'what did that caller want', 'how many calls today', 'did anyone call about the patio'.",
+    description: "The call log — who rang, when, how long, whether it booked, and the summary of what they wanted. Optionally filter to a phone number or name. Use for 'who called', 'what did that caller want', 'how many calls today', 'did anyone call about the patio'.",
     parameters: {
       type: 'object',
       properties: {
@@ -371,7 +371,7 @@ export const FUNCTION_TOOLS = [
   {
     type: 'function' as const,
     name: 'system_health',
-    description: "Which parts of Joe's system are actually working right now — brain, voice, phone (Sofia/Vapi), mailbox and calendar, web search, memory recall — and for anything down, the specific reason. Use for 'is everything working', 'why isn't Sofia picking up', 'are you connected to my email', 'what's broken'.",
+    description: "Which parts of Joe's system are actually working right now — thinking, voice, the phone line, mailbox and calendar, web search, memory — and for anything down, the reason in plain terms. Use for 'is everything working', 'is the phone working', 'are you connected to my email', 'what's broken'.",
     parameters: { type: 'object', properties: {}, additionalProperties: false },
   },
 ];
@@ -757,7 +757,7 @@ function whatDidIMiss(days: number): unknown {
     newLeads: newLeads.length,
     calls,
     callsNote: (calls as unknown[]).length === 0
-      ? 'No calls are recorded in this window. If Sofia\'s phone sync is failing, this reads as zero when it may not be — check system_health before telling Joe nobody called.'
+      ? 'No calls are recorded in this window. If the phone line is not syncing, this reads as zero when it may not be — check system_health before telling Joe nobody called.'
       : undefined,
   };
 }
@@ -955,15 +955,26 @@ function systemHealth(): unknown {
   let callsSynced = 0;
   try { callsSynced = (getDb().prepare('SELECT COUNT(*) c FROM vapi_calls').get() as { c: number }).c; } catch { /* ignore */ }
 
+  // Values are written for Joe's ears: what works, what does not, and what the
+  // breakage means for him. No vendor or credential names — he does not run the
+  // plumbing and naming it only makes a plain problem sound technical.
   return {
-    brain: set('ANTHROPIC_API_KEY') ? 'working' : 'DOWN — ANTHROPIC_API_KEY is not set, so I cannot think',
-    voice: set('ELEVENLABS_API_KEY') ? 'working' : (set('DEEPGRAM_API_KEY') ? 'ElevenLabs missing — running on the Deepgram fallback' : 'DOWN — no speech provider configured'),
+    thinking: set('ANTHROPIC_API_KEY') ? 'working' : 'DOWN — I cannot think right now; this needs looking at',
+    voice: set('ELEVENLABS_API_KEY')
+      ? 'working'
+      : (set('DEEPGRAM_API_KEY') ? 'working, on the backup speech service' : 'DOWN — speech is unavailable'),
     phone: set('VAPI_API_KEY')
-      ? (callsSynced > 0 ? 'working' : 'key present but no calls have ever synced — likely the wrong Vapi key type (public vs private). Do NOT tell Joe nobody called; tell him the phone sync is failing.')
-      : 'DOWN — VAPI_API_KEY is not set, so Sofia logs nothing',
-    mailboxAndCalendar: mailbox ? 'connected' : 'NOT CONNECTED — no Gmail account has authorised, so email and calendar are unknown',
-    webSearch: set('BRAVE_API_KEY') ? 'working' : 'unavailable',
-    memoryRecall: embeddingProvider() ? `working (${embeddingProvider()})` : 'keyword only — no embedding provider configured',
-    payments: set('STRIPE_SECRET_KEY') ? 'working' : 'no Stripe key — invoices can be emailed but carry no pay link',
+      ? (callsSynced > 0
+          ? 'working'
+          : 'NOT SYNCING — the phone line is connected but no calls are coming through to the system. Tell Joe the phone line is not syncing and that it needs looking at. Do NOT tell him nobody called, and do NOT name the provider or a key.')
+      : 'NOT CONNECTED — the phone line is not hooked up, so no calls are being logged at all.',
+    mailboxAndCalendar: mailbox
+      ? 'connected'
+      : 'NOT CONNECTED — no mailbox has been linked, so email and the calendar are unknown to me, not empty',
+    webSearch: set('BRAVE_API_KEY') ? 'working' : 'unavailable — I cannot look things up on the web',
+    memory: embeddingProvider() ? 'working' : 'limited — I can only match on exact words, not meaning',
+    payments: set('STRIPE_SECRET_KEY')
+      ? 'working'
+      : 'limited — invoices can be emailed but they carry no online pay link, so customers have to pay another way',
   };
 }
