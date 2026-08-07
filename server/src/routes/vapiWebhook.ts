@@ -15,7 +15,7 @@ const router = Router();
 router.use(express.text({ type: '*/*', limit: '2mb' }));
 
 const EXTRACTION_SYSTEM_PROMPT =
-  'Extract from this call transcript: caller name, phone number, city, property address (street address if the caller gives one, else empty), what they are interested in, and any relevant notes. ' +
+  'Extract from this call transcript: caller name, phone number, city, property address (street address if the caller gives one, else empty), what they are interested in, and notes: ONE short line quoting what the caller actually said, in their own words. ' +
   'Also classify the call:\n' + CLASSIFY_RULES + '\n' +
   'Return JSON only: {callerName, callerPhone, city, address, interest, notes, category}';
 
@@ -62,7 +62,7 @@ function mirrorCallSnapshot(m: VapiEndOfCallMessage): void {
     });
     requestVapiSyncSoon();
   } catch (err) {
-    console.warn('[Sofia] call mirror failed (sync will catch it):', err instanceof Error ? err.message : err);
+    console.warn('[Phone] call mirror failed (sync will catch it):', err instanceof Error ? err.message : err);
   }
 }
 
@@ -154,14 +154,14 @@ async function extractCallLead(
 
     return normalizeExtractedFields(parsed, fallbackPhone);
   } catch (err) {
-    console.error('[Sofia] lead extraction failed:', err);
+    console.error('[Phone] lead extraction failed:', err);
     return defaults;
   }
 }
 
-function notifyOpenClawSms(message: string, leadId: number): void {
-  console.log('[Sofia] SMS notify firing', { leadId });
-  sendSms(message, 'Sofia');
+function notifyLeadSms(message: string, leadId: number): void {
+  console.log('[Phone] SMS notify firing', { leadId });
+  sendSms(message, 'Phone');
 }
 
 router.post('/vapi', async (req: Request, res: Response) => {
@@ -193,7 +193,7 @@ router.post('/vapi', async (req: Request, res: Response) => {
   const transcriptText = (message.transcript ?? message.summary ?? '').trim();
 
   if (!transcriptText) {
-    console.warn('[Sofia] end-of-call-report missing transcript and summary');
+    console.warn('[Phone] end-of-call-report missing transcript and summary');
     res.sendStatus(200);
     return;
   }
@@ -213,9 +213,14 @@ router.post('/vapi', async (req: Request, res: Response) => {
       // Joe still gets pinged for calls that matter (clients, vendors) —
       // but not for every robocall.
       if (extracted.category === 'client' || extracted.category === 'vendor') {
-        sendSms(`📞 ${extracted.category === 'client' ? 'Client' : 'Vendor'} call: ${extracted.callerName} | ${extracted.callerPhone} | ${extracted.interest}`, 'Sofia');
+        sendSms(
+          `📞 ${extracted.category === 'client' ? 'Client' : 'Vendor'} call: ${extracted.callerName}, ${extracted.callerPhone}.` +
+          `\nAbout: ${extracted.interest}` +
+          (extracted.notes ? `\nThey said: "${extracted.notes}"` : ''),
+          'Phone'
+        );
       }
-      console.log('[Sofia] Non-prospect call filed:', { category: extracted.category, callerName: extracted.callerName });
+      console.log('[Phone] Non-prospect call filed:', { category: extracted.category, callerName: extracted.callerName });
       res.sendStatus(200);
       return;
     }
@@ -232,15 +237,19 @@ router.post('/vapi', async (req: Request, res: Response) => {
       source: 'sofia',
     });
 
+    // Everything Joe needs to call back without opening anything: who, their
+    // number, the town, what they want, and their own words.
     const smsMessage =
-      `📞 Sofia Call Lead: ${extracted.callerName} | ${extracted.callerPhone} | ${extracted.city} | ${extracted.interest}`;
+      `📞 New lead from the phone line: ${extracted.callerName}, ${extracted.callerPhone}, ${extracted.city}.` +
+      `\nWants: ${extracted.interest}` +
+      (extracted.notes ? `\nThey said: "${extracted.notes}"` : '');
 
-    notifyOpenClawSms(smsMessage, leadId);
-    console.log('[Sofia] Call lead saved:', { leadId, callerName: extracted.callerName, merged });
+    notifyLeadSms(smsMessage, leadId);
+    console.log('[Phone] Call lead saved:', { leadId, callerName: extracted.callerName, merged });
 
     res.sendStatus(200);
   } catch (err) {
-    console.error('[Sofia] Vapi webhook processing error:', err);
+    console.error('[Phone] Vapi webhook processing error:', err);
     res.sendStatus(200);
   }
 });

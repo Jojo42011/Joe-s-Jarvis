@@ -284,7 +284,7 @@ function renderSections() {
         '</div>';
       }).join('')
     : emptyBlock('No customer calls in ' + wLabel,
-        'Scope: every call Sofia logged ' + sinceLabel + ', inbound and outbound, uncapped. Nothing was filtered out of this count.');
+        'Scope: every call the phone line logged ' + sinceLabel + ', inbound and outbound, uncapped. Nothing was filtered out of this count.');
 
   var leads = data.leads || [];
   var leadsHtml = leads.length
@@ -326,7 +326,7 @@ function renderSections() {
   // count so Joe can see the shape of the window without opening anything.
   var TABS = [
     { key:'calls',  label:'Calls',       count:calls.length,  html:callsHtml,
-      scope:'Every call Sofia logged ' + sinceLabel + ', inbound and outbound, uncapped.' },
+      scope:'Every call the phone line logged ' + sinceLabel + ', inbound and outbound, uncapped.' },
     { key:'leads',  label:'Leads',       count:leads.length,  html:leadsHtml,
       scope:'Every lead record created ' + sinceLabel + ', from every source, uncapped.' },
     { key:'emails', label:'Email',       count:data.emailsConnected ? emails.length : 'n/a', html:emailsHtml,

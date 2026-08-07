@@ -388,7 +388,7 @@
           <div id="otherCallsCard" class="card pad source-card" style="display:none">
             <div class="sc-head">
               <span class="stat-label">Other Calls <span class="dim" id="ocCount"></span></span>
-              <span class="dim" style="font-size:11.5px">vendors, clients, spam &amp; misdials Sofia fielded — promote anything that's really a lead</span>
+              <span class="dim" style="font-size:11.5px">vendors, clients, spam &amp; misdials the phone line fielded — promote anything that's really a lead</span>
             </div>
             <div id="ocList" style="max-height:340px;overflow-y:auto"></div>
           </div>
@@ -440,7 +440,7 @@
             <!-- Scope keys must stay in sync with the server-side scope JSON
                  shape: {lawn_care, landscape, hardscape, excavation,
                  water_features, structures, snow}. Legacy keys on old rows
-                 (e.g. "pool") are simply ignored by this checkbox render. -->
+                 are simply ignored by this checkbox render. -->
             <label><input type="checkbox" data-scope="lawn_care" /> Lawn care</label>
             <label><input type="checkbox" data-scope="landscape" /> Landscaping</label>
             <label><input type="checkbox" data-scope="hardscape" /> Hardscape / patio</label>
@@ -663,7 +663,7 @@
   // Categorical, but drawn only from the signal.css palette so the source bar
   // stays legible in both light and dark.
   var SOURCE_COLOR = { sofia:"var(--indigo)", sofia_call:"var(--indigo)", ads:"var(--money)", ralph:"var(--brand)", website:"var(--green)", referral:"var(--amber)", manual:"var(--faint)" };
-  var SOURCE_LABEL = { sofia:"Sofia (calls)", sofia_call:"Sofia (older calls)", ads:"Ads", ralph:"Social (Paulie)", website:"Website", referral:"Referral", manual:"Manual" };
+  var SOURCE_LABEL = { sofia:"Phone (calls)", sofia_call:"Phone (older calls)", ads:"Ads", ralph:"Social (Paulie)", website:"Website", referral:"Referral", manual:"Manual" };
   function sourceColor(s){ return SOURCE_COLOR[s] || "var(--muted)"; }
   function sourceLabel(s){ return SOURCE_LABEL[s] || (s.charAt(0).toUpperCase() + s.slice(1)); }
 
@@ -1515,11 +1515,11 @@
     els.formProjectType.value = l.project_type || "";
     els.formBudget.value = l.budget || "";
     els.formTimeline.value = l.timeline || "";
-    // Sofia-sourced leads (real phone calls) aren't reassignable here — picking a
+    // Phone-sourced leads (real phone calls) aren't reassignable here — picking a
     // different source in this form would flip skipAutoCall and re-dial the lead.
-    var isSofia = (l.source === "sofia" || l.source === "sofia_call");
-    els.formSource.disabled = isSofia;
-    if (isSofia){
+    var isPhoneLead = (l.source === "sofia" || l.source === "sofia_call");
+    els.formSource.disabled = isPhoneLead;
+    if (isPhoneLead){
       var opt = els.formSource.querySelector('option[value="__current__"]') || document.createElement("option");
       opt.value = "__current__"; opt.textContent = sourceLabel(l.source);
       els.formSource.appendChild(opt);

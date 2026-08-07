@@ -7,7 +7,7 @@
 import { getDb } from '../db/schema';
 
 // CRM pipeline stages, in funnel order. `called`/`booked` flags stay in sync for
-// backwards compatibility with Sofia's flow and the old stats.
+// backwards compatibility with the phone intake flow and the old stats.
 export const PIPELINE = ['new', 'contacted', 'quoted', 'booked', 'in_progress', 'completed', 'lost'] as const;
 export const SOURCES = ['sofia', 'ads', 'ralph', 'website', 'referral', 'manual'] as const;
 
@@ -22,8 +22,8 @@ export const STAGE_WEIGHT: Record<string, number> = {
 };
 
 // ── Totally Outdoors (landscaping) project pipeline + 50/50 milestones ──
-// Adapted from the pool-construction blueprint. Stage/trade/milestone lists
-// below are the proposed landscaping defaults — Joe should confirm.
+// Stage/trade/milestone lists below are proposed landscaping defaults — Joe
+// should confirm they match how Totally Outdoors actually runs jobs.
 
 export const TIERS = ['standard', 'luxury'] as const;
 export const PERMIT_STATUSES = ['none', 'draft', 'submitted', 'approved'] as const;

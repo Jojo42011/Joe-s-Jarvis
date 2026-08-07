@@ -4,7 +4,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node server/dist/app.js",
-    "dev": "ts-node server/src/app.ts"
+    "dev": "ts-node server/src/app.ts",
+    "test": "npm run build && node --test scripts/sms.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "latest",
@@ -16,6 +17,7 @@
     "googleapis": "^144.0.0",
     "openai": "^4.0.0",
     "sharp": "^0.35.3",
+    "twilio": "^6.0.2",
     "ws": "^8.18.0"
   },
   "devDependencies": {

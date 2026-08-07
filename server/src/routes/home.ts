@@ -98,7 +98,7 @@ router.get('/home', (_req: Request, res: Response) => {
         detail: brainLive ? null : 'ANTHROPIC_API_KEY is not set, so the brain cannot answer.',
       },
       {
-        name: 'Sofia', role: 'Phone receptionist', live: phoneLive,
+        name: 'Phone line', role: 'Answers calls, captures leads', live: phoneLive,
         headline: lastCall
           ? `Last call: ${lastCall.customer_name || lastCall.number || 'unknown caller'}`
           : (callCount ? `${callCount} calls on file` : 'No calls recorded yet.'),

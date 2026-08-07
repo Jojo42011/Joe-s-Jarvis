@@ -1,9 +1,9 @@
 /**
  * Lead dedupe: one person = one row, keyed by phone number.
  *
- * Sofia's intake posts a fresh row every time someone calls, so the same
+ * Phone intake posts a fresh row every time someone calls, so the same
  * homeowner can appear 3–4 times. This merges them: the oldest row survives,
- * the best field values win (a real name beats "Sofia", anything beats blank),
+ * the best field values win (a real name beats a placeholder, anything beats blank),
  * activities/payments move to the survivor, and the dupes are deleted.
  * Runs once at startup and any time POST /api/leads/dedupe is hit.
  */
@@ -12,7 +12,7 @@ import { getDb } from '../db/schema';
 
 const PIPELINE_ORDER = ['new', 'contacted', 'quoted', 'booked', 'in_progress', 'completed', 'lost'];
 
-// Placeholder values Sofia's flow writes when the caller didn't give a real answer.
+// Placeholder values the phone intake writes when the caller didn't give a real answer.
 const JUNK = new Set(['', 'sofia', 'not provided', 'unknown', 'n/a', 'none', 'no name']);
 
 interface LeadRow {

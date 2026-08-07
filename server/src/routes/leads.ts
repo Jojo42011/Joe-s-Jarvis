@@ -205,11 +205,13 @@ router.post('/leads', async (req: Request, res: Response) => {
     return;
   }
 
-  // Sofia's intake flow is the historical caller of this endpoint and sends no
-  // source — tag those 'sofia'. The CRM UI and other agents pass theirs explicitly.
+  // The phone line's intake flow is the historical caller of this endpoint and
+  // sends no source — tag those 'sofia' (the stored source value predates the
+  // rename). The CRM UI and other agents pass theirs explicitly.
   const source = body.source && (SOURCES as readonly string[]).includes(body.source) ? body.source : 'sofia';
-  // Only Sofia's own voice intake auto-calls back — every other source (manual entry,
-  // website, ads, referral, social) is a human-reviewed lead, not a live phone call.
+  // Only the phone line's own voice intake auto-calls back — every other source
+  // (manual entry, website, ads, referral, social) is a human-reviewed lead, not
+  // a live phone call.
   const skipAutoCall = source !== 'sofia';
 
   const db = getDb();
@@ -234,7 +236,7 @@ router.post('/leads', async (req: Request, res: Response) => {
   const trimmedBudget = budget?.trim();
   const trimmedTimeline = timeline?.trim();
   const smsMessage =
-    `New lead from Sofia:\nName: ${trimmedName}\nPhone: ${trimmedPhone}\n` +
+    `📞 New lead from the phone line:\nName: ${trimmedName}\nPhone: ${trimmedPhone}\n` +
     `Address: ${trimmedAddress || 'not provided'}\nBudget: ${trimmedBudget || 'not provided'}\n` +
     `Timeline: ${trimmedTimeline || 'not provided'}`;
 
@@ -252,7 +254,7 @@ router.post('/leads', async (req: Request, res: Response) => {
   try {
     await fireVapiCall(vapiLead);
     db.prepare("UPDATE leads SET called = 1, pipeline = 'contacted' WHERE id = ?").run(leadId);
-    logActivity(leadId, 'call', { direction: 'out', body: 'Sofia auto-called this lead' });
+    logActivity(leadId, 'call', { direction: 'out', body: 'The phone line auto-called this lead back' });
     res.json({ success: true, leadId });
   } catch (err) {
     console.error('[Jarvis] Vapi call failed:', err);
@@ -709,8 +711,8 @@ router.post('/crm/cleanup', async (_req: Request, res: Response) => {
   }
 });
 
-// ── Map view: pins for active builds + leads. Sofia rarely captures a street
-// address, so leads with only a city (from the jurisdiction field or her
+// ── Map view: pins for active builds + leads. Phone intake rarely captures a
+// street address, so leads with only a city (from the jurisdiction field or the
 // "City: X" call note) get an approximate city-center pin instead of nothing.
 const JUNK_CITY = /^(unknown|not provided|n\/a|none|null|-*)$/i;
 

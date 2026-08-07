@@ -39,6 +39,8 @@ import ralphRouter from './routes/ralph';
 
 import stripeWebhookRouter from './routes/stripeWebhook';
 
+import smsRouter from './routes/sms';
+
 import authRouter from './routes/auth';
 
 import { apiAuthGuard, pageAuthGuard, seedDefaultOwner, userFromRequest } from './services/auth';
@@ -147,6 +149,8 @@ app.use('/api', integrationsRouter);
 app.use('/api', googleRouter);
 
 app.use('/api', ralphRouter);
+
+app.use('/api', smsRouter);
 
 
 
@@ -392,7 +396,7 @@ scheduleLeadFollowUps();
 
 scheduleJunkCleanup();
 
-// Sofia (phone) stays — keep the Vapi call sync running.
+// The phone line stays — keep the Vapi call sync running.
 scheduleVapiSync();
 
 

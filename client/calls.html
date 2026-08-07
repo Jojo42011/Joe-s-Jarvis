@@ -175,7 +175,7 @@
 
     <section id="hero">
       <div>
-        <div class="eyebrow">Sofia &middot; Call Receptionist</div>
+        <div class="eyebrow">Phone line &middot; Call receptionist</div>
         <h1>Phones</h1>
         <p>All-time inbound &amp; outbound call history — every call since day one, updated live as calls come in.</p>
       </div>
@@ -263,7 +263,7 @@
           var role = (m.role || "").toLowerCase();
           var isBot = role === "bot" || role === "assistant";
           var cls = isBot ? "bot" : "user";
-          var label = isBot ? "Sofia" : "Caller";
+          var label = isBot ? "Receptionist" : "Caller";
           return '<div class="msg ' + cls + '"><div class="role-tag">' + esc(label) + '</div>' + esc(m.text) + '</div>';
         }).join("") + '</div>';
       }
@@ -384,7 +384,7 @@
         var calls = data.calls || [];
         var rowsEl = document.getElementById("rows");
         if (!calls.length) {
-          rowsEl.innerHTML = '<div class="empty"><div class="big">No calls yet</div><div class="small">Sofia is standing by.</div></div>';
+          rowsEl.innerHTML = '<div class="empty"><div class="big">No calls yet</div><div class="small">The phone line is standing by.</div></div>';
           return;
         }
 

@@ -523,7 +523,7 @@ export function initDb(): Database.Database {
     );
     CREATE INDEX IF NOT EXISTS idx_vapi_calls_created ON vapi_calls(created_at);
 
-    -- Non-prospect calls Sofia fields: telemarketers, vendors, existing clients,
+    -- Non-prospect calls the phone line fields: telemarketers, vendors, existing clients,
     -- misdials. Filed here instead of polluting the leads pipeline — nothing is
     -- deleted, and any row can be promoted to a real lead from the CRM.
     CREATE TABLE IF NOT EXISTS other_calls (
@@ -616,7 +616,7 @@ function migrateLeads(database: Database.Database): void {
   if (!names.has('source')) add('ALTER TABLE leads ADD COLUMN source TEXT');
   if (!names.has('message')) add('ALTER TABLE leads ADD COLUMN message TEXT');
   // CRM layer: pipeline stage + free-form notes. Existing called/booked flags stay
-  // (Sofia's flow writes them); pipeline is the richer stage on top.
+  // (the phone intake flow writes them); pipeline is the richer stage on top.
   if (!names.has('pipeline')) add("ALTER TABLE leads ADD COLUMN pipeline TEXT DEFAULT 'new'");
   if (!names.has('notes')) add('ALTER TABLE leads ADD COLUMN notes TEXT');
   // Automated confirmation + follow-up sequence tracking (GHL-style intake automation).
@@ -626,7 +626,7 @@ function migrateLeads(database: Database.Database): void {
   // CRM v3 — project blueprint: tier, scope, build stages, permits,
   // inspections, project value, referral attribution, design status.
   if (!names.has('tier')) add('ALTER TABLE leads ADD COLUMN tier TEXT');                    // standard | luxury
-  if (!names.has('scope')) add('ALTER TABLE leads ADD COLUMN scope TEXT');                  // JSON: {lawn_care,landscape,hardscape,excavation,water_features,structures,snow} — read defensively; unknown/legacy keys (e.g. old {pool,...}) are ignored
+  if (!names.has('scope')) add('ALTER TABLE leads ADD COLUMN scope TEXT');                  // JSON: {lawn_care,landscape,hardscape,excavation,water_features,structures,snow} — read defensively; unknown/legacy keys on old rows are ignored
   if (!names.has('jurisdiction')) add('ALTER TABLE leads ADD COLUMN jurisdiction TEXT');    // Millersburg | Holmes County | ...
   if (!names.has('permit_status')) add("ALTER TABLE leads ADD COLUMN permit_status TEXT DEFAULT 'none'"); // none | draft | submitted | approved
   if (!names.has('build_stage')) add('ALTER TABLE leads ADD COLUMN build_stage TEXT');      // construction pipeline (null until contract)

@@ -1,6 +1,6 @@
 /**
- * Vapi call sync — pulls EVERY call on the account (all assistants: Sofia's
- * inbound receptionist AND the outbound sales agent) into the vapi_calls
+ * Vapi call sync — pulls EVERY call on the account (all assistants: the
+ * inbound receptionist AND the outbound sales agent alike) into the vapi_calls
  * table on a timed interval, costs included.
  *
  * Sync layers (each one covers a way the table can drift from Vapi's truth):
@@ -289,7 +289,7 @@ async function doSync(): Promise<{ upserted: number; total: number } | { skipped
   if (!backfilled) {
     setSystemState(BACKFILL_FLAG, new Date().toISOString());
     setSystemState(BACKFILL_CURSOR, '');
-    console.log(`[Sofia sync] full backfill complete — ${upserted} call(s) imported`);
+    console.log(`[Phone sync] full backfill complete — ${upserted} call(s) imported`);
   }
   setSystemState(LAST_SYNC_OK, new Date().toISOString());
 
@@ -350,7 +350,7 @@ export async function reconcileVapiCalls(): Promise<{ refreshed: number; deleted
   setSystemState(LAST_RECONCILE, new Date().toISOString());
   setSystemState(RECONCILE_VERSION_KEY, String(RECONCILE_LOGIC_VERSION));
   setSystemState(LAST_SYNC_OK, new Date().toISOString());
-  console.log(`[Sofia sync] reconcile walked ${seen.size} call(s), oldest seen ${oldestSeen || 'n/a'}, complete=${complete}, removed ${deleted}`);
+  console.log(`[Phone sync] reconcile walked ${seen.size} call(s), oldest seen ${oldestSeen || 'n/a'}, complete=${complete}, removed ${deleted}`);
   return { refreshed: seen.size, deleted };
 }
 
@@ -363,7 +363,7 @@ export function requestVapiSyncSoon(delayMs = 45_000): void {
   syncSoonTimer = setTimeout(() => {
     syncSoonTimer = null;
     syncVapiCalls().catch((err) =>
-      console.error('[Sofia sync] post-call sync error:', err instanceof Error ? err.message : err));
+      console.error('[Phone sync] post-call sync error:', err instanceof Error ? err.message : err));
   }, delayMs);
 }
 
@@ -396,18 +396,18 @@ export function scheduleVapiSync(): void {
     syncVapiCalls()
       .then((r) => {
         if ('skipped' in r) return;
-        if (r.upserted) console.log(`[Sofia sync] ${r.upserted} new/updated call(s) — ${r.total} total in DB`);
+        if (r.upserted) console.log(`[Phone sync] ${r.upserted} new/updated call(s) — ${r.total} total in DB`);
       })
-      .catch((err) => console.error('[Sofia sync] error:', err instanceof Error ? err.message : err));
+      .catch((err) => console.error('[Phone sync] error:', err instanceof Error ? err.message : err));
   };
   const reconcile = () => {
     if (!reconcileDue()) return;
     reconcileVapiCalls()
       .then((r) => {
         if ('skipped' in r) return;
-        console.log(`[Sofia sync] reconcile pass — ${r.refreshed} call(s) refreshed, ${r.deleted} removed`);
+        console.log(`[Phone sync] reconcile pass — ${r.refreshed} call(s) refreshed, ${r.deleted} removed`);
       })
-      .catch((err) => console.error('[Sofia sync] reconcile error:', err instanceof Error ? err.message : err));
+      .catch((err) => console.error('[Phone sync] reconcile error:', err instanceof Error ? err.message : err));
   };
   setTimeout(run, 15 * 1000);
   setInterval(run, 2 * 60 * 1000);
@@ -415,5 +415,5 @@ export function scheduleVapiSync(): void {
   // Checks every 10 min but only actually walks once per day — the tight check
   // interval is so a FAILED reconcile retries quickly instead of waiting hours.
   setInterval(reconcile, 10 * 60 * 1000);
-  console.log('[Sofia sync] Vapi call sync scheduled — incremental every 2 min + daily full reconcile (all assistants, costs included)');
+  console.log('[Phone sync] Vapi call sync scheduled — incremental every 2 min + daily full reconcile (all assistants, costs included)');
 }

@@ -1,6 +1,6 @@
 /**
  * Single, shared "a lead just arrived" pipeline — used by every lead-creation
- * site (the manual/website POST /leads route AND Sofia's Vapi webhook) so
+ * site (the manual/website POST /leads route AND the phone line's Vapi webhook) so
  * dedupe-by-phone and the automated confirmation only have to be right once.
  *
  * GHL-style intake automation: the moment a lead lands, they get an automatic

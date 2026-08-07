@@ -69,7 +69,7 @@ router.get('/calls', async (_req: Request, res: Response) => {
   const count = (db.prepare('SELECT COUNT(*) c FROM vapi_calls').get() as { c: number }).c;
   if (count === 0) {
     try { await syncVapiCalls(); } catch (err) {
-      console.error('[Sofia] initial call sync failed:', err);
+      console.error('[Phone] initial call sync failed:', err);
       res.json({ connected: false, reason: err instanceof Error ? err.message : 'Vapi sync failed' });
       return;
     }
@@ -82,7 +82,7 @@ router.get('/calls', async (_req: Request, res: Response) => {
     const ageMs = last ? Date.now() - new Date(last).getTime() : Infinity;
     if (ageMs > 5 * 60 * 1000) {
       try { await syncVapiCalls(); } catch (err) {
-        console.error('[Sofia] on-demand sync failed (serving cached data):', err instanceof Error ? err.message : err);
+        console.error('[Phone] on-demand sync failed (serving cached data):', err instanceof Error ? err.message : err);
       }
     }
   }
@@ -167,7 +167,7 @@ router.get('/calls/recording', async (req: Request, res: Response) => {
     if (!upstream.body) { res.end(); return; }
     Readable.fromWeb(upstream.body as Parameters<typeof Readable.fromWeb>[0]).pipe(res);
   } catch (err) {
-    console.error('[Sofia] recording proxy error:', err instanceof Error ? err.message : err);
+    console.error('[Phone] recording proxy error:', err instanceof Error ? err.message : err);
     if (!res.headersSent) res.status(502).send('recording fetch failed');
   }
 });

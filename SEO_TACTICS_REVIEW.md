@@ -79,7 +79,7 @@
    the same "factual density" property shows up independently in the GEO/AI-citation research as one
    of the stronger levers for getting quoted by AI search.
    - **Proposal:** add a small bonus (2–4 pts) for the presence of specific, non-generic numbers in
-     body copy beyond the boilerplate "18 years / 400+ pools" proof points already injected by the
+     body copy beyond the boilerplate years-in-business / projects-completed proof points already injected by the
      prompt — e.g., a permit-timeline figure, a specific project count for that city, a specific
      price range tied to a real local factor. Mechanically cheap (a regex for standalone numbers
      outside the known boilerplate phrases), but deciding the exact bonus size is a scoring call —

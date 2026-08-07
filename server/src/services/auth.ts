@@ -114,7 +114,7 @@ function isPublicApi(req: Request): boolean {
   const p = req.path;
   if (p.startsWith('/api/webhooks/')) return true;
   if (p.startsWith('/api/health')) return true;
-  if (p === '/api/leads' && req.method === 'POST') return true; // website form + Sofia intake
+  if (p === '/api/leads' && req.method === 'POST') return true; // website form + phone-line intake
   if (p.startsWith('/api/seo/img/')) return true;               // Zernio downloads post images
   if (p.startsWith('/api/ralph/video/')) return true;           // Zernio downloads reel video
   if (p.startsWith('/api/auth/login')) return true;

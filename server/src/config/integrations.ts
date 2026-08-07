@@ -54,7 +54,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
   { id: 'google_sheets', name: 'Google Sheets', category: 'Google Workspace', description: 'Read and update job trackers, pricing sheets, and the lead pipeline.', envKeys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'], fallback: 'planned'},
 
   // ── Voice & Telephony (already live) ──
-  { id: 'vapi', name: 'Vapi', category: 'Voice & Telephony', description: 'Sofia — inbound receptionist and outbound sales calls with automatic lead capture.', envKeys: ['VAPI_API_KEY'], fallback: 'available' },
+  { id: 'vapi', name: 'Vapi', category: 'Voice & Telephony', description: 'The phone line — inbound receptionist and outbound sales calls with automatic lead capture.', envKeys: ['VAPI_API_KEY'], fallback: 'available' },
   { id: 'elevenlabs', name: 'ElevenLabs', category: 'Voice & Telephony', description: 'Jarvis\'s realtime voice — Scribe speech-to-text and low-latency TTS.', envKeys: ['ELEVENLABS_API_KEY'], fallback: 'available' },
   { id: 'sms_gate', name: 'SMS Gateway (sms-gate.app)', category: 'Messaging', description: 'Live outbound texting from Joe\'s own Android device — manual, operator-sent texts from the CRM (automated texting to leads is off).', fallback: 'available' },
   { id: 'twilio_sms', name: 'Twilio SMS', category: 'Messaging', description: 'Two-way texting on a dedicated business number — inbound texts trigger Jarvis, outbound reminders and confirmations.', envKeys: ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN'], fallback: 'planned' },

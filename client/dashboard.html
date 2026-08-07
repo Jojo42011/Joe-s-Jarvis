@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="/signal.css" />
 <script src="/theme-sync.js"></script>
 <style>
-  /* Full-bleed layout: this screen fills the frame edge to edge like Arthur's,
+  /* Full-bleed layout: this screen fills the frame edge to edge,
      rather than sitting in a centred column. */
   .wrap { max-width:none; padding:20px 24px 56px; }
 
@@ -59,7 +59,7 @@
     .markwrap { display:none; }
   }
 
-  /* ── Main grid: wide work column + fixed team rail, like Arthur's ──── */
+  /* ── Main grid: wide work column + fixed team rail ─────────────────── */
   .grid { display:grid; grid-template-columns:1fr 392px; gap:18px; align-items:start; }
   .grid > * { min-width:0; }
   @media (max-width:1080px) { .grid { grid-template-columns:1fr; } }
@@ -340,7 +340,7 @@
       : live + ' of ' + d.agents.length + ' live';
     document.getElementById('agents').innerHTML = d.agents.map(function (a) {
       return '<div class="agent">' +
-        '<span class="avatar' + (a.name === 'Sofia' ? ' green' : ' indigo') + '">' + esc(a.name.slice(0,2).toUpperCase()) + '</span>' +
+        '<span class="avatar' + (a.name === 'Phone line' ? ' green' : ' indigo') + '">' + esc(a.name.slice(0,2).toUpperCase()) + '</span>' +
         '<span class="grow">' +
           '<div class="nm">' + esc(a.name) + '<span class="dot ' + (a.live ? 'live' : 'down') + '"></span></div>' +
           '<div class="rl">' + esc(a.role) + '</div>' +
@@ -357,7 +357,7 @@
             '<div class="s truncate" style="font-size:12px;color:var(--muted)">' + esc(x.message || x.phone || '') + '</div></span>' +
             '<span class="when">' + esc(when(x.created_at)) + '</span></div>';
         }).join('')
-      : '<div class="empty"><div class="t">No leads yet</div><div class="scope">Every lead from Sofia, the website and manual entry lands here.</div></div>';
+      : '<div class="empty"><div class="t">No leads yet</div><div class="scope">Every lead from the phone line, the website and manual entry lands here.</div></div>';
 
     document.getElementById('stamp').textContent = 'Live figures \u00b7 refreshed ' + clock(d.generatedAt);
     bindGo();

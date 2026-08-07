@@ -19,7 +19,7 @@ sharing one backend and one SQLite brain:
 | **Arlo** | Joe's right-hand man / chief of staff (voice + text). The digital twin. | `/arlo` | OpenAI `gpt-4o` |
 | **Lauren** ("Atlas") | Autonomous SEO agent — researches, writes & publishes landing pages | `/atlas` | Gemini (+ Claude fallback) |
 | **Ralph** (was "Nova") | Content manager — generates on-brand posts + images, publishes live to IG/FB, real analytics | `/ralph` | Gemini text + image; Zernio publish + analytics |
-| **Sofia** | Phone agent (inbound receptionist + outbound sales) | `/calls` | Vapi |
+| **Phone line** | Inbound receptionist + outbound sales calls | `/calls` | Vapi |
 
 The whole thing runs as **one Express + better-sqlite3 app** deployed on **Fly.io**
 (`totally-outdoors`, region `lax`, 512 MB / 1 shared CPU, persistent volume at
@@ -43,7 +43,7 @@ identity layer loaded on top. Arlo is the founder clone; the other agents are it
 - **Voice:** ElevenLabs Scribe (STT, realtime WS) + ElevenLabs TTS (`eleven_flash_v2_5`).
 - **Integrations:** Google (Gmail/Calendar/Search Console via `googleapis`), Vapi
   (phone), Brave Search (SEO fallback), GitHub Contents API (Lauren publishing),
-  sms-gate.app (lead SMS).
+  Twilio (lead/alert SMS; sms-gate.app kept as an env-flagged fallback).
 - **Hosting:** Fly.io. **Build:** `npm run build` = `tsc` → `server/dist`. **Start:**
   `node server/dist/app.js`. Client is static HTML in `client/`, served by Express.
 
@@ -85,7 +85,7 @@ server/src/
     personality.ts        get/set selected personality (system_state)
     tts.ts                ElevenLabs TTS → PCM (personality voice + voice settings + cache)
     vision.ts             Image analysis + document ingestion (gpt-4o multimodal)
-    sms.ts                Lead SMS via sms-gate.app (Basic auth)
+    sms.ts                Outbound SMS via Twilio A2P 10DLC (sms-gate fallback)
     google/               auth.ts, gmail.ts, calendar.ts, monitor.ts, context.ts, searchConsole.ts
     seo*.ts, seo/         Lauren — the whole SEO agent (see §9)
     websiteContext.ts     Live-site context helper for SEO
@@ -101,7 +101,7 @@ client/
   js/voice.js             Voice pipeline client: mic capture, STT WS, SSE brain, ordered TTS playback
   atlas.html              Lauren / SEO dashboard        memory.html   Neural Map (memory graph)
   ralph.html              Ralph / content manager       inbox.html    Email triage panel
-  calls.html              Sofia / call metrics          integrations.html  Integrations hub
+  calls.html              Phone line / call metrics     integrations.html  Integrations hub
   marketing.html          Marketing team overview       dashboard.html     OLD card deck (served at /deck)
 
 templates/ui-shell/       Neutral, brand-free copy of the shell + voice-nav contract (for reuse elsewhere)
@@ -170,7 +170,7 @@ follows the selected personality** (each has its own ElevenLabs voice id). Switc
 `POST /api/brain/personality` or the selector in `/arlo`'s top bar.
 
 **Conversation style** lives in `ARLO_SYSTEM_PROMPT`: right-hand-man (not client-facing
-— Sofia handles clients), talk-to-Joe not at-him, one thought at a time, react
+— the phone line handles clients), talk-to-Joe not at-him, one thought at a time, react
 before reporting, tasteful wit + earned profanity, ask one natural question when
 needed. He also knows he has live web search + eyes (vision) + document reading + the
 three mailboxes/calendars, and must never deny those.
@@ -392,21 +392,29 @@ to comment/DM a keyword; to turn that into real leads for Joe we watch the conne
 inbox and respond. Zernio exposes `/inbox/conversations`, `/comments` (reply), and
 `/inbox/messages` (send DM) on the same key. Planned: a keyword listener that auto-replies
 to "DESIGN/QUOTE/PATIO" comments with a DM, captures the contact into `leads`, and pings
-Joe/Sofia. Also: follower-history/demographics charts and scheduled auto-posting.
+Joe. Also: follower-history/demographics charts and scheduled auto-posting.
 
 ---
 
-## 11. Sofia — phone + lead SMS (`routes/vapiWebhook.ts`, `routes/leads.ts`, `services/sms.ts`)
+## 11. Phone line + outbound SMS (`routes/vapiWebhook.ts`, `routes/leads.ts`, `services/sms.ts`)
 
 **Vapi** handles outbound sales calls and an inbound receptionist. `POST /api/leads`
 creates a lead and fires an outbound Vapi call; `POST /api/webhooks/vapi` handles
-`end-of-call-report` (extracts a lead via OpenAI). Call metrics on `/calls`.
+`end-of-call-report` (extracts a lead via Claude). Call metrics on `/calls`. After a
+prospect call, Joe's text carries the caller's name, number, town, what they want,
+and a short line quoting what they actually said. Spam/robocalls stay silent.
 
-**Lead SMS** now goes **directly to sms-gate.app** (SMS Gateway for Android, cloud mode)
-via HTTP Basic auth — `services/sms.ts::sendSms()`. Replaced the deleted `aethon-claw`
-hook. Env: `SMS_GATE_URL`, `SMS_GATE_USERNAME`, `SMS_GATE_PASSWORD`, `SMS_NOTIFY_TO`
-(defaults baked in; **rotate the password and set as Fly secrets** — it's in git
-history). Works only if the sms-gate account + its Android device are online.
+**Outbound SMS** goes through **Twilio** (carrier-registered A2P 10DLC) —
+`services/sms.ts` — passing `MessagingServiceSid` only (never `From`, which would
+bypass the registration). Every text is wrapped centrally in the carrier-approved
+template: `"Totally Outdoors: " + body + " Reply STOP to cancel, HELP for help."`
+(idempotent — retries can't double-wrap; applies on both providers). Env:
+`TWILIO_SMS_ACCOUNT_SID`, `TWILIO_SMS_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID`,
+`SMS_NOTIFY_TO` — all read at call time, **no baked-in fallbacks**; a missing
+secret logs an error and the send is skipped. The old sms-gate.app Android gateway
+remains behind `SMS_PROVIDER=sms-gate`. Verify live delivery with
+`POST /api/sms/test` (texts `SMS_NOTIFY_TO`, returns the message SID + status);
+`npm test` pins the template wording and the MessagingServiceSid-only wire shape.
 
 ---
 
