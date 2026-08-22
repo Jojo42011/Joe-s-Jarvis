@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { anthropicApiKey } from '../../config/anthropic';
 import { ANTHROPIC_FAST_MODEL } from '../../config/models';
 import { ARLO_SYSTEM_PROMPT } from '../../config/constants';
 import { safeJsonParse } from '../../utils/safeJson';
@@ -140,7 +141,7 @@ export async function syncAllAccounts(): Promise<{ fetched: number; triaged: num
 
   // 2) Triage anything not yet triaged (Joe's judgment + Joe-voice drafts).
   let triaged = 0;
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = anthropicApiKey();
   if (apiKey) {
     const client = new Anthropic({ apiKey });
     const pending = getUntriagedEmails(INBOX_MAX_PER_SYNC * accounts.length);

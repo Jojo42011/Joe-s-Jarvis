@@ -69,6 +69,7 @@ import { backfillEmbeddings } from './services/embeddings';
 
 import { ELEVENLABS_API_KEY, ELEVENLABS_STT_MODEL, ELEVENLABS_MODEL_ID } from './config/voice';
 import { ANTHROPIC_MODEL, ANTHROPIC_FAST_MODEL } from './config/models';
+import { ANTHROPIC_ENABLED } from './config/anthropic';
 
 
 
@@ -409,9 +410,9 @@ server.listen(PORT, () => {
 
   console.log(`[Jarvis] System online. Port ${PORT}.`);
 
-  console.log('[Jarvis] Pipeline: ElevenLabs Scribe → Claude → ElevenLabs TTS');
+  console.log('[Jarvis] Pipeline: ElevenLabs Scribe → (brain OFFLINE) → ElevenLabs TTS');
 
-  console.log('[Brain] ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? `set (${process.env.ANTHROPIC_API_KEY.length} chars)` : 'MISSING — brain will be unavailable');
+  console.log('[Brain] Anthropic:', ANTHROPIC_ENABLED ? 'ENABLED' : 'DISABLED — Claude is switched off; no request will be sent and no token spent');
 
   console.log('[Brain] Models:', ANTHROPIC_MODEL, '(main)', '|', ANTHROPIC_FAST_MODEL, '(fast)');
 

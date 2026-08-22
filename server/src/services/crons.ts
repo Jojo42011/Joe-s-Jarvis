@@ -1,4 +1,5 @@
 import { getDb } from '../db/schema';
+import { anthropicApiKey } from '../config/anthropic';
 import { getSystemState, setSystemState } from '../db/queries';
 import Anthropic from '@anthropic-ai/sdk';
 import { ANTHROPIC_FAST_MODEL } from '../config/models';
@@ -58,7 +59,7 @@ export async function handleActivation(openerAlreadySpoken = false): Promise<str
 }
 
 async function generateMorningBrief(openerAlreadySpoken = false): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = anthropicApiKey();
   if (!apiKey) return openerAlreadySpoken ? '' : getTimeAwareGreeting();
 
   const packet = await getMemoryPacket('morning briefing priorities');
@@ -124,7 +125,7 @@ export function scheduleDailyDecay(): void {
 
 export function scheduleWeeklySynthesis(): void {
   const run = async () => {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = anthropicApiKey();
     if (!apiKey) return;
 
     const db = getDb();

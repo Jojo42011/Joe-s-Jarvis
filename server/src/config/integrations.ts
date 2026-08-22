@@ -60,7 +60,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
   { id: 'twilio_sms', name: 'Twilio SMS', category: 'Messaging', description: 'Two-way texting on a dedicated business number — inbound texts trigger Jarvis, outbound reminders and confirmations.', envKeys: ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN'], fallback: 'planned' },
 
   // ── AI & Reasoning ──
-  { id: 'anthropic', name: 'Anthropic Claude', category: 'AI & Reasoning', description: 'Jarvis\'s brain: conversation, tool use, photo reading, call classification, memory extraction and the weekly synthesis.', envKeys: ['ANTHROPIC_API_KEY'], fallback: 'available' },
+  { id: 'anthropic', name: 'Anthropic Claude', category: 'AI & Reasoning', description: 'OFFLINE — switched off in code after the key was being spent through this app\'s unauthenticated endpoints. Jarvis\'s brain, photo reading, call classification, memory extraction and the weekly synthesis are all down until the key is rotated and the login wall is on.', envKeys: [], fallback: 'planned' },
   { id: 'gemini', name: 'Google Gemini', category: 'AI & Reasoning', description: 'Semantic memory recall (embeddings) whenever OpenAI is not configured, plus AI image generation.', envKeys: ['GEMINI_API_KEY'], fallback: 'available' },
   { id: 'openai', name: 'OpenAI', category: 'AI & Reasoning', description: 'Optional alternative embedding provider for semantic memory recall. Not required — Gemini covers this.', envKeys: ['OPENAI_API_KEY'], fallback: 'available' },
 

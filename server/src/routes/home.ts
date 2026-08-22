@@ -8,6 +8,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+import { anthropicApiKey } from '../config/anthropic';
 import { getDb } from '../db/schema';
 import { getLastExecution } from '../db/queries';
 import { PIPELINE, BUILD_STAGES, STAGE_WEIGHT } from '../services/leadShared';
@@ -47,7 +48,7 @@ router.get('/home', (_req: Request, res: Response) => {
   const open = leads.filter((l) => l.pipeline !== 'lost' && l.pipeline !== 'completed');
 
   // Agents: "live" means it can actually run right now, not that it's configured.
-  const brainLive = !!process.env.ANTHROPIC_API_KEY?.trim();
+  const brainLive = !!anthropicApiKey()?.trim();
   const phoneLive = !!process.env.VAPI_API_KEY?.trim();
 
   const lastCall = db.prepare(
@@ -304,7 +305,7 @@ router.post('/hire', async (req: Request, res: Response) => {
   // filed verbatim — losing what he typed would be the worse failure.
   let spec: string | null = null;
   try {
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = anthropicApiKey();
     if (key) {
       const Anthropic = (await import('@anthropic-ai/sdk')).default;
       const { ANTHROPIC_FAST_MODEL } = await import('../config/models');

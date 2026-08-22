@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { anthropicApiKey } from '../config/anthropic';
 import { ANTHROPIC_MODEL } from '../config/models';
 import { ARLO_SYSTEM_PROMPT } from '../config/constants';
 import { insertFact, insertEpisode } from '../db/memory';
@@ -29,8 +30,8 @@ function textFrom(resp: Anthropic.Message): string {
 }
 
 export async function analyzeImage(image: string, prompt?: string): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
+  const apiKey = anthropicApiKey();
+  if (!apiKey) throw new Error('Claude is disabled on this deployment (see server/src/config/anthropic.ts)');
   const client = new Anthropic({ apiKey });
 
   const ask = prompt?.trim() ||
@@ -58,8 +59,8 @@ export async function analyzeImage(image: string, prompt?: string): Promise<stri
 interface DocExtract { summary?: string; facts?: { content: string; importance?: number }[] }
 
 export async function ingestDocument(text: string, filename?: string, prompt?: string): Promise<{ summary: string; stored: number }> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
+  const apiKey = anthropicApiKey();
+  if (!apiKey) throw new Error('Claude is disabled on this deployment (see server/src/config/anthropic.ts)');
   const client = new Anthropic({ apiKey });
 
   const sys = `You are Jarvis, Joe's right hand. Read this document${filename ? ` ("${filename}")` : ''} and return ONLY JSON:

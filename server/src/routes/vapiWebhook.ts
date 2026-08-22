@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { anthropicApiKey } from '../config/anthropic';
 import express from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import { getDb } from '../db/schema';
@@ -134,7 +135,7 @@ async function extractCallLead(
     category: 'prospect',
   };
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = anthropicApiKey();
   if (!apiKey || !text.trim()) return defaults;
 
   const client = new Anthropic({ apiKey });

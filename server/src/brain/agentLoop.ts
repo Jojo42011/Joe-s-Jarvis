@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { anthropicApiKey } from '../config/anthropic';
 import { Response } from 'express';
 import { ARLO_SYSTEM_PROMPT } from '../config/constants';
 import { ANTHROPIC_MODEL, ANTHROPIC_FAST_MODEL, ARLO_MAX_TOKENS } from '../config/models';
@@ -129,8 +130,8 @@ async function runToolCall(name: string, input: Record<string, unknown>): Promis
 interface ToolUse { id: string; name: string; input: Record<string, unknown> }
 
 export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoopResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
+  const apiKey = anthropicApiKey();
+  if (!apiKey) throw new Error('Claude is disabled on this deployment (see server/src/config/anthropic.ts)');
 
   const { message } = options;
   const client = new Anthropic({ apiKey });
@@ -177,8 +178,8 @@ export async function streamAgentLoop(
   options: AgentLoopOptions,
   res: Response
 ): Promise<void> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
+  const apiKey = anthropicApiKey();
+  if (!apiKey) throw new Error('Claude is disabled on this deployment (see server/src/config/anthropic.ts)');
 
   const { message } = options;
   const client = new Anthropic({ apiKey });

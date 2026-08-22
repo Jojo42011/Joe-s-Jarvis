@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { anthropicApiKey } from '../config/anthropic';
 import { ANTHROPIC_FAST_MODEL } from '../config/models';
 import { safeJsonParse } from '../utils/safeJson';
 import {
@@ -37,7 +38,7 @@ If nothing worth storing, return {"facts":[],"entities":[],"rules":[],"episode":
 export async function runPostConversationExtraction(
   transcript: { role: string; content: string }[]
 ): Promise<void> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = anthropicApiKey();
   if (!apiKey || transcript.length < 2) return;
 
   const text = transcript

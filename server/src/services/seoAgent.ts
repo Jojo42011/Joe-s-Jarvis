@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { anthropicApiKey } from '../config/anthropic';
 import { getDb } from '../db/schema';
 import { ANTHROPIC_MODEL } from '../config/models';
 import {
@@ -520,7 +521,7 @@ function resolveLlm(): LlmContext | null {
     console.log(TAG, 'Using Gemini for Atlas (google_search available)');
     return { provider: 'gemini' };
   }
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = anthropicApiKey();
   if (apiKey) {
     console.log(TAG, 'Using Claude for Atlas (GEMINI_API_KEY not set)');
     return { provider: 'anthropic', anthropic: new Anthropic({ apiKey }) };

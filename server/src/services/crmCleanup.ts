@@ -9,6 +9,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { anthropicApiKey } from '../config/anthropic';
 import { getDb } from '../db/schema';
 import { getSystemState, setSystemState } from '../db/queries';
 import { safeJsonParse } from '../utils/safeJson';
@@ -64,7 +65,7 @@ async function classifyBatch(client: Anthropic, batch: CandidateLead[]): Promise
  * build stage are candidates, and anything unclassified stays a lead.
  */
 export async function cleanupJunkLeads(): Promise<{ examined: number; moved: number; note?: string }> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = anthropicApiKey();
   if (!apiKey) return { examined: 0, moved: 0, note: 'ANTHROPIC_API_KEY not configured — cleanup skipped' };
 
   const db = getDb();

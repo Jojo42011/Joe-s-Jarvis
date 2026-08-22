@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { anthropicApiKey } from '../config/anthropic';
 import { ANTHROPIC_FAST_MODEL } from '../config/models';
 import { getDb } from '../db/schema';
 import { insertFact } from '../db/memory';
@@ -39,7 +40,7 @@ Return ONLY valid JSON, no markdown:
 Return 3-5 reflections. If there is genuinely nothing to synthesize, return {"reflections":[]}.`;
 
 export async function runReflection(): Promise<number> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = anthropicApiKey();
   if (!apiKey) return 0;
 
   const db = getDb();
